@@ -1,0 +1,12 @@
+# Data and secrets never belong in this repo.
+.env
+data/
+*.db
+*.db-wal
+*.db-shm
+spool.jsonl
+
+__pycache__/
+*.pyc
+.DS_Store
+.venv/
