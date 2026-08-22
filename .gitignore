@@ -14,3 +14,7 @@ __pycache__/
 # launcher state
 .run/
 logs/
+
+# tooling scratch
+.playwright-mcp/
+*.png

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-AIMC agent — runs on a machine, reads it, ships it.
+TOKENHUD agent — runs on a machine, reads it, ships it.
 
-    AIMC_SERVER=http://127.0.0.1:8787 AIMC_KEY=... python3 agent/agent.py
+    TOKENHUD_SERVER=http://127.0.0.1:8787 TOKENHUD_KEY=... python3 agent/agent.py
 
 The agent is the only thing that touches your machine. It knows nothing about
 storage or the dashboard: it collects a snapshot, POSTs it, and forgets it.
@@ -23,7 +23,7 @@ Design notes worth keeping:
     loop continues. A monitoring agent that dies on the one day something goes
     wrong is worse than no agent.
 
-  · **It sends no secrets.** Prompt text is opt-in (AIMC_SEND_PROMPTS=1) and
+  · **It sends no secrets.** Prompt text is opt-in (TOKENHUD_SEND_PROMPTS=1) and
     command lines are truncated. See collectors.py.
 """
 from __future__ import annotations
@@ -39,13 +39,16 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import collectors  # noqa: E402
 
-SERVER = os.environ.get("AIMC_SERVER", "http://127.0.0.1:8787").rstrip("/")
-KEY = os.environ.get("AIMC_KEY", "")
-INTERVAL = int(os.environ.get("AIMC_INTERVAL", "30"))
-ONCE = "--once" in sys.argv or os.environ.get("AIMC_ONCE") == "1"
+SERVER = os.environ.get("TOKENHUD_SERVER", "http://127.0.0.1:8787").rstrip("/")
+KEY = os.environ.get("TOKENHUD_KEY", "")
+INTERVAL = int(os.environ.get("TOKENHUD_INTERVAL", "30"))
+ONCE = "--once" in sys.argv or os.environ.get("TOKENHUD_ONCE") == "1"
 DRY = "--dry-run" in sys.argv
 
-SPOOL = Path(os.environ.get("AIMC_SPOOL", Path.home() / ".aimc" / "spool.jsonl"))
+# TOKENHUD_STATE is the one directory the agent writes to: the spool below and
+# the transcript index in transcripts.py. TOKENHUD_SPOOL still overrides the file.
+STATE = Path(os.environ.get("TOKENHUD_STATE", Path.home() / ".tokenhud")).expanduser()
+SPOOL = Path(os.environ.get("TOKENHUD_SPOOL", STATE / "spool.jsonl"))
 SPOOL_MAX = 500          # snapshots; ~a few MB, bounded on purpose
 
 
@@ -62,8 +65,8 @@ def post(snapshot: dict) -> bool:
         method="POST",
         headers={
             "Content-Type": "application/json",
-            "X-AIMC-Key": KEY,
-            "User-Agent": f"aimc-agent/{collectors.AGENT_VERSION}",
+            "X-TokenHUD-Key": KEY,
+            "User-Agent": f"tokenhud-agent/{collectors.AGENT_VERSION}",
         },
     )
     try:
@@ -129,6 +132,13 @@ def spool_flush() -> None:
 
 def cycle() -> None:
     snap = collectors.collect()
+    # The board schedules its next fetch from this. Only the agent knows how
+    # often it reports, so only the agent can say it; without it a dashboard
+    # has to guess a poll rate and is wrong in one of two directions — too
+    # fast and it refetches an unchanged reading, too slow and it shows an
+    # old one. Stamped per snapshot rather than sent once, so changing
+    # TOKENHUD_INTERVAL takes effect on the next cycle.
+    snap["intervalSeconds"] = INTERVAL
     if DRY:
         print(json.dumps(snap, indent=2))
         return
@@ -143,11 +153,11 @@ def cycle() -> None:
 
 def main() -> None:
     if not DRY and not KEY:
-        log("AIMC_KEY is not set — the server will refuse this agent.")
+        log("TOKENHUD_KEY is not set — the server will refuse this agent.")
         log("Generate one with: python3 server/server.py --new-key")
         sys.exit(2)
 
-    log(f"aimc-agent {collectors.AGENT_VERSION} · host={collectors.host_id()}")
+    log(f"tokenhud-agent {collectors.AGENT_VERSION} · host={collectors.host_id()}")
     if not DRY:
         log(f"server={SERVER} interval={INTERVAL}s")
 

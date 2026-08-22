@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/reddy-sh/tokenhud/security/advisories/new
+    about: Please report privately, never as a public issue. See SECURITY.md.
+  - name: Question or idea
+    url: https://github.com/reddy-sh/tokenhud/discussions
+    about: For anything that is not a bug or a concrete feature request.

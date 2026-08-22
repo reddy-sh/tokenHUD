@@ -22,7 +22,7 @@ RUN="$ROOT/.run"
 LOGS="$ROOT/logs"
 mkdir -p "$RUN" "$LOGS"
 
-PORT="${AIMC_PORT:-8787}"
+PORT="${TOKENHUD_PORT:-8787}"
 URL="http://127.0.0.1:$PORT"
 
 # ── env ─────────────────────────────────────────────────────────────────
@@ -56,7 +56,8 @@ start_one() {  # start_one <name> <logfile> <cmd...>
 }
 
 stop_one() {
-  local name="$1" pf="$RUN/$name.pid"
+  local name="$1"
+  local pf="$RUN/$name.pid"
   if alive "$pf"; then
     local p; p="$(pid_of "$pf")"
     kill "$p" 2>/dev/null
@@ -81,9 +82,9 @@ reap_strays() {
 }
 
 cmd_start() {
-  echo "AI Mission Control"
-  if [ -z "${AIMC_KEY:-}" ]; then
-    echo "  AIMC_KEY is not set. Create one:"
+  echo "TokenHUD"
+  if [ -z "${TOKENHUD_KEY:-}" ]; then
+    echo "  TOKENHUD_KEY is not set. Create one:"
     echo "    python3 server/server.py --new-key   # then put it in .env"
     exit 2
   fi

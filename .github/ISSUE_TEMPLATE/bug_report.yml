@@ -1,0 +1,51 @@
+name: Bug report
+description: Something TokenHUD does that it should not, or does not do that it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Not for security issues.** Report those privately — see [SECURITY.md](../blob/main/SECURITY.md).
+
+        Please do not paste prompt text, project paths or branch names into this
+        issue. TokenHUD goes to some trouble not to collect those; the issue
+        tracker should not undo it.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: And what you expected instead.
+    validations: { required: true }
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      placeholder: |
+        1. ./scripts/run.sh
+        2. open http://127.0.0.1:8787
+        3. ...
+    validations: { required: true }
+  - type: textarea
+    id: selftest
+    attributes:
+      label: Output of `python3 scripts/selftest.py`
+      description: This tells us more than almost anything else. Paste it whole.
+      render: text
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes:
+      label: Python and OS
+      placeholder: "python 3.11.6 · macOS 15.2 · Apple Silicon"
+    validations: { required: true }
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+      description: "`git rev-parse --short HEAD`"
+    validations: { required: true }
+  - type: textarea
+    id: console
+    attributes:
+      label: Browser console, if the problem is on the board
+      render: text

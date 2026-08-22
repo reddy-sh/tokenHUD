@@ -1,0 +1,38 @@
+name: Feature request
+description: Something TokenHUD should do.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before writing: please check the **Never** column in the README's scope
+        table. Some things will be declined on principle no matter how well
+        argued — prompt or completion text leaving the host, collecting source
+        code, sitting in the request path as a proxy, production application
+        tracing, and output quality scoring. Those are the product's boundary,
+        not a backlog.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you unable to see or do today? Describe the situation, not the feature.
+    validations: { required: true }
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like instead
+    validations: { required: true }
+  - type: checkboxes
+    id: boundary
+    attributes:
+      label: Trust boundary
+      options:
+        - label: This does not require reading prompt text, completion text, source code, or tool-call arguments.
+          required: true
+  - type: checkboxes
+    id: deps
+    attributes:
+      label: Dependencies
+      options:
+        - label: This can be built with the Python standard library and no build step.
+          required: false

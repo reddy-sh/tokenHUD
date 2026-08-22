@@ -3,7 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI Mission Control</title>
+<title>TokenHUD</title>
+<!-- Inline, so the board makes no request for it. Every page load was
+     otherwise a 404 in the console for a file that does not exist. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cstyle%3Ecircle%7Bfill%3Anone%3Bstroke-width%3A5%7D.t%7Bstroke%3A%23d8d6d0%7D.a%7Bstroke%3A%232a78d6%7D%40media%28prefers-color-scheme%3Adark%29%7B.t%7Bstroke%3A%2333332f%7D.a%7Bstroke%3A%233987e5%7D%7D%3C%2Fstyle%3E%3Ccircle%20class%3D%22t%22%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%2212%22%2F%3E%3Ccircle%20class%3D%22a%22%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%2212%22%20stroke-linecap%3D%22round%22%20stroke-dasharray%3D%2275.4%22%20stroke-dashoffset%3D%2247%22%20transform%3D%22rotate%28-90%2016%2016%29%22%2F%3E%3C%2Fsvg%3E">
 <style>
 /* ── tokens ────────────────────────────────────────────────────────────
    Light is the base definition; dark is a SELECTED set of steps for the
@@ -110,11 +113,29 @@ button, select {
 button:hover, select:hover { background: var(--surface-2); color: var(--ink); }
 button[aria-pressed="true"] { background: var(--surface-2); color: var(--ink); border-color: var(--ink-3); }
 
+/* The Live switch. The dot carries the state at a glance — lit and
+   breathing while the board is following the agent, grey when it is
+   frozen — but the word next to it says the same thing, because a colour
+   on its own is not a label. The pulse is opted into under
+   prefers-reduced-motion rather than left to the blanket rule below,
+   which only turns transitions off. */
+.livebtn { display: inline-flex; align-items: center; gap: 6px; }
+.livebtn .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-3); flex: none; }
+.livebtn[aria-pressed="true"] .dot { background: var(--good); }
+@media (prefers-reduced-motion: no-preference) {
+  .livebtn[aria-pressed="true"] .dot { animation: livepulse 2.4s ease-in-out infinite; }
+}
+@keyframes livepulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
 /* ── layout ─────────────────────────────────────────────────────────── */
 /* align-items:start so a short card (an empty host list) sizes to its
    content instead of stretching to match a tall neighbour. */
 .grid { display: grid; gap: 14px; align-items: start; }
-.tiles { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 14px; }
+/* 120px on a 10px gap needs 900px of content box, which clears the 1240px
+   docked breakpoint with room to spare and also clears an UNDOCKED window
+   at 940px, where the row breaks today. Strictly better in both modes;
+   1fr still grows them past 180px on a full-width board. */
+.tiles { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 14px; }
 .cols-2 { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
 .cols-3 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
 
@@ -189,29 +210,408 @@ tbody tr:last-child td { border-bottom: 0; }
 .feed .txt { color: var(--ink); overflow-wrap: anywhere; }
 .empty { color: var(--ink-3); font-size: 12px; padding: 10px 0; }
 
+/* ── usage windows ───────────────────────────────────────────────────
+   A ring, not a pie. The distinction is not pedantry: a pie asks you to
+   compare wedges against each other, and there is only one value here —
+   how much of a window is spent. So it is a meter with the number in the
+   middle, which is the form that survives being 3% as readably as 97%. */
+.uw { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+.ringwrap { position: relative; width: 132px; height: 132px; flex: none; }
+.ringwrap svg { display: block; width: 132px; height: 132px; }
+.ringwrap .mid {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center; gap: 1px;
+}
+.ringwrap .big { font-size: 19px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.ringwrap .cap { font-size: 10px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.05em; }
+.uw-side { flex: 1 1 260px; min-width: 0; }
+.uw-row { padding: 7px 0; border-bottom: 1px solid var(--rule-soft); }
+.uw-row:last-child { border-bottom: 0; }
+.uw-row .top { display: flex; align-items: baseline; gap: 8px; }
+.uw-row .lb { font-size: 12px; }
+.uw-row .pc { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.uw-row .rs { font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.meter { height: 5px; border-radius: 3px; background: var(--surface-2); margin-top: 6px; overflow: hidden; }
+.meter i { display: block; height: 100%; border-radius: 3px; }
+/* Stale means the percentages are old; it never means the countdowns are.
+   A reset instant is absolute and stays true however old the cache is, so
+   only the numbers that decay get dimmed. */
+.stale .ringwrap .big, .stale .uw-row .pc, .stale .ringwrap svg { opacity: 0.45; }
+.badge {
+  font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+  border: 1px solid currentColor; border-radius: 999px; padding: 1px 7px;
+}
+
 .scroll-x { overflow-x: auto; }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+.tall { max-height: 420px; overflow-y: auto; }
+
+/* ── driver bars: a percentage is a length, not a pie slice ──────────
+   These overlap (one session can be all three), so a stacked or pie
+   form would be a lie about the arithmetic. Independent bars on one
+   shared 0–100 scale are the honest shape.                          */
+.driver { padding: 9px 0; border-bottom: 1px solid var(--rule-soft); }
+.driver:last-child { border-bottom: 0; }
+.driver .top { display: flex; align-items: baseline; gap: 10px; }
+.driver .pc { font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; min-width: 54px; }
+.driver .lb { color: var(--ink); font-size: 13px; }
+.driver .track { height: 5px; border-radius: 3px; background: var(--surface-2); margin: 7px 0 5px; overflow: hidden; }
+.driver .fill { height: 100%; border-radius: 3px; }
+.driver .nt { font-size: 11px; color: var(--ink-3); }
+
+details.calc { margin-top: 12px; border-top: 1px solid var(--rule-soft); padding-top: 8px; }
+details.calc summary { font-size: 11px; color: var(--ink-3); cursor: pointer; list-style: revert; }
+details.calc summary:hover { color: var(--ink-2); }
+details.calc .body { font-size: 11px; color: var(--ink-3); margin-top: 8px; }
+details.calc ul { margin: 6px 0 0; padding-left: 16px; }
+details.calc li { margin-bottom: 4px; }
+
+.usd { font-variant-numeric: tabular-nums; }
+#win-buttons { white-space: nowrap; }
+#win-buttons button { padding: 3px 7px; }
+.headline { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+.warnbar {
+  font-size: 11px; color: var(--warning); border: 1px solid currentColor;
+  border-radius: 7px; padding: 5px 9px; margin-bottom: 10px; display: inline-block;
+}
+/* ── the standing rail ───────────────────────────────────────────────
+   Two geometry constants. No colour token is added, renamed or redefined:
+   every colour below is one of the existing ones, so light and dark both
+   follow for free.                                                     */
+:root { --rail-w: 280px; --rail-ms: 200ms; }
+
+.skip {
+  position: fixed; left: 10px; top: 10px; z-index: 60;
+  transform: translateY(-250%);
+  background: var(--surface-1); color: var(--ink);
+  border: 1px solid var(--rule); border-radius: 7px;
+  padding: 6px 10px; font-size: 12px; text-decoration: none;
+}
+.skip:focus { transform: none; }
+
+/* The rail is chrome: fixed to the viewport, sliding on transform alone —
+   one animated property, one compositor layer.
+
+   THE OFFSET. This translateX and the body's padding-left below evaluate
+   to the same number at every width:
+       max(0, (V-1960)/2) + 280  ==  max(280, (V-1400)/2)
+   so the rail's right edge IS the board's left edge, with no breakpoint
+   and no discontinuity. Under 1960 the rail sits at the viewport edge and
+   pushes; over it, it steps into the gutter the centred 1400px board
+   already leaves and the board does not move at all. 1960 = 1400 + 280. */
+.rail {
+  position: fixed; top: 0; bottom: 0; left: 0;
+  width: var(--rail-w);
+  display: flex; flex-direction: column; gap: 20px;
+  padding: 16px 14px;
+  overflow-y: auto; overscroll-behavior: contain;
+  background: var(--surface-1);
+  border-right: 1px solid var(--rule);
+  z-index: 30;
+  transform: translateX(max(0px, (100vw - 1960px) / 2));
+  transition: transform var(--rail-ms) cubic-bezier(.4, 0, .2, 1),
+              visibility var(--rail-ms);
+}
+/* visibility, not just off-canvas: a shut rail must leave the tab order.
+   Interpolating to `hidden` steps at the END of the transition, so the
+   panel stays visible for the whole slide out. */
+:root[data-rail="shut"] .rail { transform: translateX(-100%); visibility: hidden; }
+
+/* Docked above the breakpoint. 1240 is the mathematical floor
+   (280 rail + 2x420 columns + 14 gap + 40 wrap padding = 1174) plus slack,
+   so the rail can never cost the board its second column. */
+@media (min-width: 1240px) {
+  :root[data-rail="open"] body  { padding-left: max(var(--rail-w), (100vw - 1400px) / 2); }
+  :root[data-rail="open"] .wrap { margin-left: 0; }
+  .rail-close, .scrim { display: none; }
+}
+body { transition: padding-left var(--rail-ms) cubic-bezier(.4, 0, .2, 1); }
+
+/* Modal below it. Elevation is what separates the two modes — Material's
+   permanent drawer is a divider, its modal drawer is a shadow. */
+@media (max-width: 1239.98px) {
+  .rail {
+    width: min(var(--rail-w), 86vw);
+    padding-top: 46px;
+    box-shadow: 0 10px 34px rgba(0, 0, 0, .30);
+  }
+}
+.scrim {
+  position: fixed; inset: 0; z-index: 25; background: rgba(0, 0, 0, .5);
+  opacity: 0; visibility: hidden;
+  transition: opacity var(--rail-ms), visibility var(--rail-ms);
+}
+:root[data-rail="open"] .scrim { opacity: 1; visibility: visible; }
+
+.rail-sec { min-width: 0; }
+.rail-lab {
+  font-size: 11px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-3); margin: 0 0 8px;
+}
+.rail-id { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 9px; }
+.rail-id .who { font-size: 15px; font-weight: 600; letter-spacing: -.01em; color: var(--ink); overflow-wrap: anywhere; }
+.rail select { width: 100%; margin-bottom: 9px; }
+.rail select[hidden] { display: none; }
+.rail-note { font-size: 11px; color: var(--ink-3); margin: 0; }
+.rail-note:empty { display: none; }
+.rail-kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 0; font-size: 11px; }
+.rail-kv dt { color: var(--ink-3); }
+.rail-kv dd { margin: 0; text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+/* Icon + label + number. The number is the reason the row exists. */
+.rail-nav { display: flex; flex-direction: column; gap: 1px; }
+.rail-nav a {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px; border-radius: 8px;
+  font-size: 13px; color: var(--ink-2); text-decoration: none;
+  transition: background .12s, color .12s;
+}
+.rail-nav .ic { color: var(--ink-3); }
+.rail-nav .lb { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-nav .n  { flex: none; font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.rail-nav .n:empty { display: none; }
+/* A colour only where it means something. Nothing below re-colours .n on
+   the selected row: a more specific selected-state rule would out-rank
+   these and silently kill the one signal that matters. */
+.rail-nav .n.on  { color: var(--good); }
+.rail-nav .n.bad { color: var(--critical); }
+.rail-nav a:hover { background: var(--surface-2); color: var(--ink); }
+.rail-nav a:hover .ic { color: var(--ink-2); }
+.rail-nav a[aria-current] {
+  background: var(--surface-2); color: var(--ink); font-weight: 600;
+  box-shadow: inset 2px 0 0 var(--s1);
+}
+.rail-nav a[aria-current] .ic { color: var(--s1); }
+
+.rail-foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--rule-soft); }
+.railprint { width: 100%; margin-bottom: 9px; text-align: center; }
+.rail-foot a { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ink-3); text-decoration: none; }
+.rail-foot a:hover { color: var(--ink-2); }
+.rail-foot .ic { width: 14px; height: 14px; }
+
+.rail-close { position: absolute; top: 12px; right: 12px; padding: 5px 6px; line-height: 0; }
+.railbtn { padding: 5px 7px; line-height: 0; align-self: center; }
+.ic {
+  width: 18px; height: 18px; flex: none; display: block;
+  fill: none; stroke: currentColor; stroke-width: 1.7;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.railbtn .ic, .rail-close .ic { width: 16px; height: 16px; }
+
+.rail a:focus-visible, .rail button:focus-visible, .rail select:focus-visible,
+.railbtn:focus-visible, .skip:focus-visible {
+  outline: 2px solid var(--s1); outline-offset: 2px;
+}
+
+/* ── header becomes a sticky app bar ─────────────────────────────────
+   The board is five screens tall and the countdown and the Live switch are
+   the two controls that must never scroll away. Below 600px it un-sticks:
+   a phone cannot spend 15% of its screen on permanent chrome. */
+.wrap { padding-top: 0; }
+header {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--surface-0);
+  padding: 20px 0 12px;
+}
+@media (max-width: 599px) { header { position: static; padding-top: 16px; } }
+
+/* --hdr-h is measured by measureHeader(), because the bar wraps to two
+   rows on a narrow window and is zero-height when it is not sticky. */
+.card, #tiles { scroll-margin-top: calc(var(--hdr-h, 0px) + 14px); }
+.card:focus, #tiles:focus, #board:focus { outline: none; }
+.card:focus-visible, #tiles:focus-visible, #board:focus-visible { outline: 2px solid var(--s1); outline-offset: 3px; }
+html { scroll-behavior: smooth; }
+
+/* ── print / save as PDF ─────────────────────────────────────────────
+   No library, no server round trip: the browser already has a PDF writer
+   and the board is already responsive. .cols-2 is minmax(420px, 1fr) and
+   an A4 content box is about 640px, so every two-column section
+   linearises on its own — the work here is removing the chrome, undoing
+   the two things that would clip content, and forcing the light palette,
+   because a dark board on paper is a cartridge of ink for one page.
+
+   The one deliberate choice: it prints what is on the screen, including
+   an unsupported assistant's warning card. "The PDF shows what the board
+   showed" is a rule that needs no explaining.                          */
+@media print {
+  /* Everything interactive is either useless on paper or a lie: a pulsing
+     Live dot and a "next in 12s" countdown do not belong in a document. */
+  /* #stamp goes too, despite being the "as of" line: it carries a live
+     countdown, and "next in 29s" printed on a document is nonsense. The
+     .printonly line below carries the reading's timestamp instead. */
+  .rail, .scrim, .skip, #rail-toggle, #live-switch, #theme, #stamp,
+  #tok-table, #win-buttons, .tip { display: none !important; }
+
+  /* The identity moved to the rail, and the rail is gone — so the board
+     would print with no machine name and no time on it. */
+  .printonly { display: block !important; }
+
+  :root, :root[data-theme="dark"] {
+    --surface-0: #fff; --surface-1: #fff; --surface-2: #f0f0ee;
+    --rule: #c9c7c1; --rule-soft: #dedcd6; --grid: #e2e0da;
+    --ink: #000; --ink-2: #333; --ink-3: #595959;
+  }
+  body { padding-left: 0 !important; background: #fff; }
+  .wrap { max-width: none; margin: 0; padding: 0 0 12px; }
+  header { position: static !important; padding: 0 0 10px; }
+
+  /* Both of these clip on paper: a scroll container has no scrollbar in a
+     PDF, so whatever is past the fold is simply gone. */
+  .tall { max-height: none !important; overflow: visible !important; }
+  .scroll-x { overflow: visible !important; }
+
+  .card {
+    border: 1px solid var(--rule); box-shadow: none;
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  .grid { gap: 10px; }
+  /* A card that genuinely cannot fit a page must be allowed to split
+     rather than leave a page blank ahead of it. */
+  .card:has(#t-sessions), .card:has(#c-spend) { break-inside: auto; page-break-inside: auto; }
+  details.calc { display: none; }          /* the rate card is reference, not report */
+  .feed { max-height: none; overflow: visible; }
+  a[href^="#"] { text-decoration: none; color: inherit; }
+  @page { margin: 14mm; }
+}
+.printonly { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+  /* `* { transition: none }` does not reach scroll-behavior, so smooth
+     scrolling would survive the preference unless it is turned off here. */
+  html { scroll-behavior: auto; }
+}
 </style>
+<script>
+/* Before the first paint, which is the only place this can run: the docked
+   rail is a padding on <body>, so restoring it from the foot of the page
+   would paint the board once under the rail and once beside it. The theme
+   restore had the same flash and moves here from the foot of the file. */
+(function () {
+  var r = document.documentElement, rail = null, theme = null;
+  try {
+    rail  = localStorage.getItem('tokenhud-rail');
+    theme = localStorage.getItem('tokenhud-theme');
+  } catch (e) {}
+  if (theme) r.setAttribute('data-theme', theme);
+  /* Only the DOCKED preference is remembered. Landing inside a modal you
+     did not open, on a board that refreshes itself, is unforgivable. */
+  var docked = matchMedia('(min-width: 1240px)').matches;
+  r.setAttribute('data-rail', docked && rail !== 'shut' ? 'open' : 'shut');
+})();
+</script>
 </head>
 <body>
+<!-- Stroke glyphs on a 24 box. No icon font, no CDN; stroke:currentColor
+     means they take the theme and the selected state for free. -->
+<svg style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false"><defs>
+  <symbol id="i-menu"     viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-close"    viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-overview" viewBox="0 0 24 24"><path d="M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h6v6h-6z"/></symbol>
+  <symbol id="i-window"   viewBox="0 0 24 24"><path d="M12 21a9 9 0 100-18 9 9 0 000 18z M12 7v5l3.5 2"/></symbol>
+  <symbol id="i-ended"    viewBox="0 0 24 24"><path d="M12 21a9 9 0 100-18 9 9 0 000 18z M8.5 12.5l2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-activity" viewBox="0 0 24 24"><path d="M4 19V5 M4 19h16 M7 15l4-5 3 3 5-7"/></symbol>
+  <symbol id="i-value"    viewBox="0 0 24 24"><path d="M12 3v18 M16.5 6.5H10a3 3 0 000 6h4a3 3 0 010 6H7.5"/></symbol>
+  <symbol id="i-sessions" viewBox="0 0 24 24"><path d="M4 6h16 M4 12h16 M4 18h9"/></symbol>
+  <symbol id="i-models"   viewBox="0 0 24 24"><path d="M12 3l8 4.5-8 4.5-8-4.5z M4 12l8 4.5 8-4.5 M4 16.5l8 4.5 8-4.5"/></symbol>
+  <symbol id="i-running"  viewBox="0 0 24 24"><path d="M3 12h3.5L9 5.5 12.5 18l2.5-6h6"/></symbol>
+  <symbol id="i-projects" viewBox="0 0 24 24"><path d="M3 6h6l2 2.5h10V19H3z"/></symbol>
+  <symbol id="i-machines" viewBox="0 0 24 24"><path d="M4 5h16v5H4z M4 14h16v5H4z M7.5 7.5h.01 M7.5 16.5h.01"/></symbol>
+  <symbol id="i-prompts"  viewBox="0 0 24 24"><path d="M4 5h16v10H10l-5 4v-4H4z"/></symbol>
+</defs></svg>
+
+<a class="skip" href="#board">Skip to board</a>
+<div class="scrim" id="scrim"></div>
+
+<!-- aria-label makes this a named complementary landmark while docked. The
+     dialog role and aria-modal are attached and removed at the breakpoint
+     by applyRailRole(): a permanent rail is not a modal. -->
+<aside class="rail" id="rail" aria-label="Workspace">
+  <button class="rail-close" id="rail-close" aria-label="Close sidebar" title="Close">
+    <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close"/></svg>
+  </button>
+
+  <section class="rail-sec">
+    <p class="rail-lab">Machine</p>
+    <div class="rail-id">
+      <span class="who" id="rail-host">&mdash;</span>
+      <span id="rail-status"></span>
+    </div>
+    <select id="hostpick" title="Machine"></select>
+    <dl class="rail-kv" id="rail-kv"></dl>
+  </section>
+
+  <section class="rail-sec">
+    <p class="rail-lab">Assistant</p>
+    <select id="toolpick" title="Coding assistant"></select>
+    <p class="rail-note" id="rail-tool"></p>
+  </section>
+
+  <nav class="rail-nav" id="rail-nav" aria-label="Board sections"></nav>
+
+  <div class="rail-foot">
+    <button id="rail-print" class="railprint" title="Print the board, or save it as a PDF">
+      Save as PDF
+    </button>
+    <a href="#p-machines" id="rail-fleet">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-machines"/></svg>
+      <span id="rail-fleet-t"></span>
+    </a>
+  </div>
+</aside>
+
 <div class="wrap">
 
 <header>
-  <h1>AI Mission Control</h1>
-  <select id="hostpick" title="Machine"></select>
-  <span class="sub" id="scope"></span>
+  <button id="rail-toggle" class="railbtn" aria-expanded="true" aria-controls="rail" aria-label="Hide sidebar">
+    <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-menu"/></svg>
+  </button>
+  <h1>TokenHUD</h1>
   <span class="spacer"></span>
   <span class="sub" id="stamp">loading…</span>
-  <button id="pause" aria-pressed="false" title="Stop polling">Pause</button>
+  <button id="live-switch" class="livebtn" aria-pressed="true"
+          title="Following the agent — refetches one second after each reading is due">
+    <span class="dot"></span><span id="live-switch-label">Live</span>
+  </button>
   <button id="theme" title="Light / dark">Theme</button>
 </header>
 
-<div id="banner"></div>
+<p class="printonly" id="print-id"></p>
 
-<section class="grid tiles" id="tiles"></section>
+<div id="banner"></div>
+<div id="offboard"></div>
+
+<div id="board">
+<section class="grid tiles" id="tiles" data-nav="Overview" data-icon="overview"></section>
 
 <section class="grid cols-2">
-  <div class="card">
+  <div class="card" id="uw-card" data-nav="Usage windows" data-icon="window">
+    <div class="card-head">
+      <div>
+        <h2>Usage windows</h2>
+        <p class="note" id="uw-note"></p>
+      </div>
+      <span class="spacer"></span>
+      <span id="uw-badge"></span>
+    </div>
+    <div id="uw-body"></div>
+    <p class="note" id="uw-foot" style="margin:12px 0 0"></p>
+  </div>
+
+  <div class="card" data-nav="Recently finished" data-icon="ended">
+    <div class="card-head">
+      <div>
+        <h2>Recently finished</h2>
+        <p class="note">Agents that were running at one reading and gone by the next. Kept for 24 hours, so a notification missed while you were away is still here.</p>
+      </div>
+      <span class="spacer"></span>
+      <span class="sub" id="ended-count"></span>
+    </div>
+    <ul class="feed" id="ended"></ul>
+  </div>
+</section>
+
+<section class="grid cols-2" style="margin-top:14px">
+  <div class="card" data-nav="Activity" data-icon="activity">
     <div class="card-head">
       <div>
         <h2>Daily activity</h2>
@@ -238,13 +638,59 @@ tbody tr:last-child td { border-bottom: 0; }
 </section>
 
 <section class="grid cols-2" style="margin-top:14px">
+  <div class="card" data-nav="Value" data-icon="value">
+    <div class="card-head">
+      <div>
+        <h2>Estimated value per day</h2>
+        <p class="note" id="spend-note"></p>
+      </div>
+      <span class="spacer"></span>
+      <span class="headline usd" id="spend-total"></span>
+    </div>
+    <div id="spend-warn"></div>
+    <svg class="chart" id="c-spend" height="200" role="img" aria-label="Estimated API list value per day"></svg>
+    <ul class="legend" id="l-spend"></ul>
+    <details class="calc">
+      <summary>How this number is made</summary>
+      <div class="body" id="rate-card"></div>
+    </details>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h2>What is driving usage</h2>
+        <p class="note">Independent characteristics of the estimate, not a breakdown — one session can be all of them, so these overlap and do not sum to 100%.</p>
+      </div>
+      <span class="spacer"></span>
+      <span id="win-buttons"></span>
+    </div>
+    <div id="drivers"></div>
+  </div>
+</section>
+
+<section class="grid" style="margin-top:14px">
+  <div class="card" data-nav="Sessions" data-icon="sessions">
+    <div class="card-head">
+      <div>
+        <h2>Sessions</h2>
+        <p class="note" id="sessions-note"></p>
+      </div>
+      <span class="spacer"></span>
+      <span class="sub" id="sessions-count"></span>
+    </div>
+    <div class="scroll-x tall"><table id="t-sessions"></table></div>
+  </div>
+</section>
+
+<section class="grid cols-2" style="margin-top:14px">
   <div class="card">
     <h2>When you work</h2>
     <p class="note">Sessions by hour of day, local time.</p>
     <svg class="chart" id="c-hours" height="150" role="img" aria-label="Sessions by hour of day"></svg>
   </div>
 
-  <div class="card">
+  <div class="card" data-nav="Models" data-icon="models">
     <h2>Model usage — all time</h2>
     <p class="note" id="cost-note"></p>
     <div class="scroll-x"><table id="t-models"></table></div>
@@ -252,7 +698,7 @@ tbody tr:last-child td { border-bottom: 0; }
 </section>
 
 <section class="grid cols-2" style="margin-top:14px">
-  <div class="card">
+  <div class="card" data-nav="Running now" data-icon="running">
     <div class="card-head">
       <div>
         <h2>Running now</h2>
@@ -264,7 +710,7 @@ tbody tr:last-child td { border-bottom: 0; }
     <div id="live"></div>
   </div>
 
-  <div class="card">
+  <div class="card" data-nav="Projects" data-icon="projects">
     <h2>Projects</h2>
     <p class="note">By last activity. Machine-made worktrees are marked.</p>
     <ul class="feed" id="projects"></ul>
@@ -272,18 +718,19 @@ tbody tr:last-child td { border-bottom: 0; }
 </section>
 
 <section class="grid cols-2" style="margin-top:14px">
-  <div class="card">
+  <div class="card" data-nav="Machines" data-icon="machines">
     <h2>Reporting machines</h2>
     <p class="note">A host is "up" while its agent has checked in recently.</p>
     <ul class="feed" id="hosts"></ul>
   </div>
 
-  <div class="card">
+  <div class="card" data-nav="Prompts" data-icon="prompts">
     <h2>Recent prompts</h2>
     <p class="note">From history.jsonl. Local only — never leaves this Mac.</p>
     <ul class="feed" id="prompts"></ul>
   </div>
 </section>
+</div>
 
 </div>
 
@@ -310,6 +757,35 @@ function compact(n) {
   return String(n);
 }
 const full = n => (Number(n)||0).toLocaleString('en-US');
+/* Dollars: two decimals only while they still mean something. $0.04 is a
+   fact; $10,648.04 is false precision on an estimate. */
+function usd(n) {
+  n = Number(n) || 0;
+  const dp = Math.abs(n) >= 100 ? 0 : Math.abs(n) >= 1 ? 2 : 3;
+  return '$' + n.toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+}
+const usdShort = n => '$' + compact(Math.round(Number(n) || 0));
+
+/* The same arithmetic pricing.py does, applied in the browser.
+   The all-time model table counts tokens from stats-cache.json while the
+   spend panel counts them from the transcripts; the two sources agree
+   closely but not exactly. Pricing each table from its own token numbers
+   keeps every row internally consistent, which matters more than making
+   two independently-sourced totals match to the dollar. */
+function estimateRow(card, row) {
+  const rate = (card.rates || []).find(r => r.model === shortModel(row.model) ||
+                                            r.model === row.model ||
+                                            shortModel(r.model) === shortModel(row.model));
+  if (!rate) return null;
+  const per = 1e6;
+  return (row.input || 0) * rate.input / per
+       + (row.output || 0) * rate.output / per
+       + (row.cacheRead || 0) * rate.input * (card.cacheRead ?? 0.1) / per
+       /* stats-cache reports one cache-write total with no TTL split, so
+          the cheaper rate is assumed — an estimate should not flatter
+          itself. The transcripts do carry the split; the spend panel uses it. */
+       + (row.cacheCreate || 0) * rate.input * (card.cacheWrite5m ?? 1.25) / per;
+}
 const shortModel = m => String(m).replace(/^claude-/, '').replace(/-\d{8}$/, '');
 const dayLabel = d => { const p = String(d).split('-'); return p.length === 3 ? `${p[2]}/${p[1]}` : d; };
 function ago(iso) {
@@ -360,14 +836,14 @@ function niceMax(v) {
   const p = Math.pow(10, Math.floor(Math.log10(v)));
   return Math.ceil(v / p * 2) / 2 * p;
 }
-function yAxis(node, f, max, ticks = 4) {
+function yAxis(node, f, max, ticks = 4, fmt = compact) {
   const ih = f.h - f.m.t - f.m.b;
   for (let i = 0; i <= ticks; i++) {
     const v = max * i / ticks;
     const y = f.m.t + ih - (ih * i / ticks);
     node.appendChild(svg('line', { class: 'grid-line', x1: f.m.l, x2: f.w - f.m.r, y1: y, y2: y }));
     const t = svg('text', { x: f.m.l - 7, y: y + 3, 'text-anchor': 'end' });
-    t.textContent = compact(v);
+    t.textContent = fmt(v);
     node.appendChild(t);
   }
 }
@@ -535,8 +1011,466 @@ function drawHours(hours) {
   });
 }
 
+/* ── estimated value per day ─────────────────────────────────────────
+   Same stacked form as the token chart, because it is the same data seen
+   through a rate card. The card carries the rate card itself in a
+   details block: a dollar figure whose arithmetic you cannot inspect is
+   a number to distrust.                                               */
+function drawSpend(usage) {
+  const node = $('#c-spend'), f = frame(node, 200);
+  const legend = $('#l-spend'); legend.innerHTML = '';
+  const rows = usage.byDay || [];
+  const names = (usage.byModel || []).filter(m => m.priced).map(m => m.model).slice(0, SERIES.length);
+  const color = {}; names.forEach((n, i) => color[n] = css(SERIES[i]));
+
+  $('#spend-total').textContent = usd((usage.allTime || {}).estUSD || 0);
+  $('#spend-note').textContent = (usage.pricing || {}).note || '';
+
+  const warn = $('#spend-warn'); warn.innerHTML = '';
+  const scan = usage.scan || {};
+  if (scan.bytesTotal && !scan.complete) {
+    const pc = Math.floor((scan.bytesDone / scan.bytesTotal) * 100);
+    warn.appendChild(el('div', { className: 'warnbar',
+      textContent: `Indexing transcripts — ${pc}% of ${compact(scan.bytesTotal)}B read. Figures are partial and climbing.` }));
+  }
+  const unpriced = (usage.allTime || {}).unpricedTokens || 0;
+  if (unpriced) {
+    warn.appendChild(el('div', { className: 'warnbar',
+      textContent: `${compact(unpriced)} tokens ran on models with no entry in the rate card and are left out of every dollar figure.` }));
+  }
+
+  const card = $('#rate-card'); card.innerHTML = '';
+  const pr = usage.pricing || {};
+  if (pr.rates) {
+    const t = el('table');
+    t.innerHTML = '<thead><tr><th>Model</th><th>Input $/M</th><th>Output $/M</th></tr></thead>';
+    const tb = el('tbody');
+    pr.rates.forEach(r => {
+      const tr = el('tr');
+      tr.append(el('td', { textContent: shortModel(r.model) }),
+                el('td', { textContent: r.input.toFixed(2) }),
+                el('td', { textContent: r.output.toFixed(2) }));
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+    card.appendChild(t);
+    const ul = el('ul');
+    ul.appendChild(el('li', { textContent:
+      `Cache read is ${pr.cacheRead}x the input rate; cache write ${pr.cacheWrite5m}x (5-minute TTL) and ${pr.cacheWrite1h}x (1-hour).` }));
+    (pr.caveats || []).forEach(c => ul.appendChild(el('li', { textContent: c })));
+    card.appendChild(ul);
+  }
+
+  if (!rows.length || !names.length) {
+    node.appendChild(Object.assign(svg('text', { x: f.m.l, y: 40 }), { textContent: 'no data yet' }));
+    return;
+  }
+
+  const max = niceMax(Math.max(0.01, ...rows.map(r => r.estUSD || 0)));
+  const iw = f.w - f.m.l - f.m.r, ih = f.h - f.m.t - f.m.b;
+  const bw = Math.max(2, Math.min(18, iw / rows.length - 2));
+
+  yAxis(node, f, max, 4, usdShort);
+  node.appendChild(svg('line', { class: 'axis', x1: f.m.l, x2: f.w - f.m.r, y1: f.m.t + ih, y2: f.m.t + ih }));
+
+  rows.forEach((r, i) => {
+    const x = f.m.l + (rows.length === 1 ? iw/2 - bw/2 : (iw - bw) * i / (rows.length - 1));
+    let acc = 0;
+    names.forEach(n => {
+      const v = Number((r.byModel || {})[n]) || 0;
+      if (v <= 0) return;
+      const y0 = f.m.t + ih - ih * (acc + v) / max;
+      const y1 = f.m.t + ih - ih * acc / max;
+      node.appendChild(svg('rect', { x, y: y0, width: bw, height: Math.max(1, y1 - y0 - 2), rx: 2, fill: color[n] }));
+      acc += v;
+    });
+    const hit = svg('rect', { class: 'hit', x: x - 1, y: f.m.t, width: bw + 2, height: ih });
+    node.appendChild(hit);
+    hit.addEventListener('mousemove', e => showTip(e, r.date,
+      names.filter(n => (r.byModel || {})[n]).map(n => ({ color: color[n], label: shortModel(n), value: usd(r.byModel[n]) }))
+        .concat([{ label: 'day', value: usd(r.estUSD) }])));
+    hit.addEventListener('mouseleave', hideTip);
+  });
+
+  xLabels(node, f, rows, r => dayLabel(r.date));
+
+  names.forEach(n => {
+    const tot = rows.reduce((a, r) => a + (Number((r.byModel || {})[n]) || 0), 0);
+    const li = el('li');
+    const sw = el('span', { className: 'sw' }); sw.style.background = color[n];
+    li.append(sw, el('span', { textContent: shortModel(n) }), el('span', { className: 'val', textContent: usd(tot) }));
+    legend.appendChild(li);
+  });
+}
+
+/* ── what is driving usage ───────────────────────────────────────────
+   Modelled on the CLI's own usage panel, and inheriting its honesty: the
+   rows are independent characteristics, so each bar is measured against
+   the window total on its own, and the definition sits under the bar
+   where it cannot be separated from the number.                       */
+let winSel = 'day';
+const WINDOWS = [['day', 'Last 24h'], ['week', '7 days'], ['all', 'All time']];
+
+function drawDrivers(usage) {
+  const btns = $('#win-buttons'); btns.innerHTML = '';
+  WINDOWS.forEach(([k, label]) => {
+    const b = el('button', { textContent: label, style: 'margin-left:6px' });
+    b.setAttribute('aria-pressed', String(k === winSel));
+    b.addEventListener('click', () => { winSel = k; if (last) render(last); });
+    btns.appendChild(b);
+  });
+
+  const box = $('#drivers'); box.innerHTML = '';
+  const w = (usage.windows || {})[winSel] || {};
+  const drivers = w.drivers || [];
+
+  const head = el('p', { className: 'note', style: 'margin:0 0 6px' });
+  head.textContent = w.sessions
+    ? `${usd(w.estUSD)} across ${w.sessions} session${w.sessions === 1 ? '' : 's'} · ${full(w.requests)} requests`
+    : 'Nothing in this window.';
+  box.appendChild(head);
+  if (!drivers.length) return;
+
+  const colors = [css('--s2'), css('--s5'), css('--s1'), css('--s4')];
+  drivers.forEach((d, i) => {
+    const row = el('div', { className: 'driver' });
+    const top = el('div', { className: 'top' });
+    top.append(el('span', { className: 'pc', textContent: d.pct + '%' }),
+               el('span', { className: 'lb', textContent: d.label }));
+    const track = el('div', { className: 'track' });
+    const fill = el('div', { className: 'fill' });
+    fill.style.width = Math.max(0, Math.min(100, d.pct)) + '%';
+    fill.style.background = colors[i % colors.length];
+    track.appendChild(fill);
+    row.append(top, track, el('div', { className: 'nt', textContent: d.note || '' }));
+    box.appendChild(row);
+  });
+}
+
+/* ── sessions ────────────────────────────────────────────────────────
+   The row a person actually wants: which session, how long it ran, how
+   deep it got, and what it was worth. Sortable, because "most recent"
+   and "most expensive" are different questions.                       */
+let sessSort = { key: 'last', dir: -1 };
+const SESSION_COLS = [
+  { key: 'label',      label: 'Session',  align: 'left' },
+  { key: 'project',    label: 'Project',  align: 'left' },
+  { key: 'last',       label: 'Active' },
+  { key: 'hours',      label: 'Length' },
+  { key: 'requests',   label: 'Requests' },
+  { key: 'toolCalls',  label: 'Tools' },
+  { key: 'maxContext', label: 'Peak ctx' },
+  { key: 'estUSD',     label: 'Est. value' },
+];
+
+function drawSessions(usage) {
+  const rows = (usage.sessions || []).slice();
+  $('#sessions-note').textContent =
+    'One row per Claude Code session, newest first. Value is estimated at API list prices — click a column to sort.';
+  $('#sessions-count').textContent = rows.length ? `${rows.length} indexed` : '';
+
+  rows.forEach(r => r.label = r.title || r.id);
+  const k = sessSort.key;
+  rows.sort((a, b) => {
+    const x = a[k], y = b[k];
+    const c = (typeof x === 'number' && typeof y === 'number') ? x - y : String(x || '').localeCompare(String(y || ''));
+    return c * sessSort.dir;
+  });
+
+  const t = $('#t-sessions'); t.innerHTML = '';
+  const thead = el('thead'), htr = el('tr');
+  SESSION_COLS.forEach(c => {
+    const th = el('th', { textContent: c.label + (k === c.key ? (sessSort.dir < 0 ? ' ↓' : ' ↑') : '') });
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', () => {
+      sessSort = { key: c.key, dir: k === c.key ? -sessSort.dir : -1 };
+      if (last) render(last);
+    });
+    htr.appendChild(th);
+  });
+  thead.appendChild(htr); t.appendChild(thead);
+
+  const tb = el('tbody');
+  if (!rows.length) {
+    const tr = el('tr'), td = el('td', { colSpan: SESSION_COLS.length, className: 'empty' });
+    td.textContent = 'No sessions indexed yet.';
+    tr.appendChild(td); tb.appendChild(tr);
+  }
+  rows.forEach(r => {
+    const tr = el('tr');
+    tr.title = [r.path, r.branch, r.first ? 'started ' + new Date(r.first).toLocaleString() : '']
+      .filter(Boolean).join(' · ');
+    const name = el('td');
+    name.append(el('span', { className: r.title ? '' : 'mono', textContent: r.label }));
+    tr.appendChild(name);
+    tr.appendChild(el('td', { textContent: r.project || '—' }));
+    tr.appendChild(el('td', { textContent: ago(r.last) }));
+    tr.appendChild(el('td', { textContent: r.hours >= 1 ? r.hours.toFixed(1) + 'h' : Math.round(r.hours * 60) + 'm' }));
+    tr.appendChild(el('td', { textContent: full(r.requests) }));
+    tr.appendChild(el('td', { textContent: full(r.toolCalls) }));
+    const ctx = el('td', { textContent: compact(r.maxContext) });
+    if (r.maxContext > 150000) ctx.style.color = css('--warning');
+    tr.appendChild(ctx);
+    const v = el('td', { className: 'usd', textContent: usd(r.estUSD) });
+    v.title = r.subUSD ? `${usd(r.subUSD)} of it ran as subagents` : '';
+    tr.appendChild(v);
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);
+}
+
+/* ── which assistant this board is showing ───────────────────────────
+   Claude Code is the one with a collector. The others are detected and
+   listed so the dropdown tells the truth about the machine, and picking
+   one says plainly that no data is being read rather than showing an
+   empty board that looks like a broken one.                          */
+let toolSel = 'claude-code';
+
+function drawAssistants(list) {
+  const sel = $('#toolpick');
+  const shown = list.filter(a => a.detected || a.supported);
+  if (!shown.some(a => a.id === toolSel)) toolSel = (shown[0] || {}).id || 'claude-code';
+  /* This select now sits in a permanently visible column and is reached
+     for while a reading lands. Rebuilding it while it is open collapses it
+     under the pointer, so it is rebuilt only when the list changes. */
+  const keys = shown.map(a => a.id + (a.supported ? '' : '!')).join('\u0000');
+  if (sel.dataset.keys !== keys) {
+    sel.innerHTML = '';
+    shown.forEach(a => sel.appendChild(el('option', {
+      value: a.id, textContent: a.name + (a.supported ? '' : ' · no data') })));
+    sel.dataset.keys = keys;
+  }
+  sel.value = toolSel;
+  sel.hidden = shown.length < 2;
+  return shown.find(a => a.id === toolSel) || null;
+}
+
+function drawOffboard(a) {
+  const box = $('#offboard'); box.innerHTML = '';
+  $('#board').hidden = !!a;
+  if (!a) return;
+  const c = el('div', { className: 'card' });
+  c.style.borderColor = css('--warning');
+  c.append(el('h2', { textContent: a.name }),
+           el('p', { className: 'note', textContent: a.note }));
+  const meta = el('div', { className: 'meta sub' });
+  if (a.sessions != null) meta.append(el('div', { textContent: `${full(a.sessions)} sessions on disk` }));
+  (a.paths || []).forEach(pth => meta.append(el('div', { className: 'mono', textContent: pth })));
+  if (a.bin) meta.append(el('div', { className: 'mono', textContent: a.bin }));
+  c.appendChild(meta);
+  box.appendChild(c);
+}
+
+/* ── usage windows ───────────────────────────────────────────────────
+   These are the only percentages on the board that are not derived from
+   anything: Claude Code asks Anthropic how much of the plan is spent and
+   caches the answer, and this forwards it. Which makes the cache's AGE
+   the whole design problem — a real number shown as current when it is
+   an hour old is a worse lie than an honest estimate, so the age is on
+   the card's face and the two halves degrade separately: the percentage
+   goes grey, the countdown stays live, because a reset instant does not
+   rot.                                                                */
+const SEVERITY = { normal: '--s1', warning: '--warning', serious: '--warning', critical: '--critical' };
+let uwWindows = [];   /* what tickWindows() re-reads each second */
+
+function until(iso) {
+  const ms = new Date(iso).getTime() - Date.now();
+  if (!isFinite(ms)) return null;
+  return Math.round(ms / 1000);
+}
+/* Coarse on purpose. Nobody schedules their afternoon on the seconds
+   column, and a hero number that changes ten glyphs a second is noise. */
+function dur(secs) {
+  if (secs == null) return '—';
+  if (secs <= 0) return 'now';
+  const d = Math.floor(secs / 86400), h = Math.floor(secs % 86400 / 3600), m = Math.floor(secs % 3600 / 60);
+  if (d) return `${d}d ${h}h`;
+  if (h) return `${h}h ${String(m).padStart(2, '0')}m`;
+  if (m) return `${m}m`;
+  return `${secs}s`;
+}
+function clock(iso) {
+  const t = new Date(iso);
+  if (!isFinite(t.getTime())) return '';
+  const sameDay = t.toDateString() === new Date().toDateString();
+  return sameDay ? t.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+                 : t.toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+}
+
+function ringSvg(percent, color) {
+  const r = 46, c = 2 * Math.PI * r;
+  const node = svg('svg', { viewBox: '0 0 120 120', role: 'presentation' });
+  node.appendChild(svg('circle', { cx: 60, cy: 60, r, fill: 'none', stroke: css('--surface-2'), 'stroke-width': 11 }));
+  const frac = Math.max(0, Math.min(1, (Number(percent) || 0) / 100));
+  if (frac > 0) {
+    node.appendChild(svg('circle', {
+      cx: 60, cy: 60, r, fill: 'none', stroke: color, 'stroke-width': 11, 'stroke-linecap': 'round',
+      'stroke-dasharray': c.toFixed(2), 'stroke-dashoffset': (c * (1 - frac)).toFixed(2),
+      transform: 'rotate(-90 60 60)',
+    }));
+  }
+  return node;
+}
+
+function drawLimits(lim, blocks) {
+  const card = $('#uw-card'), body = $('#uw-body'), badge = $('#uw-badge');
+  body.innerHTML = ''; badge.innerHTML = ''; uwWindows = [];
+  card.classList.remove('stale');
+
+  if (!lim || !lim.available) {
+    $('#uw-note').textContent = 'Your plan’s real limits, as Anthropic last reported them.';
+    const why = lim && lim.reason === 'unreadable'
+      ? 'Claude Code’s config was mid-write and could not be read this cycle. It will be picked up on the next one.'
+      : 'No usage cache found. Claude Code writes one to ~/.claude.json after it talks to the usage endpoint — run /usage in Claude Code once and it will appear here.';
+    body.appendChild(el('p', { className: 'empty', textContent: why }));
+    $('#uw-foot').textContent = 'The five-hour block below is reconstructed from your own request timestamps and does not need this cache.';
+    return;
+  }
+
+  const age = lim.ageSeconds, stale = age != null && age > (lim.staleAfterSeconds || 3600);
+  if (stale) {
+    card.classList.add('stale');
+    const b = el('span', { className: 'badge warn', textContent: 'stale' });
+    b.title = 'Claude Code discards this cache after an hour.';
+    badge.appendChild(b);
+  }
+  $('#uw-note').textContent = 'Your plan’s real limits, as Anthropic last reported them — not computed here.';
+
+  const rows = (lim.windows || []).slice();
+  /* The binding window leads: it is the one that will stop you. */
+  const lead = rows.find(w => w.active) || rows.find(w => w.resetsAt) || rows[0];
+  const rest = rows.filter(w => w !== lead);
+
+  const wrap = el('div', { className: 'uw' });
+
+  if (lead) {
+    const color = css(SEVERITY[lead.severity] || '--s1');
+    const rw = el('div', { className: 'ringwrap' });
+    rw.appendChild(ringSvg(lead.percent, color));
+    const mid = el('div', { className: 'mid' });
+    const big = el('div', { className: 'big' });
+    const cap = el('div', { className: 'cap' });
+    mid.append(big, cap);
+    rw.appendChild(mid);
+    wrap.appendChild(rw);
+    uwWindows.push({ node: big, cap, row: lead, hero: true });
+
+    const lead_label = el('div', { className: 'uw-side' });
+    const head = el('div', { className: 'uw-row' });
+    const top = el('div', { className: 'top' });
+    top.append(el('span', { className: 'lb', textContent: lead.label }),
+               el('span', { className: 'pc', textContent: lead.percent == null ? '—' : lead.percent + '% used' }));
+    const track = el('div', { className: 'meter' });
+    const fill = el('i'); fill.style.width = Math.max(0, Math.min(100, lead.percent || 0)) + '%';
+    fill.style.background = color; track.appendChild(fill);
+    const sub = el('div', { className: 'rs' });
+    head.append(top, track, sub);
+    lead_label.appendChild(head);
+    uwWindows.push({ node: sub, row: lead });
+
+    for (const w of rest) {
+      const c2 = css(SEVERITY[w.severity] || '--s1');
+      const r = el('div', { className: 'uw-row' });
+      const t2 = el('div', { className: 'top' });
+      t2.append(el('span', { className: 'lb', textContent: w.label }),
+                el('span', { className: 'pc', textContent: w.percent == null ? '—' : w.percent + '%' }));
+      const tr = el('div', { className: 'meter' });
+      const fi = el('i'); fi.style.width = Math.max(0, Math.min(100, w.percent || 0)) + '%';
+      fi.style.background = c2; tr.appendChild(fi);
+      const s2 = el('div', { className: 'rs' });
+      r.append(t2, tr, s2);
+      lead_label.appendChild(r);
+      uwWindows.push({ node: s2, row: w });
+    }
+    wrap.appendChild(lead_label);
+  }
+  body.appendChild(wrap);
+
+  /* Your own burn, beside the plan's meter but never mixed into it: one is
+     Anthropic's number, the other is this machine counting itself. */
+  const cur = blocks && blocks.current;
+  if (cur) {
+    const busiest = (blocks.busiest || {}).outputTokens || 0;
+    const line = el('p', { className: 'note', style: 'margin:10px 0 0' });
+    line.textContent = `Your work in this five-hour block: ${full(cur.requests)} requests, `
+      + `${compact(cur.outputTokens)} output tokens`
+      + (busiest ? ` — ${Math.round(cur.outputTokens / busiest * 100)}% of your heaviest block in nine days.` : '.');
+    body.appendChild(line);
+  }
+
+  const when = lim.fetchedAt ? clock(lim.fetchedAt) : 'unknown';
+  const agoTxt = age == null ? '' : ` (${dur(age)} ago)`;
+  $('#uw-foot').textContent =
+    `Reported by Anthropic · as of ${when}${agoTxt} · refreshes only while Claude Code is running`
+    + (stale ? ' — run /usage in Claude Code to refresh. Countdowns below stay exact; the percentages are the stale part.' : '.');
+
+  tickWindows();
+}
+
+/* Ticked by the one existing 1s interval, not a second timer. Only text
+   nodes change, so this costs nothing worth measuring. */
+function tickWindows() {
+  for (const w of uwWindows) {
+    const secs = w.row.resetsAt ? until(w.row.resetsAt) : null;
+    if (w.hero) {
+      if (secs == null) { w.node.textContent = '—'; w.cap.textContent = 'no reset'; }
+      else if (secs <= 0) { w.node.textContent = 'over'; w.cap.textContent = 'rolled over'; }
+      else { w.node.textContent = dur(secs); w.cap.textContent = 'to reset'; }
+    } else if (secs == null) {
+      w.node.textContent = 'No reset scheduled';
+    } else if (secs <= 0) {
+      /* Never 0%. The window rolled over and the cached percentage is
+         describing a window that no longer exists. */
+      w.node.textContent = 'Rolled over — usage unknown until Claude Code refreshes';
+    } else {
+      w.node.textContent = `Resets in ${dur(secs)} · ${clock(w.row.resetsAt)}`;
+    }
+  }
+}
+
+/* ── recently finished ───────────────────────────────────────────────
+   A snapshot says what was running at an instant; nobody watches every
+   instant. The server diffs consecutive readings, so this answers the
+   question you actually have when you sit back down — what finished
+   while I was away — including the notification you never saw.       */
+function drawEnded(list, host) {
+  const ul = $('#ended'); ul.innerHTML = '';
+  const rows = (list || []).filter(e => !host || e.host === host);
+  const hour = rows.filter(e => (Date.now() - new Date(e.noticed_at).getTime()) < 3600e3).length;
+  $('#ended-count').textContent = rows.length
+    ? `${hour} in the last hour · ${rows.length} in 24h` : '';
+
+  if (!rows.length) {
+    ul.appendChild(el('li', { className: 'empty',
+      textContent: 'Nothing has finished since the server started watching. Endings are noticed by comparing one reading with the next, so they only exist from that point on.' }));
+    return;
+  }
+  for (const e of rows.slice(0, 25)) {
+    const li = el('li');
+    const head = el('div', { className: 'name' });
+    head.append(el('span', { className: 'pill', textContent: e.kind || 'claude' }),
+                el('span', { className: 'mono', textContent: 'pid ' + e.pid }));
+    if (e.ran_seconds != null) head.appendChild(el('span', { className: 'sub', textContent: 'ran ' + dur(e.ran_seconds) }));
+    const meta = el('div', { className: 'meta' });
+    /* The gap between the last sighting and the first miss IS the
+       uncertainty. Thirty seconds of it can be rounded away; four hours
+       of a sleeping laptop cannot, and pretending otherwise would put a
+       precise-looking time on a guess. */
+    const gap = (new Date(e.noticed_at) - new Date(e.last_seen)) / 1000;
+    if (gap > 90) {
+      meta.append(el('span', { textContent: `ended between ${clock(e.last_seen)} and ${clock(e.noticed_at)}` }));
+    } else {
+      meta.append(el('span', { textContent: 'ended ' + ago(e.noticed_at) }));
+    }
+    if (e.tool && e.tool !== 'claude-code') meta.appendChild(el('span', { textContent: e.tool }));
+    li.append(head, meta);
+    li.title = e.cmd || '';
+    ul.appendChild(li);
+  }
+}
+
 /* ── panels ─────────────────────────────────────────────────────────── */
-function drawTiles(s, live, hostFacts) {
+function drawTiles(s, live, hostFacts, usage) {
   const box = $('#tiles'); box.innerHTML = '';
   const tools = s.daily.reduce((a, d) => a + d.toolCalls, 0);
   const active = s.daily.filter(d => d.messages > 0).length;
@@ -547,6 +1481,8 @@ function drawTiles(s, live, hostFacts) {
     { k: 'Messages',    v: compact(s.totalMessages), d: full(s.totalMessages) },
     { k: 'Tool calls',  v: compact(tools), d: `over ${active} active days` },
     { k: 'Output tokens', v: compact(out), d: `${s.models.length} models` },
+    { k: 'Est. value', v: usdShort((usage.allTime || {}).estUSD || 0),
+      d: 'at API list prices · not billed' },
     { k: 'Running now', v: String(running), d: running ? 'claude processes' : 'idle' },
     { k: 'Load', v: (hostFacts && hostFacts.loadavg ? hostFacts.loadavg[0] : '—'),
       d: hostFacts && hostFacts.cpus ? hostFacts.cpus + ' cores · ' + (hostFacts.platform || '') : '' },
@@ -560,12 +1496,25 @@ function drawTiles(s, live, hostFacts) {
   }
 }
 
-function drawModels(models, costReported) {
+function drawModels(models, costReported, usage, lastComputed) {
+  const card = usage.pricing || {};
+  /* The two panels count different things, and saying which is the whole
+     job of this note. stats-cache is Claude Code's own rollup: recomputed
+     every so often, and it keeps sessions whose transcripts have since been
+     pruned. The transcripts are what is on disk right now: current to the
+     last request, and missing whatever was pruned. Neither is wrong, they
+     will not match, and a reader told that up front is not confused by it. */
   $('#cost-note').textContent = costReported
     ? 'Cost as reported by the CLI.'
-    : 'Cost is not reported on this plan, so no dollar figure is shown — inventing one from a public price list would be a guess.';
+    : 'The CLI reports $0 per model on this plan — a flat subscription has no per-request price. '
+      + 'Value is these token counts priced at API list rates, for comparison only. '
+      + 'These counts come from stats-cache.json'
+      + (lastComputed ? `, which Claude Code last recomputed on ${lastComputed}` : '')
+      + ', and include sessions whose transcripts have since been pruned. The per-day and per-session '
+      + 'panels read the transcripts on disk instead — current to the last request, missing anything pruned. '
+      + 'The two totals are not meant to match.';
   const t = $('#t-models');
-  t.innerHTML = '<thead><tr><th>Model</th><th>Output</th><th>Input</th><th>Cache read</th><th>Cache write</th></tr></thead>';
+  t.innerHTML = '<thead><tr><th>Model</th><th>Est. value</th><th>Output</th><th>Input</th><th>Cache read</th><th>Cache write</th></tr></thead>';
   const tb = el('tbody');
   models.forEach((m, i) => {
     const tr = el('tr');
@@ -574,6 +1523,10 @@ function drawModels(models, costReported) {
     const sw = el('span', { className: 'sw' }); sw.style.background = css(SERIES[i % SERIES.length]);
     nm.append(sw, el('span', { textContent: shortModel(m.model) }));
     td.appendChild(nm); tr.appendChild(td);
+    const e = estimateRow(card, m);
+    const ev = el('td', { className: 'usd', textContent: e === null ? 'unpriced' : usd(e) });
+    if (e === null) ev.title = 'No entry in the rate card — counted in tokens, left out of every dollar figure.';
+    tr.appendChild(ev);
     [m.output, m.input, m.cacheRead, m.cacheCreate].forEach(v => {
       const c = el('td', { textContent: compact(v) }); c.title = full(v); tr.appendChild(c);
     });
@@ -630,11 +1583,345 @@ function drawProjects(list) {
 }
 
 
+/* ── draw only what changed ──────────────────────────────────────────
+   A render used to rebuild the whole board — 1993 DOM nodes and 355 SVG
+   nodes, measured — on every reading, whether or not anything in it had
+   moved. Most panels do not change between two readings thirty seconds
+   apart: the daily-activity chart is the same until midnight, the model
+   table until a new model is used, the rate card never.
+
+   So each panel keeps a signature of the data it was last drawn from and
+   is skipped when that has not moved. Stringifying the slice is far
+   cheaper than building the nodes — the whole 66 KB payload parses in
+   0.4 ms, while one full rebuild costs 13.6 ms.
+
+   Two things MUST bypass it, and both are about the drawing rather than
+   the data: chart colours are read from CSS at draw time, so a theme flip
+   invalidates everything, and charts measure clientWidth, so a resize or
+   the rail sliding does too. invalidate() is the way to say that. */
+const drawnFrom = new Map();
+function changed(key, data) {
+  let sig;
+  try { sig = JSON.stringify(data); } catch (_) { return true; }   /* cyclic: always redraw */
+  if (drawnFrom.get(key) === sig) return false;
+  drawnFrom.set(key, sig);
+  return true;
+}
+const invalidate = () => drawnFrom.clear();
+
+/* ── the standing rail ───────────────────────────────────────────────
+   Docked above 1240px, an overlay below it, and the state it remembers is
+   the DOCKED state only. bootRail() runs from the foot of the file, once
+   everything else exists.                                              */
+const root    = document.documentElement;
+const wrapEl  = $('.wrap');
+const DOCK    = matchMedia('(min-width: 1240px)');
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
+const railMs  = () => parseFloat(css('--rail-ms')) || 0;
+let railRedraw = null, railReturn = null;
+let railWanted = null, railTick = 0, railPin = 0, railSettle = null;
+
+/* The rows are built FROM the board: a card joins the rail by carrying
+   data-nav and data-icon, so there is no second list to fall out of step
+   and an eleventh panel costs two attributes. */
+const slug = s => 'p-' + String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const railTargets = [];
+
+function buildNav() {
+  const nav = $('#rail-nav');
+  for (const t of document.querySelectorAll('#board [data-nav]')) {
+    const label = t.getAttribute('data-nav');
+    const id = t.id || (t.id = slug(label));
+    /* A plain anchor: keyboard, middle-click and cmd-click all work, and
+       scroll-margin-top plus scroll-behavior do the motion in CSS. */
+    const a = el('a', { href: '#' + id, id: 'nav-' + id });
+    const g = svg('svg', { class: 'ic', viewBox: '0 0 24 24', 'aria-hidden': 'true' });
+    g.appendChild(svg('use', { href: '#i-' + (t.getAttribute('data-icon') || 'overview') }));
+    a.append(g, el('span', { className: 'lb', textContent: label }),
+                el('span', { className: 'n', id: 'n-' + id }));
+    nav.appendChild(a);
+    /* The panel becomes a named landmark a fragment link can focus, so a
+       keyboard user who "went to Sessions" continues from Sessions. */
+    t.setAttribute('tabindex', '-1');
+    if (!t.hasAttribute('role')) t.setAttribute('role', 'region');
+    t.setAttribute('aria-label', label);
+    railTargets.push({ el: t, a, id });
+  }
+}
+
+function badge(id, text, tone) {
+  const n = document.getElementById('n-' + id);
+  if (!n) return;
+  n.textContent = text == null ? '' : String(text);
+  n.className = 'n' + (tone ? ' ' + tone : '');
+}
+
+/* ── which panel you are looking at ──────────────────────────────────
+   Read from live geometry on scroll, not from IntersectionObserver
+   entries, deliberately: IO reports CHANGES, so a smooth scroll settling
+   on a panel that was already crossing the band fires nothing and the
+   highlight stays on whatever the flight passed through.
+
+   The election, in order, and rule 2 is the one THIS board needs:
+     1. the row the reader last clicked, while its panel is still in the
+        band — a click must never be a no-op;
+     2. otherwise the panel covering most of the band. Running now/Projects
+        and Machines/Prompts are side-by-side cards in .cols-2 sections and
+        share a top edge, so any "first in document order" tiebreak leaves
+        the right-hand ones permanently unelectable;
+     3. at the very bottom nothing more can be scrolled into the band, so
+        there the last panel with any of itself on screen wins — without
+        this the final panels can never be reached either. */
+function paintNav(id) {
+  for (const t of railTargets) {
+    if (t.id === id) t.a.setAttribute('aria-current', 'location');
+    else t.a.removeAttribute('aria-current');
+  }
+}
+
+function elect() {
+  railTick = 0;
+  if (railPin || !railTargets.length || $('#rail-nav').hidden) return;
+  const top = (parseFloat(css('--hdr-h')) || 0) + 8;
+  const bot = innerHeight * 0.45;
+  const atEnd = innerHeight + Math.ceil(scrollY) >= root.scrollHeight - 2;
+  let best = null, bestCover = 0, wanted = null, lastSeen = null;
+  for (const t of railTargets) {
+    const r = t.el.getBoundingClientRect();
+    if (r.bottom > 0 && r.top < innerHeight) lastSeen = t;
+    const cover = Math.min(r.bottom, bot) - Math.max(r.top, top);
+    if (cover <= 0) continue;
+    if (t.id === railWanted) wanted = t;
+    if (cover > bestCover) { best = t; bestCover = cover; }
+  }
+  if (railWanted && !wanted) railWanted = null;   /* scrolled off their own choice */
+  const win = wanted || (atEnd ? lastSeen : null) || best;
+  paintNav(win ? win.id : null);
+}
+
+const electSoon = () => { if (!railTick) railTick = requestAnimationFrame(elect); };
+/* A click pins the highlight until the scroll settles. Any fixed lock loses
+   the race with a smooth scroll whose duration grows with distance, so the
+   pin is released by the SCROLL going quiet — and it is armed even when no
+   scroll follows, or clicking an already-visible panel would pin for ever. */
+function pinNav() {
+  railPin = 1;
+  clearTimeout(railSettle);
+  railSettle = setTimeout(() => { railPin = 0; elect(); }, 150);
+}
+addEventListener('scroll', () => { if (railPin) pinNav(); else electSoon(); }, { passive: true });
+addEventListener('resize', electSoon);
+
+function measureHeader() {
+  const h = $('header');
+  const stuck = getComputedStyle(h).position === 'sticky';
+  root.style.setProperty('--hdr-h', (stuck ? h.offsetHeight : 0) + 'px');
+}
+
+/* A docked rail is a landmark; an overlaid one is a dialog. Same element,
+   two promises. A Tab trap alone still lets a screen reader's virtual
+   cursor walk through the scrim into the board; inert is the containment,
+   the trap below is the fallback. The rail lives outside .wrap, so this
+   can never inert the rail itself. */
+function applyRailRole() {
+  const rail = $('#rail');
+  const modal = !DOCK.matches && root.getAttribute('data-rail') === 'open';
+  if (!DOCK.matches) { rail.setAttribute('role', 'dialog'); rail.setAttribute('aria-modal', 'true'); }
+  else               { rail.removeAttribute('role');        rail.removeAttribute('aria-modal'); }
+  document.body.style.overflow = modal ? 'hidden' : '';
+  wrapEl.inert = modal;
+}
+
+function setRail(open, persist, redraw) {
+  root.setAttribute('data-rail', open ? 'open' : 'shut');
+  const b = $('#rail-toggle');
+  b.setAttribute('aria-expanded', String(open));
+  b.setAttribute('aria-label', open ? 'Hide sidebar' : 'Show sidebar');
+  /* The key records the DOCKED preference only. Shutting the overlay on a
+     laptop must not shut the rail on the monitor. */
+  if (persist && DOCK.matches) {
+    try { localStorage.setItem('tokenhud-rail', open ? 'open' : 'shut'); } catch (_) {}
+  }
+  applyRailRole();
+  if (redraw === false || !DOCK.matches) return;
+  /* The board just changed width and NOTHING fired a resize event, but
+     frame() measures clientWidth when it draws — so every chart has to be
+     drawn again, after the slide rather than during it.
+
+     On a timer and not on transitionend, deliberately: the reduced-motion
+     rule is `transition: none !important`, so transitionend never fires at
+     all for those readers and the charts would keep a stale viewBox until
+     the next poll. Most likely thing here for someone to "clean up". */
+  clearTimeout(railRedraw);
+  railRedraw = setTimeout(() => { invalidate(); if (last) render(last); elect(); },
+                          REDUCED.matches ? 0 : railMs() + 30);
+}
+
+function openOverlay() {
+  railReturn = document.activeElement;
+  setRail(true, false);
+  $('#rail-close').focus();
+}
+/* setRail clears inert BEFORE focus is restored, which is the order that
+   matters: #rail-toggle lives inside .wrap and cannot be focused while the
+   subtree is inert. restore === false when a nav link closed the drawer —
+   focus belongs to the panel it navigated to, not the hamburger. */
+function closeOverlay(restore) {
+  setRail(false, false);
+  if (restore !== false && railReturn && railReturn.isConnected) railReturn.focus();
+  railReturn = null;
+}
+
+$('#rail-toggle').addEventListener('click', () => {
+  const open = root.getAttribute('data-rail') === 'open';
+  if (DOCK.matches) setRail(!open, true);
+  else if (open) closeOverlay();
+  else openOverlay();
+});
+/* The browser already writes PDFs; @media print does the rest. A bundled
+   PDF library would be a megabyte of base64 in a file whose whole claim is
+   that it has no dependencies, and it would still rasterise the charts. */
+$('#rail-print').addEventListener('click', () => { if (!DOCK.matches) closeOverlay(false); print(); });
+$('#rail-close').addEventListener('click', () => closeOverlay());
+$('#scrim').addEventListener('click', () => closeOverlay());
+
+$('#rail-nav').addEventListener('click', e => {
+  const a = e.target.closest('a');
+  if (!a) return;
+  /* A modifier or middle click is a new tab, not a navigation. */
+  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+  railWanted = a.getAttribute('href').slice(1);
+  paintNav(railWanted);
+  pinNav();
+  if (!DOCK.matches) closeOverlay(false);
+  /* No preventDefault: the anchor scrolls, CSS animates, scroll-margin-top
+     clears the sticky bar, and tabindex="-1" moves focus there for us. */
+});
+
+addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !DOCK.matches && root.getAttribute('data-rail') === 'open') closeOverlay();
+});
+/* Focus trap, overlay only — a docked rail is part of the page and stays
+   in the ordinary tab order. */
+const RAIL_FOCUS = 'a[href], button:not([disabled]), select, [tabindex]:not([tabindex="-1"])';
+$('#rail').addEventListener('keydown', e => {
+  if (e.key !== 'Tab' || DOCK.matches || root.getAttribute('data-rail') !== 'open') return;
+  const f = Array.from($('#rail').querySelectorAll(RAIL_FOCUS)).filter(n => n.offsetParent !== null);
+  if (!f.length) return;
+  const first = f[0], end = f[f.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); end.focus(); }
+  else if (!e.shiftKey && document.activeElement === end) { e.preventDefault(); first.focus(); }
+});
+
+/* Coming down to a narrow window must never land the reader inside a modal
+   they did not open, so the overlay always starts shut; going back up
+   restores what they chose while docked. */
+DOCK.addEventListener('change', () => {
+  if (!DOCK.matches) { railReturn = null; setRail(false, false, false); return; }
+  let saved = 'open';
+  try { saved = localStorage.getItem('tokenhud-rail') || 'open'; } catch (_) {}
+  setRail(saved !== 'shut', false, false);
+});
+
+/* ── what the rail is for ────────────────────────────────────────────
+   Identity, not decoration: which machine, which assistant, is the agent
+   still talking — answered without scrolling. Drawn BEFORE render()'s
+   early return for an unsupported assistant: the board may replace itself
+   with a stated absence, the rail must not go blank while it does. */
+function drawRailScope(d, cur, tool) {
+  const hosts = d.hosts || [];
+  const h = cur ? hosts.find(x => x.host === cur.host) : null;
+
+  $('#rail-host').textContent = cur ? cur.host : 'no machine';
+
+  const box = $('#rail-status'); box.innerHTML = '';
+  if (h) {
+    const cls = h.status === 'up' ? 'ok' : h.status === 'stale' ? 'warn' : 'bad';
+    const pill = el('span', { className: 'pill ' + cls });
+    pill.append(el('span', { className: 'dot' }), el('span', { textContent: h.status }));
+    box.appendChild(pill);
+  }
+
+  /* #scope was one 60-character run-on line nobody parsed. Four labelled
+     rows, plus the fact it never carried: the cadence, which is what the
+     header's countdown is counting down to. */
+  const kv = $('#rail-kv'); kv.innerHTML = '';
+  const rows = cur ? [
+    ['agent',     cur.agentVersion || '?'],
+    ['last seen', ago(h ? h.last_seen : cur.collectedAt)],
+    ['reports',   'every ' + Math.round(intervalOf(cur) / 1000) + 's'],
+    ['snapshots', full((d.store || {}).snapshots || 0)],
+  ] : [['status', 'no agent has reported yet']];
+  for (const [k, v] of rows) kv.append(el('dt', { textContent: k }), el('dd', { textContent: v }));
+
+  const bits = [];
+  if (tool && $('#toolpick').hidden) bits.push(tool.name);
+  if (tool && !tool.supported) bits.push('no collector reads this yet');
+  $('#rail-tool').textContent = bits.join(' · ');
+
+  const up = hosts.filter(x => x.status === 'up').length;
+  $('#print-id').textContent = cur
+    ? `TokenHUD · ${cur.host} · reading of ${new Date(cur.collectedAt).toLocaleString()}`
+    : 'TokenHUD · no agent has reported yet';
+
+  $('#rail-fleet-t').textContent = hosts.length
+    ? `${hosts.length} machine${hosts.length === 1 ? '' : 's'} reporting · ${up} up`
+    : 'no machines reporting';
+}
+
+/* The nav rows ARE the digest: someone two metres from the monitor reads
+   "22 running · 1/1 up · resets in 3h" off the rail and never touches a
+   chart. Every number is read from the same array the panel it links to
+   renders, so it cannot drift from it. */
+function drawRailDigest(d, m, claude, usage, live, lim) {
+  const hosts = d.hosts || [];
+  const up = hosts.filter(x => x.status === 'up').length;
+  const running = live.processes.length;
+  const days = (claude.daily || []).filter(x => x.messages > 0).length;
+  const endedHour = (d.endings || []).filter(e =>
+    (!m || !e.host || e.host === (m.host || {}).hostname || true) &&
+    (Date.now() - new Date(e.noticed_at).getTime()) < 3600e3).length;
+
+  const lead = ((lim && lim.windows) || []).find(w => w.active);
+  badge('tiles', null);
+  badge('p-usage-windows', lead && lead.percent != null ? lead.percent + '%' : null,
+        lead && (lead.severity === 'critical' ? 'bad' : null));
+  badge('p-recently-finished', endedHour ? String(endedHour) : null);
+  badge('p-activity', days + 'd');
+  badge('p-value', usdShort((usage.allTime || {}).estUSD || 0));
+  badge('p-sessions', compact((usage.sessions || []).length));
+  badge('p-models', String((claude.models || []).length));
+  badge('p-running-now', String(running), running ? 'on' : null);
+  badge('p-projects', String((m.projects || []).length));
+  badge('p-machines', up + '/' + hosts.length, hosts.length && up < hosts.length ? 'bad' : null);
+  badge('p-prompts', String((m.prompts || []).length));
+}
+
+function bootRail() {
+  buildNav();
+  measureHeader();
+  new ResizeObserver(measureHeader).observe($('header'));
+  addEventListener('resize', measureHeader);
+  /* The head script stamped data-rail before the first paint; this only
+     brings the button's label and the modality into line with it. */
+  setRail(root.getAttribute('data-rail') === 'open', false, false);
+  /* Every row is a real anchor, so the URL carries the panel and a reload
+     lands on it — but the browser resolved the fragment before --hdr-h
+     existed, so it lands under the sticky bar without this. */
+  const t = location.hash && document.getElementById(location.hash.slice(1));
+  if (t) { railWanted = t.id; t.scrollIntoView({ behavior: 'instant', block: 'start' }); }
+  elect();
+}
+
 /* ── talking to the server ──────────────────────────────────────────
    The page holds no key. Reads are open by default so the dashboard is
-   a plain URL; set AIMC_PROTECT_READS=1 on the server and put it behind
+   a plain URL; set TOKENHUD_PROTECT_READS=1 on the server and put it behind
    auth if that is not what you want.                                  */
-let last = null, paused = false, timer = null, picked = null;
+let last = null, following = true, timer = null, picked = null;
+/* The stamp line has three writers — the countdown, a render, a failure —
+   so they share state and one function paints it, rather than each
+   clobbering the last. */
+let nextAt = 0, updatedAt = null, note = '', inflight = false;
 
 function pickHost(payloads) {
   if (!payloads.length) return null;
@@ -645,53 +1932,80 @@ function pickHost(payloads) {
 function render(d) {
   last = d;
   const payloads = d.latest || [];
-  const sel = $('#hostpick');
-  const want = picked || (payloads[0] && payloads[0].host);
-  sel.innerHTML = '';
-  payloads.forEach(p => {
-    const o = el('option', { value: p.host, textContent: p.host });
-    if (p.host === want) o.selected = true;
-    sel.appendChild(o);
-  });
-  sel.hidden = payloads.length < 2;
-
   const cur = pickHost(payloads);
-  const store = d.store || {};
-  $('#scope').textContent = cur
-    ? `${cur.host} · agent ${cur.agentVersion || '?'} · ${store.snapshots || 0} snapshots stored`
-    : 'no agent has reported yet';
-  $('#stamp').textContent = 'updated ' + new Date(d.generatedAt).toLocaleTimeString();
+  /* Same reason as #toolpick: this select lives in a permanently visible
+     column now, so it is rebuilt only when the machines actually change
+     rather than every reading, under whatever pointer is on it. */
+  const sel = $('#hostpick');
+  const keys = payloads.map(x => x.host).join('\u0000');
+  if (sel.dataset.keys !== keys) {
+    sel.innerHTML = '';
+    payloads.forEach(x => sel.appendChild(el('option', { value: x.host, textContent: x.host })));
+    sel.dataset.keys = keys;
+  }
+  if (cur) sel.value = cur.host;
+  sel.hidden = payloads.length < 2;
+  /* #scope is gone: the rail carries those facts as four labelled rows.
+     The stamp line is poll()'s to write, not render()'s. render also runs
+     on cached data — a theme flip, a resize, a re-sort — and none of those
+     may move the clock forward or wipe an outage message off the screen. */
 
   const banner = $('#banner'); banner.innerHTML = '';
   if (!payloads.length) {
     const c = el('div', { className: 'card' });
     c.style.borderColor = css('--warning');
     c.innerHTML = 'No agent has reported yet. Start one with ' +
-      '<code class="mono">AIMC_SERVER=… AIMC_KEY=… python3 agent/agent.py</code>.';
+      '<code class="mono">TOKENHUD_SERVER=… TOKENHUD_KEY=… python3 agent/agent.py</code>.';
     banner.appendChild(c);
   }
 
-  drawHosts(d.hosts || []);
+  if (changed('hosts', d.hosts)) drawHosts(d.hosts || []);
 
   const m = (cur && cur.metrics) || {};
   const claude = m.claude || { daily: [], models: [], hours: {}, totalSessions: 0, totalMessages: 0 };
   const live = { processes: m.processes || [], supervisor: m.daemon || {} };
+  const usage = m.usage && m.usage.available ? m.usage : { sessions: [], byModel: [], byDay: [], windows: {}, allTime: {} };
 
-  drawTiles(claude, live, m.host || {});
-  drawActivity(claude.daily || []);
-  drawTokens(claude.daily || [], claude.models || []);
-  drawHours(claude.hours || {});
-  drawModels(claude.models || [], claude.costReported);
-  drawLive(live);
-  drawProjects(m.projects || []);
-  drawPrompts(m.prompts || []);
+  /* An assistant with no collector replaces the board rather than
+     emptying it: a blank panel reads as a bug, a stated absence does not. */
+  const tool = drawAssistants(m.assistants || [{ id: 'claude-code', name: 'Claude Code', detected: true, supported: true }]);
+  drawOffboard(tool && !tool.supported ? tool : null);
+  drawRailScope(d, cur, tool);
+  /* Rows linking to panels the board is not drawing would be a lie. */
+  const off = !!(tool && !tool.supported);
+  $('#rail-nav').hidden = off;
+  if (off) { paintNav(null); return; }
+
+  /* The countdowns inside drawLimits are ticked by tickWindows() once a
+     second, so the panel itself only has to be rebuilt when the numbers
+     behind them move. */
+  if (changed('limits', [m.limits, usage.blocks])) drawLimits(m.limits, usage.blocks || {});
+  if (changed('ended', [d.endings, cur && cur.host])) drawEnded(d.endings, cur && cur.host);
+  if (changed('tiles', [claude.totalSessions, claude.totalMessages, claude.daily, claude.models,
+                        live.processes.length, m.host, usage.allTime]))
+    drawTiles(claude, live, m.host || {}, usage);
+  if (changed('activity', claude.daily)) drawActivity(claude.daily || []);
+  if (changed('tokens', [claude.daily, claude.models])) drawTokens(claude.daily || [], claude.models || []);
+  if (changed('spend', [usage.byDay, usage.byModel, usage.allTime, usage.scan, usage.pricing])) drawSpend(usage);
+  /* winSel is a control, not data: the window buttons change what is drawn
+     without the payload moving at all. */
+  if (changed('drivers', [usage.windows, winSel])) drawDrivers(usage);
+  if (changed('sessions', [usage.sessions, sessSort])) drawSessions(usage);
+  if (changed('hours', claude.hours)) drawHours(claude.hours || {});
+  if (changed('models', [claude.models, claude.costReported, claude.lastComputedDate, usage.pricing]))
+    drawModels(claude.models || [], claude.costReported, usage, claude.lastComputedDate);
+  if (changed('live', live)) drawLive(live);
+  if (changed('projects', m.projects)) drawProjects(m.projects || []);
+  if (changed('prompts', m.prompts)) drawPrompts(m.prompts || []);
+  drawRailDigest(d, m, claude, usage, live, m.limits);
+  elect();          /* panel heights just changed under the reader */
 }
 
 function drawPrompts(list) {
   const ul = $('#prompts'); ul.innerHTML = '';
   if (!list.length) {
     ul.appendChild(el('li', { className: 'empty',
-      textContent: 'Not collected. The agent withholds prompt text unless AIMC_SEND_PROMPTS=1.' }));
+      textContent: 'Not collected. The agent withholds prompt text unless TOKENHUD_SEND_PROMPTS=1.' }));
     return;
   }
   for (const p of list.slice(0, 20)) {
@@ -729,45 +2043,242 @@ function drawHosts(hosts) {
   }
 }
 
-async function poll() {
-  let data;
-  try {
-    const r = await fetch('/api/v1/overview', { cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    data = await r.json();
-  } catch (e) {
-    $('#stamp').textContent = 'server unreachable — ' + e.message;
-    return;
-  }
-  /* Separate catch: a render bug is a bug in this page, and calling it a
-     network failure sends you to the wrong side of the wire. */
-  try {
-    render(data);
-  } catch (e) {
-    $('#stamp').textContent = 'render error — ' + e.message;
-    console.error(e);
-  }
-}
-function schedule() {
-  clearInterval(timer);
-  if (!paused) timer = setInterval(poll, 10000);
+/* ── the Live switch ──────────────────────────────────────────────────
+   Polling faster than the agent reports refetches a reading that has not
+   changed: against a 30 s agent, two of every three requests on the old
+   10 s timer were wasted, and the one that mattered arrived up to 10 s
+   late anyway. So Live does not run on a fixed timer. The agent stamps
+   its own cadence on every snapshot (intervalSeconds) and the board comes
+   back one second after the next reading is due — one request per
+   reading, and never more than a second behind the data.
+
+   Two things a clock does not promise, and what is done about them:
+
+   · collectedAt is the AGENT's clock; Date.now() is the BROWSER's. On one
+     machine they agree; across machines they need not. The wait is capped
+     at one interval, so skew can delay a refresh but cannot strand the
+     board on a timer years long.
+
+   · A reading can be late — a slow cycle, a closed lid, a stopped agent.
+     Under one interval late is jitter, so the board chases it. Past that
+     the agent is probably not coming back, and chasing a dead agent every
+     two seconds is how a status page becomes the load, so it settles to
+     one request per interval until the agent returns.                  */
+const DEFAULT_INTERVAL = 30000;  /* the agent's own default, for a snapshot older than the field */
+const LEAD  = 1000;              /* the "+ 1 second" — land after the write, not on top of it */
+const CHASE = 2000;              /* a reading is due and has not landed yet */
+const EMPTY = 5000;              /* nothing has ever reported; the first reading should show up */
+/* A fetch has no deadline of its own. A sleeping laptop or a server wedged
+   after accepting the connection leaves the promise pending for ever, and
+   because the chain re-arms itself in poll()'s finally, "for ever" would mean
+   the board never fetches again — while still counting down as though it
+   would. A deadline turns a hang into a failure, and the failure path already
+   knows how to retry. */
+const TIMEOUT = 15000;
+/* intervalSeconds arrives over the network, so it is input, not configuration.
+   A snapshot claiming a cadence of 0.001 s does not get to make every open
+   dashboard poll in a loop; anything outside a sane band is treated as absent
+   and the agent's own default is used instead. TOKENHUD_INTERVAL is read with
+   int(), so no real agent can land under a second anyway. */
+const MIN_INTERVAL = 1000;
+const MAX_INTERVAL = 86400000;   /* a day; also keeps setTimeout inside its 24.8-day ceiling */
+
+function intervalOf(p) {
+  const ms = Number(p && p.intervalSeconds) * 1000;
+  return ms >= MIN_INTERVAL && ms <= MAX_INTERVAL ? ms : DEFAULT_INTERVAL;
 }
 
-$('#hostpick').addEventListener('change', e => { picked = e.target.value; if (last) render(last); });
-$('#pause').addEventListener('click', e => {
-  paused = !paused;
-  e.target.setAttribute('aria-pressed', String(paused));
-  e.target.textContent = paused ? 'Resume' : 'Pause';
-  schedule();
-  if (!paused) poll();
+/* When the reading after this one should exist. Driven by the host on
+   screen, because that is the host the viewer is waiting on — hosts on
+   different machines can report on different cadences. */
+function nextDelay(d) {
+  const cur = pickHost((d && d.latest) || []);
+  if (!cur) return EMPTY;
+  const iv = intervalOf(cur);
+  const at = Date.parse(cur.collectedAt);
+  if (!isFinite(at)) return iv;
+  const wait = at + iv + LEAD - Date.now();
+  if (wait > 0) return Math.min(wait, iv + LEAD);
+  return -wait < iv ? CHASE : iv;
+}
+
+function schedule() {
+  clearTimeout(timer);
+  timer = null;
+  nextAt = 0;
+  /* A live stream is the schedule. Setting a timer beside it would poll
+     for data that has already been pushed. */
+  if (following && streamAlive()) { stamp(); return; }
+  if (following) {
+    const ms = nextDelay(last);
+    nextAt = Date.now() + ms;
+    timer = setTimeout(() => { timer = null; poll(); }, ms);
+  }
+  stamp();
+}
+
+function stamp() {
+  const parts = [];
+  if (note) parts.push(note);
+  else if (updatedAt) parts.push('updated ' + new Date(updatedAt).toLocaleTimeString());
+  if (!following) parts.push('paused');
+  else if (streamAlive()) parts.push('streaming');
+  else if (nextAt) {
+    const left = Math.max(0, Math.round((nextAt - Date.now()) / 1000));
+    parts.push(left ? (note ? 'retry in ' : 'next in ') + left + 's' : 'refreshing…');
+  }
+  $('#stamp').textContent = parts.join(' · ') || 'loading…';
+}
+
+/* ── push, with polling as the fallback ──────────────────────────────
+   The board used to ask "anything new?" on a timer, which meant it
+   learned about a finished agent up to one interval after it finished.
+   The server now pushes: /api/v1/stream holds a connection open and
+   sends the whole overview the instant an agent's reading lands.
+
+   Three things make this safe to rely on:
+
+     · Every event carries the WHOLE state, not a delta. A reader that
+       missed an event is not behind, and a reconnect is a resync rather
+       than a gap to reconcile. It costs bytes, and gzip with a sync
+       flush per event gets them back — the stream measures the same on
+       the wire as the gzipped polls it replaces.
+
+     · The poll never goes away. If EventSource is missing, if the stream
+       errors, or if the server is at its connection cap, the timer takes
+       over and the board behaves exactly as it did before. Push is an
+       improvement on the transport, not a dependency.
+
+     · A dead stream is indistinguishable from an idle one from the
+       client's side, so the server sends a heartbeat comment and the
+       client watches the clock: no event and no heartbeat for three
+       heartbeats means the connection is gone whatever the browser
+       thinks, and it reconnects.                                       */
+const BEAT = 15000;                 /* must match HEARTBEAT in server.py */
+let stream = null, streamSeen = 0, streamWatch = null;
+
+function streamAlive() { return !!stream && stream.readyState === 1; }
+
+function startStream() {
+  if (!following || stream || typeof EventSource === 'undefined') return;
+  let es;
+  try { es = new EventSource('/api/v1/stream'); } catch (_) { return; }
+  stream = es;
+
+  es.addEventListener('reading', e => {
+    streamSeen = Date.now();
+    let data;
+    try { data = JSON.parse(e.data); }
+    catch (err) { note = 'stream sent something unparseable — ' + err.message; stamp(); return; }
+    try {
+      render(data);
+      updatedAt = data.generatedAt;
+      note = '';
+    } catch (err) {
+      note = 'render error — ' + err.message;
+      console.error(err);
+    }
+    /* No countdown while streaming: there is nothing to count down to. */
+    clearTimeout(timer); timer = null; nextAt = 0;
+    stamp();
+  });
+
+  /* A comment heartbeat does not fire a JS event, so liveness is judged by
+     the browser's own readyState plus the clock below. */
+  es.addEventListener('open', () => { streamSeen = Date.now(); note = ''; stamp(); });
+  es.addEventListener('error', () => {
+    /* EventSource retries on its own, but a server at its stream cap
+       answers 503 and it would retry that for ever. One fallback path for
+       every failure is simpler to reason about and always correct. */
+    stopStream();
+    schedule();
+  });
+
+  clearInterval(streamWatch);
+  streamWatch = setInterval(() => {
+    if (!stream) return;
+    if (Date.now() - streamSeen > BEAT * 3) { stopStream(); schedule(); }
+  }, BEAT);
+  streamSeen = Date.now();
+}
+
+function stopStream() {
+  if (stream) { try { stream.close(); } catch (_) {} }
+  stream = null;
+  clearInterval(streamWatch); streamWatch = null;
+}
+
+async function poll() {
+  /* A click, a tab coming back and a firing timer can arrive together.
+     Without this the board would run two polling chains at once and
+     double its own load for the rest of the session. */
+  if (inflight) return;
+  inflight = true;
+  clearTimeout(timer);
+  timer = null;
+  try {
+    let data;
+    const ctl = new AbortController();
+    const deadline = setTimeout(() => ctl.abort(), TIMEOUT);
+    try {
+      const r = await fetch('/api/v1/overview', { cache: 'no-store', signal: ctl.signal });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      data = await r.json();
+    } catch (e) {
+      note = ctl.signal.aborted
+        ? `server did not answer in ${TIMEOUT / 1000}s`
+        : 'server unreachable — ' + e.message;
+      return;
+    } finally {
+      clearTimeout(deadline);
+    }
+    /* Separate catch: a render bug is a bug in this page, and calling it a
+       network failure sends you to the wrong side of the wire. */
+    try {
+      render(data);
+      updatedAt = data.generatedAt;
+      note = '';
+    } catch (e) {
+      note = 'render error — ' + e.message;
+      console.error(e);
+    }
+  } finally {
+    inflight = false;
+    /* The first reading comes from a plain fetch, so the board paints even
+       if the stream never opens; only then is push attempted. */
+    if (!note) startStream();
+    /* Reschedule even after a failure. A board that stops retrying goes on
+       showing an old number as though it were current. */
+    schedule();
+  }
+}
+
+$('#hostpick').addEventListener('change', e => {
+  picked = e.target.value;
+  if (last) render(last);
+  schedule();          /* another machine, possibly another cadence */
+});
+$('#toolpick').addEventListener('change', e => { toolSel = e.target.value; if (last) render(last); });
+$('#live-switch').addEventListener('click', e => {
+  following = !following;
+  /* currentTarget, not target: the dot is a child of the button. */
+  const b = e.currentTarget;
+  b.setAttribute('aria-pressed', String(following));
+  b.title = following ? 'Following the agent — refetches one second after each reading is due'
+                      : 'Frozen. Nothing is being fetched.';
+  $('#live-switch-label').textContent = following ? 'Live' : 'Paused';
+  /* Paused must mean nothing arrives — a stream left open would keep
+     repainting a board someone deliberately froze. */
+  if (following) poll(); else { stopStream(); schedule(); }
 });
 $('#theme').addEventListener('click', () => {
   const cur = document.documentElement.getAttribute('data-theme');
   const dark = cur ? cur === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
   const next = dark ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
-  try { localStorage.setItem('aimc-theme', next); } catch (_) {}
-  if (last) render(last);   /* colors are read from CSS, so redraw */
+  try { localStorage.setItem('tokenhud-theme', next); } catch (_) {}
+  invalidate();             /* colours are read from CSS at draw time */
+  if (last) render(last);
 });
 $('#tok-table').addEventListener('click', e => {
   const on = e.target.getAttribute('aria-pressed') !== 'true';
@@ -776,16 +2287,36 @@ $('#tok-table').addEventListener('click', e => {
   $('#tok-table-view').hidden = !on;
 });
 
-try {
-  const saved = localStorage.getItem('aimc-theme');
-  if (saved) document.documentElement.setAttribute('data-theme', saved);
-} catch (_) {}
+/* The theme restore moved into <head>, where it cannot flash. */
+bootRail();
 
 let rt = null;
-addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => last && render(last), 150); });
+/* Charts measure clientWidth when they draw, so a resize invalidates every
+   signature: the data is identical and the geometry is not. */
+addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { invalidate(); if (last) render(last); }, 150); });
 
-poll();
-schedule();
+/* A hidden tab has its timers throttled to roughly once a minute, so a
+   board left in a background tab comes back stale however it was
+   scheduled. Catch up the moment it is looked at again. */
+/* A held-open stream occupies one of the browser's six connections to this
+   origin. Without this, every reload leaks one until the server's heartbeat
+   notices, and a few reloads later the board cannot fetch its own HTML —
+   the page hangs with no error, which looks like a dead server. */
+addEventListener('pagehide', stopStream);
+
+addEventListener('visibilitychange', () => {
+  if (document.hidden || !following) return;
+  /* A backgrounded tab has its timers throttled and its stream may have
+     been dropped by the OS. Re-establish both, then catch up. */
+  if (!streamAlive()) { stopStream(); poll(); }
+});
+
+/* The countdown. One text node, once a second — cheap enough to leave
+   running, and it is the only proof the switch is doing anything between
+   readings. */
+setInterval(() => { stamp(); tickWindows(); }, 1000);
+
+poll();   /* schedules the next one itself */
 </script>
 </body>
 </html>
