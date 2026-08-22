@@ -281,6 +281,46 @@ def t_server_end_to_end():
             httpd.shutdown()
 
 
+def t_ingest_accepts_both_encodings():
+    """The agent gzips its upload; anything older or hand-rolled does not."""
+    import server as srv
+    from store import Store
+    import gzip as gz
+    import socket as sock
+
+    with tempfile.TemporaryDirectory() as d:
+        srv.store = Store(Path(d) / "t.db", retention_days=30)
+        srv.KEY = "test-key-not-a-real-one"
+        s0 = sock.socket(); s0.bind(("127.0.0.1", 0)); port = s0.getsockname()[1]; s0.close()
+        from http.server import ThreadingHTTPServer
+        httpd = ThreadingHTTPServer(("127.0.0.1", port), srv.Handler)
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        try:
+            now = datetime.now(timezone.utc)
+            body = json.dumps(_snap("gz", now.isoformat(), [1], pad=40)).encode()
+
+            r = urllib.request.Request(f"http://127.0.0.1:{port}/api/v1/ingest",
+                                       data=gz.compress(body), method="POST",
+                                       headers={"Content-Type": "application/json",
+                                                "Content-Encoding": "gzip",
+                                                "X-TokenHUD-Key": srv.KEY})
+            assert urllib.request.urlopen(r, timeout=5).status == 202, "gzipped ingest refused"
+
+            plain = json.dumps(_snap("plain", now.isoformat(), [1])).encode()
+            r2 = urllib.request.Request(f"http://127.0.0.1:{port}/api/v1/ingest",
+                                        data=plain, method="POST",
+                                        headers={"Content-Type": "application/json",
+                                                 "X-TokenHUD-Key": srv.KEY})
+            assert urllib.request.urlopen(r2, timeout=5).status == 202, "plain ingest refused"
+
+            hosts = {h["host"] for h in srv.store.hosts()}
+            assert hosts == {"gz", "plain"}, f"both should have landed, got {hosts}"
+            ratio = len(body) / len(gz.compress(body))
+            return f"gzip and plain both accepted; upload compresses {ratio:.1f}x"
+        finally:
+            httpd.shutdown()
+
+
 def t_stream_pushes():
     """The event stream must carry state on connect, then push on ingest.
 
@@ -362,6 +402,7 @@ CHECKS = [
     ("store: endings, and a replay adds none", t_store_endings_and_replay),
     ("store: ps etime parsing", t_store_etime_parsing),
     ("server: key, gzip, ingest, endings", t_server_end_to_end),
+    ("server: ingest accepts gzip and plain", t_ingest_accepts_both_encodings),
     ("server: the event stream pushes", t_stream_pushes),
     ("dashboard: self-contained, unique ids", t_dashboard_is_self_contained),
 ]

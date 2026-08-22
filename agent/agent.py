@@ -28,6 +28,7 @@ Design notes worth keeping:
 """
 from __future__ import annotations
 
+import gzip
 import json
 import os
 import sys
@@ -58,16 +59,27 @@ def log(msg: str) -> None:
 
 
 def post(snapshot: dict) -> bool:
-    body = json.dumps(snapshot).encode()
+    raw = json.dumps(snapshot).encode()
+    # Compress the UPLOAD, not just the download. A snapshot is ~65 KB of
+    # highly repetitive JSON and gzips about 5:1. On loopback that is a
+    # rounding error; over a network — which is where this is heading — it is
+    # the difference between a rounding error and a bill. The server accepts
+    # both, so an old agent talking to a new server still works.
+    body = gzip.compress(raw, 6)
+    headers = {
+        "Content-Type": "application/json",
+        "Content-Encoding": "gzip",
+        "X-TokenHUD-Key": KEY,
+        "User-Agent": f"tokenhud-agent/{collectors.AGENT_VERSION}",
+    }
+    if len(body) >= len(raw):        # tiny payloads can grow; do not bother
+        body, raw = raw, raw
+        headers.pop("Content-Encoding")
     req = urllib.request.Request(
         f"{SERVER}/api/v1/ingest",
         data=body,
         method="POST",
-        headers={
-            "Content-Type": "application/json",
-            "X-TokenHUD-Key": KEY,
-            "User-Agent": f"tokenhud-agent/{collectors.AGENT_VERSION}",
-        },
+        headers=headers,
     )
     try:
         with urllib.request.urlopen(req, timeout=10) as r:

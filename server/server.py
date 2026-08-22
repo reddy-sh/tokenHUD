@@ -284,7 +284,13 @@ class Handler(BaseHTTPRequestHandler):
             self._json(413, {"error": "body missing or too large"})
             return
         try:
-            snap = json.loads(self.rfile.read(n))
+            raw = self.rfile.read(n)
+            # Agents gzip their uploads; anything older or hand-rolled with
+            # curl does not. Both are accepted, so the wire format can move
+            # without a flag day across a fleet nobody controls.
+            if "gzip" in (self.headers.get("Content-Encoding") or ""):
+                raw = gzip.decompress(raw)
+            snap = json.loads(raw)
         except Exception as e:
             self._json(400, {"error": f"bad json: {e}"})
             return

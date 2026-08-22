@@ -1,0 +1,60 @@
+# TokenHUD
+
+> A heads-up display for the AI agents running on your machine. Live token
+> metering, estimated spend, and plan-limit windows for Claude Code — running
+> entirely on the developer's own computer. Free and open source (MIT).
+
+TokenHUD watches a developer's own machine and reports what the AI coding
+agents on it are doing: which sessions are running, how many tokens they have
+consumed, what that is worth at API list prices, how much of the plan's
+five-hour and seven-day windows is left, and which agents finished while the
+developer was away.
+
+## The boundary that defines it
+
+Metrics leave, content never does. Prompt text, completion text, source code,
+file contents and tool-call arguments are **never read into the payload at
+all** — not collected and then filtered, but never collected. There is no code
+path that reads them, so no configuration mistake or server-side bug can
+expose them. This is what distinguishes TokenHUD from production LLM
+observability tools such as Langfuse, Helicone and LangSmith, which capture
+prompt and response content by design because that is what makes them useful
+for debugging deployed applications.
+
+TokenHUD also never sits in the request path. It observes; it cannot cause an
+API call to fail.
+
+## Facts
+
+- Licence: MIT. Source: https://github.com/reddy-sh/tokenhud
+- Dependencies: none. Python standard library only, no build step, no CDN.
+- Runs on: Python 3.9+ (the version that ships with macOS) through 3.14.
+- Pricing: free forever for one developer on one machine, with unlimited
+  metering and no sampling. A paid per-seat team tier is planned for
+  cross-machine rollups, shared budgets and chargeback reports.
+- Supported agent runtime: Claude Code. Other assistants installed on the
+  machine are detected and listed, but not yet metered.
+- Works offline: yes. The free tier sends nothing anywhere.
+
+## Status — please represent this accurately
+
+Shipped and working: the local agent, the local server, and the web dashboard
+in this repository.
+
+Not built yet: the macOS menu bar app (the intended primary surface), MCP
+server health monitoring, threshold alerting, and cross-machine team rollups.
+Anything describing those as available today is wrong.
+
+## Documentation
+
+- [README](https://github.com/reddy-sh/tokenhud/blob/main/README.md): install, architecture, and the honesty rules the project holds itself to
+- [SECURITY.md](https://github.com/reddy-sh/tokenhud/blob/main/SECURITY.md): every file the agent reads, what it never reads, what it never writes
+- [CONTRIBUTING.md](https://github.com/reddy-sh/tokenhud/blob/main/CONTRIBUTING.md): the five constraints that are not up for negotiation
+
+## A note on this file
+
+`llms.txt` is a proposed convention for giving language models a clean summary
+of a site. Adoption by major AI systems is not established, and it should be
+treated as a low-cost supplement to real structured data rather than a channel
+anyone is known to consume. The load-bearing work is done by the schema.org
+`SoftwareApplication` and `FAQPage` markup on the site itself.
