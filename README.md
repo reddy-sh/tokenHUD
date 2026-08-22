@@ -28,12 +28,27 @@ cd AIMissionControl
 cp .env.example .env
 python3 server/server.py --new-key        # paste the value into .env as AIMC_KEY
 
-./scripts/start-server.sh                 # terminal 1 → http://127.0.0.1:8787
-./scripts/start-agent.sh                  # terminal 2
+./scripts/run.sh                          # starts both, detached
 ```
 
-Open **http://127.0.0.1:8787**. The first reading lands within one interval
-(30s by default); the board says so until it does.
+Open **http://127.0.0.1:8787**.
+
+```bash
+./scripts/run.sh status     # is it up? which hosts? how many snapshots?
+./scripts/run.sh logs       # follow both
+./scripts/run.sh stop
+./scripts/run.sh restart
+```
+
+`run.sh` detaches on its own, so a trailing `&` is unnecessary (harmless if you
+type it). It refuses to double-start and reaps processes left behind by an
+earlier hand-start, so there is never more than one agent reporting per host.
+
+To run the pieces separately — a server on one box, agents on several — use
+`scripts/start-server.sh` and `scripts/start-agent.sh` instead.
+
+The first reading lands within one interval (30s by default); the board says
+so until it does.
 
 Check what the agent would send, without a server and without sending anything:
 
