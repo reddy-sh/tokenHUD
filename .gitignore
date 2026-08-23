@@ -18,3 +18,7 @@ logs/
 # tooling scratch
 .playwright-mcp/
 *.png
+
+# Rust build output — a few hundred MB of it
+agent/target/
+server/target/

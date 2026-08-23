@@ -1,0 +1,59 @@
+# Run the agent on a Linux box — a build server, a CI runner, anything with
+# agents on it that you want on the board.
+#
+# Install as a USER service, not a system one:
+#
+#   mkdir -p ~/.config/systemd/user
+#   cp agent-rs/dist/tokenhud-agent.service ~/.config/systemd/user/
+#   mkdir -p ~/.config/tokenhud && $EDITOR ~/.config/tokenhud/env   # see below
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now tokenhud-agent
+#
+#   systemctl --user status tokenhud-agent
+#   journalctl --user -u tokenhud-agent -f
+#
+# A user service because the agent reads ~/.claude, which belongs to you. Run
+# it as root and it reads root's home, finds nothing, and reports an idle
+# machine — which is worse than not running at all, because it looks like data.
+#
+# If nobody stays logged in on that box:
+#   sudo loginctl enable-linger $USER
+#
+# ~/.config/tokenhud/env holds:
+#   TOKENHUD_SERVER=http://your-board:8787
+#   TOKENHUD_KEY=…
+#   TOKENHUD_INTERVAL=30
+# chmod 600 it. It has a credential in it.
+
+[Unit]
+Description=TokenHUD agent
+Documentation=https://github.com/reddy-sh/tokenhud
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/tokenhud/env
+ExecStart=%h/.local/bin/tokenhud-agent
+Restart=on-failure
+RestartSec=30
+# Exit 2 is "TOKENHUD_KEY is not set". Restarting that forever logs the same
+# sentence every thirty seconds instead of fixing it.
+RestartPreventExitStatus=2
+
+# It reads files and makes one outbound POST. Nothing here needs more than that.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+# The one directory it writes: the transcript index and the spool.
+ReadWritePaths=%h/.tokenhud
+
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=default.target

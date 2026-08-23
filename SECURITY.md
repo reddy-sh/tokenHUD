@@ -26,20 +26,23 @@ outside its own state directory.
 - **`oauthAccount`** in `~/.claude.json` — your name, email, organisation,
   billing tier. The parser reads one sibling key and stops.
 - **`utilization.spend`** — real billed dollars on accounts with extra usage
-  enabled. Deliberately excluded; see `agent/limits.py`.
+  enabled. Deliberately excluded; see `agent/src/limits.rs`.
 - **`projects`** in `~/.claude.json` — a per-project cost and token history.
   Deliberately excluded.
 
-`scripts/selftest.py` enforces two of these mechanically: one check asserts the
-limits payload carries no `emailAddress`, `@`, `organizationName`, `oauthAccount`
-or `used_dollars`; another asserts prompt text and session titles stay empty
-unless the opt-in is set.
+The test suite enforces three of these mechanically. One asserts the limits
+payload carries no `emailAddress`, `@`, `organizationName`, `oauthAccount` or
+`used_dollars`. Another asserts prompt text and session titles stay empty
+unless the opt-in is set. The third asserts that no `innerHTML` assignment in
+the dashboard is built from a value — what it renders (model names, project
+paths) arrives from a transcript and crosses ingest untouched, and one such
+interpolation was a live cross-site-scripting hole until it was found.
 
 ## What it never writes
 
 `~/.claude.json` is Claude Code's live configuration. TokenHUD opens it
 read-only and never writes to it — a clobbering write would take your MCP server
-configuration with it and there is no backup we own. `agent/limits.py` documents
+configuration with it and there is no backup we own. `agent/src/limits.rs` documents
 this; a self-test asserts the file's mtime is unchanged after a read.
 
 The agent writes only to `~/.tokenhud/` (a transcript index, a spool, and a

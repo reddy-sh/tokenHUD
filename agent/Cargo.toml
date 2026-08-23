@@ -1,0 +1,37 @@
+[package]
+name = "tokenhud-agent"
+version = "0.2.0"
+edition = "2021"
+rust-version = "1.75"
+description = "TokenHUD agent — reads one machine, ships it"
+license = "MIT"
+
+[dependencies]
+# preserve_order because the payload is compared field-for-field against the
+# Python agent's, and a map that reorders itself makes a real difference look
+# like noise.
+# float_roundtrip because the default parser is not correctly rounded: it
+# writes 1.1400000000000001 and reads back the f64 that prints as 1.14.
+# Python's json uses strtod and does not do this, so without the feature a
+# reading does not survive being stored and read back — invisible in
+# magnitude, wrong in principle, and caught by a round-trip test.
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+serde = { version = "1", features = ["derive"] }
+indexmap = { version = "2", features = ["serde"] }
+flate2 = "1"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
+sha2 = "0.10"
+libc = "0.2"
+ureq = "3"
+
+[profile.release]
+# An always-on agent is judged on what it costs to have running, so size is
+# optimised before speed: the whole cycle is 60 ms every 30 seconds and no
+# amount of -O3 makes a reading arrive sooner.
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+# NOT panic = "abort". The Python agent's loop survives any single bad cycle,
+# and matching that needs an unwind to catch.
+panic = "unwind"

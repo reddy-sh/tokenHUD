@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Run the agent at login, and keep it running.
+
+  Install:
+    cp agent-rs/dist/com.tokenhud.agent.plist ~/Library/LaunchAgents/
+    # edit the two REPLACE-ME values below, then:
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.tokenhud.agent.plist
+
+  Stop and remove:
+    launchctl bootout gui/$(id -u)/com.tokenhud.agent
+    rm ~/Library/LaunchAgents/com.tokenhud.agent.plist
+
+  A LaunchAgent (not a LaunchDaemon) on purpose: it runs as you, in your login
+  session, and can read your home directory. A daemon runs as root before you
+  log in, which is both more privilege than this needs and the wrong user to
+  read ~/.claude as.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.tokenhud.agent</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>REPLACE-ME/path/to/tokenhud-agent</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>TOKENHUD_SERVER</key>
+    <string>http://127.0.0.1:8787</string>
+    <key>TOKENHUD_KEY</key>
+    <string>REPLACE-ME-with-your-key</string>
+    <key>TOKENHUD_INTERVAL</key>
+    <string>30</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <dict>
+    <!-- Restart if it dies, but not if it exited 0 or 2. Exit 2 is "your key
+         is not set", and relaunching that every ten seconds forever fills the
+         log with the same sentence instead of fixing anything. -->
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/tokenhud-agent.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/tokenhud-agent.log</string>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>LowPriorityIO</key>
+  <true/>
+</dict>
+</plist>

@@ -28,7 +28,7 @@ body:
   - type: textarea
     id: selftest
     attributes:
-      label: Output of `python3 scripts/selftest.py`
+      label: Output of `./scripts/run.sh selftest`
       description: This tells us more than almost anything else. Paste it whole.
       render: text
     validations: { required: true }

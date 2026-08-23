@@ -90,7 +90,7 @@ git clone https://github.com/reddy-sh/tokenhud.git
 cd tokenhud
 
 cp .env.example .env
-python3 server/server.py --new-key        # paste the value into .env as TOKENHUD_KEY
+./server/target/release/tokenhud-server --new-key        # paste the value into .env as TOKENHUD_KEY
 
 ./scripts/run.sh                          # starts both, detached
 ```
@@ -98,11 +98,28 @@ python3 server/server.py --new-key        # paste the value into .env as TOKENHU
 Open **http://127.0.0.1:8787**.
 
 ```bash
-./scripts/run.sh status     # is it up? which hosts? how many snapshots?
+./scripts/run.sh status     # is it up? which hosts? what does it hold?
 ./scripts/run.sh logs       # follow both
 ./scripts/run.sh stop
-./scripts/run.sh restart
+./scripts/run.sh restart    # after any change under server/ or agent/
+./scripts/run.sh selftest   # the checks below, without remembering the path
 ```
+
+The agent is a Rust binary and has to be built once:
+
+```bash
+./scripts/build.sh              # needs cargo; ~30s, then run.sh finds both
+```
+
+The server is one too. `./scripts/build.sh` builds both.
+
+Full installation — a binary on your PATH, launch at login on macOS, a systemd
+unit for a Linux box, and how to remove all of it — is
+**[agent/INSTALL.md](agent/INSTALL.md)**.
+
+`status` also says when the running processes are older than the files on
+disk. A process keeps the code it started with, and finding that out by
+wondering why an edit did nothing is a bad afternoon.
 
 `run.sh` detaches on its own, so a trailing `&` is unnecessary (harmless if you
 type it). It refuses to double-start and reaps processes left behind by an
@@ -117,16 +134,16 @@ so until it does.
 Check what the agent would send, without a server and without sending anything:
 
 ```bash
-python3 agent/agent.py --dry-run | less
+./agent/target/release/tokenhud-agent --dry-run | less
 ```
 
 Check that this checkout actually works on your machine:
 
 ```bash
-python3 scripts/selftest.py
+./scripts/run.sh selftest       # every test in the repo
 ```
 
-Twelve checks, no framework, nothing installed, nothing mocked — the real
+Thirty-seven checks, no framework, nothing installed, nothing mocked — the real
 collectors against your real machine, a real SQLite file in a temp directory, a
 real server on a throwaway port. It verifies the rate-card arithmetic, that an
 unpriced model reports as unpriced rather than as $0, that a five-hour block is
@@ -140,15 +157,18 @@ references and no duplicate element ids.
 
 | Path | What it is |
 |---|---|
-| `agent/collectors.py` | every source, one function each — add one here and nowhere else |
-| `agent/transcripts.py` | per-session index over ~/.claude/projects, read incrementally |
-| `agent/limits.py` | the plan's real usage windows, from Claude Code's own cache |
-| `agent/pricing.py` | the rate card, and the argument for having one at all |
-| `agent/agent.py` | collect → POST loop, with an on-disk buffer for when the server is away |
-| `server/store.py` | SQLite: `hosts` (now) + `snapshots` (then) + `endings` (what stopped) |
-| `server/server.py` | ingest, query, and the static dashboard |
+| `agent/src/collect.rs` | every source, one function each — add one here and nowhere else |
+| `agent/src/transcripts.rs` | per-session index over ~/.claude/projects, read incrementally |
+| `agent/src/limits.rs` | the plan's real usage windows, from Claude Code's own cache |
+| `agent/src/pricing.rs` | the rate card, and the argument for having one at all |
+| `agent/src/main.rs` | collect → POST loop, with an on-disk buffer for when the server is away |
+| `agent/tests/machine.rs` | eleven checks against your real machine, nothing mocked |
+| `server/src/store.rs` | SQLite: `hosts` (now) + `snapshots` (then, as differences) + `endings` (what stopped) |
+| `server/src/board.rs` | the overview, built once for everyone reading it |
+| `server/src/http.rs` | ingest, query, the event stream, the static dashboard |
 | `web/index.html` | the board — one self-contained file, no CDN, no build step |
-| `scripts/selftest.py` | twelve checks against the real machine, no framework |
+| `server/tests/` | thirteen checks over the store, the HTTP surface and the board |
+| `docs/ARCHITECTURE.md` | what runs, what it measured, and what multi-machine would take |
 
 ## The API
 
@@ -316,7 +336,7 @@ one estimate, and this is the argument for it.
   session, model or day your usage went to. So the board prices the tokens it
   counted at Anthropic's published API list rates and says so on every panel
   that shows a dollar — the tile reads *at API list prices · not billed*, and
-  `agent/pricing.py` carries the reasoning and the caveats. The rate card
+  `agent/src/pricing.rs` carries the reasoning and the caveats. The rate card
   itself is on the board under *How this number is made*, because a figure
   whose arithmetic you cannot inspect is a figure to distrust.
 - **A model with no rate is "unpriced", never $0.** A model released after the
@@ -355,7 +375,7 @@ table view — identity is never carried by colour alone.
 ## Reading a gigabyte every 30 seconds (not doing that)
 
 Claude Code appends one JSONL per session; a working machine reaches a
-gigabyte and a single transcript can pass 200 MB. `agent/transcripts.py` keeps
+gigabyte and a single transcript can pass 200 MB. `agent/src/transcripts.rs` keeps
 a byte offset per file and reads only what was appended since the last cycle —
 steady state is a few kilobytes. The first pass is bounded by
 `TOKENHUD_SCAN_BUDGET_MB` (512 by default, ~1s per cycle here) so the agent never

@@ -1,9 +1,11 @@
-# CI for a project whose whole claim is that it has no dependencies.
+# CI for a project that ships two binaries and asks you to install nothing
+# beside them.
 #
-# So this installs nothing. It checks out the repo, picks a Python, and runs
-# scripts/selftest.py — the same command a contributor runs locally. If CI ever
-# needs a package to test this project, the project has stopped being what it
-# says it is, and that is the signal worth watching for here.
+# Both jobs are the same shape: format, lint, test against the real machine,
+# then build and run the thing. `cargo tree --depth 1` is printed in each so a
+# new dependency has to be noticed in review rather than discovered later — the
+# closest equivalent to the "no third-party imports" check this repo had while
+# it was Python, and the same intent: the dependency list is a test.
 name: CI
 
 on:
@@ -20,86 +22,68 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  selftest:
-    name: selftest · py${{ matrix.python }} · ${{ matrix.os }}
+  agent:
+    name: agent · ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        python: ['3.9', '3.11', '3.13']
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
         with:
-          python-version: ${{ matrix.python }}
+          workspaces: agent
 
-      - name: No third-party imports anywhere
-        shell: bash
+      - name: Direct dependencies, for the record
+        run: cargo tree --depth 1 --manifest-path agent/Cargo.toml
+
+      - name: Formatting and lints
         run: |
-          # The dependency check IS a test. A stray `import requests` should
-          # fail the build, not be discovered by a user with no network.
-          python3 - <<'PY'
-          import ast, importlib.util, pathlib, sys
-          # sys.stdlib_module_names is 3.10+; this job also runs on 3.9, where
-          # a missing attribute would make the check silently pass everything.
-          STDLIB = set(getattr(sys, 'stdlib_module_names', ())) | set(sys.builtin_module_names)
-          LOCAL = {p.stem for p in pathlib.Path('.').rglob('*.py')}
-          bad = []
-          for f in sorted(pathlib.Path('.').rglob('*.py')):
-              if '__pycache__' in str(f):
-                  continue
-              tree = ast.parse(f.read_text(), str(f))
-              for node in ast.walk(tree):
-                  names = []
-                  if isinstance(node, ast.Import):
-                      names = [a.name.split('.')[0] for a in node.names]
-                  elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
-                      names = [node.module.split('.')[0]]
-                  for n in names:
-                      if n in STDLIB or n in LOCAL or n == '__future__':
-                          continue
-                      # 3.9 fallback: if it resolves and does not live in
-                      # site-packages, it is stdlib.
-                      spec = importlib.util.find_spec(n) if n else None
-                      origin = (spec.origin or '') if spec else ''
-                      if spec and 'site-packages' not in origin and 'dist-packages' not in origin:
-                          continue
-                      bad.append(f"{f}: {n}")
-          if bad:
-              print("third-party imports found:")
-              print("\n".join(bad))
-              sys.exit(1)
-          print(f"clean — {len(LOCAL)} local modules, stdlib only")
-          PY
+          cargo fmt --manifest-path agent/Cargo.toml --check
+          cargo clippy --manifest-path agent/Cargo.toml --all-targets -- -D warnings
 
-      - name: Self-test
-        run: python3 scripts/selftest.py
+      - name: Tests
+        # A runner has no ~/.claude, so the checks that need one skip and say
+        # so. --nocapture is what makes those skips visible in the log rather
+        # than a green tick over eleven tests that mostly did nothing.
+        run: cargo test --manifest-path agent/Cargo.toml -- --nocapture
 
-  dashboard:
-    name: dashboard is self-contained
-    runs-on: ubuntu-latest
+      - name: It builds, and it is small
+        run: |
+          cargo build --release --manifest-path agent/Cargo.toml
+          ls -l agent/target/release/tokenhud-agent
+          ./agent/target/release/tokenhud-agent --dry-run > /dev/null
+
+  server:
+    name: server · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
-      - name: No CDN, no build step, no duplicate ids
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: server
+
+      - name: Direct dependencies, for the record
+        run: cargo tree --depth 1 --manifest-path server/Cargo.toml
+
+      - name: Formatting and lints
         run: |
-          python3 - <<'PY'
-          import pathlib, re, sys
-          html = pathlib.Path('web/index.html').read_text()
-          fail = []
-          for bad in ('<script src=', '<link rel="stylesheet"', 'cdn.', 'unpkg.com', 'jsdelivr'):
-              if bad in html:
-                  fail.append(f"external reference: {bad}")
-          ids = {}
-          for m in re.finditer(r'\bid="([A-Za-z0-9_-]+)"', html):
-              ids[m.group(1)] = ids.get(m.group(1), 0) + 1
-          dupes = {k: v for k, v in ids.items() if v > 1}
-          if dupes:
-              # This has bitten the file before: two elements claiming #live put
-              # the running-process list inside a header button.
-              fail.append(f"duplicate element ids: {dupes}")
-          if fail:
-              print("\n".join(fail)); sys.exit(1)
-          print(f"self-contained · {len(ids)} unique ids · {len(html)//1024} KB")
-          PY
+          cargo fmt --manifest-path server/Cargo.toml --check
+          cargo clippy --manifest-path server/Cargo.toml --all-targets -- -D warnings
+
+      - name: Tests
+        run: cargo test --manifest-path server/Cargo.toml
+
+      - name: It builds, and it is small
+        run: |
+          cargo build --release --manifest-path server/Cargo.toml
+          ls -l server/target/release/tokenhud-server

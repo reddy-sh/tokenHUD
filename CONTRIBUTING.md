@@ -35,7 +35,7 @@ however good it is otherwise.
 
 ## Adding a collector
 
-One function in `agent/collectors.py` returning JSON-able data, one line in
+One function in `agent/src/collect.rs` returning JSON-able data, one line in
 `collect()`. Nothing else in the agent, the server, or the dashboard needs to
 know it exists. The function must never raise.
 
@@ -43,12 +43,12 @@ know it exists. The function must never raise.
 
 ```bash
 cp .env.example .env
-python3 server/server.py --new-key    # paste into .env as TOKENHUD_KEY
+./server/target/release/tokenhud-server --new-key   # paste into .env as TOKENHUD_KEY
 ./scripts/run.sh                      # both processes, detached
-python3 scripts/selftest.py           # 13 checks, no framework, nothing mocked
+./scripts/run.sh selftest             # every test: 24 agent, 13 server
 ```
 
-`selftest.py` must pass before you open a pull request. It runs the real
+The tests must pass before you open a pull request. They run the real
 collectors against your real machine, a real SQLite file in a temp directory,
 and a real server on a throwaway port — it mocks nothing, so a pass means it
 genuinely works here.

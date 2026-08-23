@@ -1,0 +1,35 @@
+[package]
+name = "tokenhud-server"
+version = "0.2.0"
+edition = "2021"
+description = "TokenHUD server — takes what agents send, keeps it, serves the board"
+license = "MIT"
+
+[dependencies]
+# preserve_order because the overview is diffed field-for-field against the
+# Python server's while both are running, and a map that reorders itself makes
+# a real difference look like noise.
+# float_roundtrip because the default parser is not correctly rounded: it
+# writes 1.1400000000000001 and reads back the f64 that prints as 1.14.
+# Python's json uses strtod and does not do this, so without the feature a
+# reading does not survive being stored and read back — invisible in
+# magnitude, wrong in principle, and caught by a round-trip test.
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "signal", "sync"] }
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio", "query"] }
+# `bundled` compiles SQLite into the binary. The point of this rewrite is one
+# file with nothing to install beside it; linking the system libsqlite3 would
+# put a version skew between two machines back on the table.
+rusqlite = { version = "0.32", features = ["bundled"] }
+flate2 = "1"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+futures-core = "0.3"
+async-stream = "0.3"
+libc = "0.2"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true

@@ -8,7 +8,7 @@
 
 ## Checks
 
-- [ ] `python3 scripts/selftest.py` passes
+- [ ] `./scripts/run.sh selftest` passes
 - [ ] No new third-party dependency (stdlib only, and no CDN in `web/index.html`)
 - [ ] No collector reads prompt text, completion text, source code, or tool-call
       arguments into a payload
