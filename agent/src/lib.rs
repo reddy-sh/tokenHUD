@@ -12,5 +12,6 @@
 
 pub mod collect;
 pub mod limits;
+pub mod manifest;
 pub mod pricing;
 pub mod transcripts;

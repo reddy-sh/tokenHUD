@@ -19,7 +19,7 @@
 //!   · **It sends no secrets.** Prompt text is opt-in and command lines are
 //!     truncated. See `collect.rs`.
 
-use tokenhud_agent::{collect, transcripts};
+use tokenhud_agent::{collect, manifest, transcripts};
 
 use flate2::write::GzEncoder;
 use flate2::Compression;
@@ -28,6 +28,95 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 use std::time::Duration;
+
+/// Consent, recorded against what was disclosed.
+///
+/// A one-time "I agree" is worth very little if the thing agreed to can change
+/// underneath it. So the record stores the manifest digest, and a release that
+/// reads something new produces a different digest and asks again. That is the
+/// difference between asking permission and collecting a signature.
+mod consent {
+    use super::*;
+
+    fn path() -> PathBuf {
+        transcripts::state_dir().join("consent.json")
+    }
+
+    /// The digest the user last agreed to, if any.
+    fn recorded() -> Option<String> {
+        let text = fs::read_to_string(path()).ok()?;
+        let v: Value = serde_json::from_str(&text).ok()?;
+        v.get("manifest")?.as_str().map(str::to_string)
+    }
+
+    pub fn granted() -> bool {
+        recorded().as_deref() == Some(manifest::digest().as_str())
+    }
+
+    pub fn record(how: &str) -> std::io::Result<()> {
+        let p = path();
+        if let Some(dir) = p.parent() {
+            fs::create_dir_all(dir)?;
+        }
+        let body = serde_json::json!({
+            "manifest": manifest::digest(),
+            "agent": collect::AGENT_VERSION,
+            "at": collect::now_iso(),
+            "how": how,
+        });
+        fs::write(&p, serde_json::to_string_pretty(&body).unwrap_or_default())?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = fs::set_permissions(&p, fs::Permissions::from_mode(0o600));
+        }
+        Ok(())
+    }
+
+    /// Ask, if there is someone there to ask. Returns true when it may proceed.
+    pub fn obtain() -> bool {
+        if granted() {
+            return true;
+        }
+        print!("{}", manifest::render());
+
+        let interactive = std::io::IsTerminal::is_terminal(&std::io::stdin());
+        if !interactive {
+            eprintln!(
+                "\nNothing has been read yet, and nothing will be until you agree.\n\
+                 There is no terminal here to ask on, so agree explicitly:\n\n  \
+                 tokenhud-agent --accept\n"
+            );
+            return false;
+        }
+
+        print!(
+            "\nRead these and report to {}? [y/N] ",
+            env_or("TOKENHUD_SERVER", "http://127.0.0.1:8787")
+        );
+        let _ = std::io::Write::flush(&mut std::io::stdout());
+        let mut answer = String::new();
+        if std::io::BufRead::read_line(&mut std::io::stdin().lock(), &mut answer).is_err() {
+            return false;
+        }
+        if !matches!(answer.trim().to_ascii_lowercase().as_str(), "y" | "yes") {
+            println!(
+                "\nNot agreed. Nothing was read. Run --what-i-read any time to see this again."
+            );
+            return false;
+        }
+        match record("interactive") {
+            Ok(()) => {
+                println!("\nAgreed. Recorded in ~/.tokenhud/consent.json — delete it to revoke.\n");
+                true
+            }
+            Err(e) => {
+                eprintln!("could not record consent: {e}");
+                false
+            }
+        }
+    }
+}
 
 const SPOOL_MAX: usize = 500; // snapshots; ~a few MB, bounded on purpose
 
@@ -227,7 +316,53 @@ fn cycle(cfg: &Config) {
 }
 
 fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    let has = |f: &str| args.iter().any(|a| a == f);
+
+    // Show what would be read, and read nothing. Needs no key and no consent —
+    // it is the thing you run *before* deciding.
+    if has("--what-i-read") || has("--what-it-reads") {
+        print!("{}", manifest::render());
+        return;
+    }
+
+    if has("--accept") {
+        match consent::record("--accept") {
+            Ok(()) => {
+                print!("{}", manifest::render());
+                println!("\nAgreed, and recorded in ~/.tokenhud/consent.json.");
+                println!(
+                    "Manifest {} · delete that file to revoke.",
+                    manifest::digest()
+                );
+            }
+            Err(e) => {
+                eprintln!("could not record consent: {e}");
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
+
+    if has("--help") || has("-h") {
+        println!("tokenhud-agent {}\n", collect::AGENT_VERSION);
+        println!("  --what-i-read   every file it opens, resolved against this machine");
+        println!("  --dry-run       print the reading it would send, and send nothing");
+        println!("  --accept        agree to the manifest without being prompted");
+        println!("  --once          one cycle, then exit");
+        println!("\nConfigured by TOKENHUD_SERVER, TOKENHUD_KEY, TOKENHUD_INTERVAL.");
+        println!("See agent/INSTALL.md for the rest.");
+        return;
+    }
+
     let cfg = Config::load();
+
+    // Consent gates sending, not looking. --dry-run reads your files and prints
+    // the result to your own terminal, which is you inspecting your own machine;
+    // nothing leaves it, so nothing needs agreeing to.
+    if !cfg.dry && !consent::obtain() {
+        std::process::exit(2);
+    }
 
     if !cfg.dry && cfg.key.is_empty() {
         log("TOKENHUD_KEY is not set — the server will refuse this agent.");
