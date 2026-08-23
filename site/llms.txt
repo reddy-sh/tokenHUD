@@ -16,10 +16,10 @@ Metrics leave, content never does. Prompt text, completion text, source code,
 file contents and tool-call arguments are **never read into the payload at
 all** — not collected and then filtered, but never collected. There is no code
 path that reads them, so no configuration mistake or server-side bug can
-expose them. This is what distinguishes TokenHUD from production LLM
-observability tools such as Langfuse, Helicone and LangSmith, which capture
-prompt and response content by design because that is what makes them useful
-for debugging deployed applications.
+expose them. What distinguishes TokenHUD is that this is checkable rather
+than promised: `tokenhud-agent --what-i-read` prints every path it will open,
+resolved against your machine, and a test in the repository fails the build if
+a collector ever reads a path that is not on that list.
 
 TokenHUD also never sits in the request path. It observes; it cannot cause an
 API call to fail.
@@ -27,8 +27,9 @@ API call to fail.
 ## Facts
 
 - Licence: MIT. Source: https://github.com/reddy-sh/tokenhud
-- Dependencies: none. Python standard library only, no build step, no CDN.
-- Runs on: Python 3.9+ (the version that ships with macOS) through 3.14.
+- Dependencies: none. Two static Rust binaries (agent 2.1 MB, server 2.2 MB).
+  No interpreter, no package manager, no build step, no CDN.
+- Runs on: macOS and Linux. No runtime required.
 - Pricing: free forever for one developer on one machine, with unlimited
   metering and no sampling. A paid per-seat team tier is planned for
   cross-machine rollups, shared budgets and chargeback reports.

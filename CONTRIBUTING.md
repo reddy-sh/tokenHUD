@@ -18,7 +18,9 @@ however good it is otherwise.
    completion text, source code, or tool-call arguments into a payload. Not
    behind a flag, not filtered afterwards — never collected. If your feature
    needs content, it belongs in a different product.
-2. **Python standard library only.** No `pip install`, no `requirements.txt`.
+2. **Dependencies are a test.** `cargo tree --depth 1` is printed in CI so a new
+   one has to be noticed in review, and every path a collector opens is declared
+   in `agent/src/manifest.rs` — the build fails otherwise.
    Someone should be able to clone this onto a machine they have not prepared
    and run it with the `python3` that shipped with the OS.
 3. **The dashboard is one self-contained file.** `web/index.html` has no CDN

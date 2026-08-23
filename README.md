@@ -36,11 +36,28 @@ unwilling.
 *We can tell your finance team exactly what you spent. We cannot tell them what
 you wrote.*
 
-That is also the competitive position. Langfuse, Helicone and LangSmith capture
-prompt and response content by design — that is precisely their value for
-debugging production applications, and it is what makes them a hard sell on a
-developer's own machine, working on proprietary code, under an employer's
-security review.
+That is also the competitive position, and it is a claim about *mechanism*
+rather than about intentions. Every other tool in this space asks you to trust a
+policy; this one publishes the list and fails its own build if the list is
+wrong:
+
+```
+tokenhud-agent --what-i-read
+```
+
+It prints every path the agent will open, resolved against your machine — file
+counts and sizes, what is taken from each, what is only checked for existence,
+the exhaustive list of what is written, and what is refused with the reason. It
+reads nothing while doing it. Nothing is read at all until you agree, consent is
+recorded against a SHA-256 digest of that list, and a release that reads one
+more file produces a different digest and asks again.
+
+Three tests keep it honest: one greps the collectors for every path literal and
+fails on anything undeclared, one fails if the manifest claims a path nothing
+reads, and one asserts the keys the exclusion list names appear nowhere in the
+code that opens `~/.claude.json`. That last check is a grep, not a sandbox — a
+path assembled at runtime would slip past it. What it catches is the realistic
+failure: a well-meaning change that reads one more file and forgets to say so.
 
 > **On this repository specifically.** Two fields currently reported —
 > **absolute project paths** and **git branch names** — sit on the wrong side of
@@ -74,7 +91,8 @@ below is a plan, not a description.
    reads ~/.claude, ps                      keeps history          reads only
 ```
 
-Python standard library only — nothing to install. The agent does the heavy
+Two static binaries, about 4 MB together — no interpreter, no package manager,
+nothing to install beside them. The agent does the heavy
 work locally: it scans a transcript corpus that reaches a gigabyte and ships a
 summary, which is both the privacy story and the reason it stays cheap.
 
@@ -90,6 +108,7 @@ git clone https://github.com/reddy-sh/tokenhud.git
 cd tokenhud
 
 cp .env.example .env
+./scripts/build.sh                                        # builds both binaries first
 ./server/target/release/tokenhud-server --new-key        # paste the value into .env as TOKENHUD_KEY
 
 ./scripts/run.sh                          # starts both, detached
@@ -143,7 +162,7 @@ Check that this checkout actually works on your machine:
 ./scripts/run.sh selftest       # every test in the repo
 ```
 
-Thirty-seven checks, no framework, nothing installed, nothing mocked — the real
+Forty-four checks, no framework, nothing installed, nothing mocked — the real
 collectors against your real machine, a real SQLite file in a temp directory, a
 real server on a throwaway port. It verifies the rate-card arithmetic, that an
 unpriced model reports as unpriced rather than as $0, that a five-hour block is

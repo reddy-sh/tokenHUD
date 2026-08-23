@@ -13,7 +13,7 @@
       "url": "https://tokenhud.com/",
       "downloadUrl": "https://github.com/reddy-sh/tokenhud",
       "codeRepository": "https://github.com/reddy-sh/tokenhud",
-      "programmingLanguage": "Python",
+      "programmingLanguage": "Rust",
       "license": "https://opensource.org/licenses/MIT",
       "isAccessibleForFree": true,
       "offers": [
@@ -39,7 +39,7 @@
         "Reports which agents finished while you were away",
         "Never reads prompt text, completion text, or source code"
       ],
-      "softwareRequirements": "Python 3.9 or newer",
+      "softwareRequirements": "None. Two static binaries; no interpreter, no package manager, no build step.",
       "author": { "@id": "https://tokenhud.com/#org" },
       "publisher": { "@id": "https://tokenhud.com/#org" }
     },

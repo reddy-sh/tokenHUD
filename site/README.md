@@ -28,8 +28,13 @@ specific question. It is served by `FAQPage` markup whose answers are
 self-contained and quotable without surrounding context.
 
 The tags are the cheap half. The expensive half is that the content has to be
-true, specific, and comparative — which is why `faq.jsonld` names Langfuse,
-Helicone and LangSmith and says plainly what TokenHUD does not do.
+true, specific, and checkable — which is why `faq.jsonld` answers "what files
+does it read" with the command that prints them rather than with a promise.
+
+Before going live: grep the whole repo for `Python` — three files described the
+product as Python for a day after it stopped being Python, and robots.txt is
+open to every AI crawler, so a false fact here propagates into model caches that
+are slow to correct.
 
 ## Before going live
 
