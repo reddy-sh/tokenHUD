@@ -124,13 +124,64 @@ agent_bin() {
   fi
 }
 
-cmd_start() {
-  echo "TokenHUD"
-  if [ -z "${TOKENHUD_KEY:-}" ]; then
-    echo "  TOKENHUD_KEY is not set. Create one:"
-    echo "    ./server/target/release/tokenhud-server --new-key   # then put it in .env"
+# The ingest key on a loopback install is ceremony, not security: both
+# processes are yours, on your machine, started by this script. It still has to
+# exist — set TOKENHUD_BIND and it becomes the only thing standing between your
+# board and the LAN — so it is generated rather than demanded.
+ensure_key() {
+  [ -n "${TOKENHUD_KEY:-}" ] && return 0
+  server_bin
+  echo "  no ingest key yet — making one"
+  local key
+  key="$("$SERVER" --new-key)" || { echo "  could not generate a key"; exit 1; }
+  if [ -f "$ROOT/.env" ] && grep -q '^TOKENHUD_KEY=' "$ROOT/.env"; then
+    # A key line exists but is empty; replace it rather than adding a second.
+    tmp="$ROOT/.env.tmp.$$"
+    sed "s|^TOKENHUD_KEY=.*|TOKENHUD_KEY=$key|" "$ROOT/.env" > "$tmp" && mv "$tmp" "$ROOT/.env"
+  else
+    printf 'TOKENHUD_KEY=%s\n' "$key" >> "$ROOT/.env"
+  fi
+  chmod 600 "$ROOT/.env"
+  export TOKENHUD_KEY="$key"
+  echo "  wrote it to .env (mode 600). It never leaves this machine."
+}
+
+# The agent refuses to read anything until you have seen what it reads and said
+# yes. Below, it is started detached with no terminal to ask on — so the asking
+# happens here, where there is one.
+ensure_consent() {
+  agent_bin
+  "$AGENT" --consent-status >/dev/null 2>&1 && return 0
+
+  # Ask on the terminal, not on stdin: this script is often run with its output
+  # piped or its input redirected, and a prompt that reads stdin then silently
+  # takes "no" from a closed pipe is worse than no prompt at all.
+  if ! { [ -r /dev/tty ] && [ -w /dev/tty ]; }; then
+    echo
+    echo "  The agent has not been told it may read your files yet, and there is"
+    echo "  no terminal here to ask on. Look, then agree:"
+    echo
+    echo "    $AGENT --what-i-read"
+    echo "    $AGENT --accept"
+    echo
     exit 2
   fi
+
+  "$AGENT" --what-i-read > /dev/tty
+  printf 'Start the agent and let it read these? [y/N] ' > /dev/tty
+  read -r reply < /dev/tty || reply=n
+  case "$reply" in
+    y|Y|yes|YES) ;;
+    *) echo; echo "  Not agreed. Nothing was read. The server is not started either."; exit 0 ;;
+  esac
+  "$AGENT" --accept >/dev/null
+  echo "  agreed — recorded in ~/.tokenhud/consent.json, delete it to revoke"
+}
+
+cmd_start() {
+  echo "TokenHUD"
+  ensure_consent
+  ensure_key
   reap_strays
   server_bin
   start_one server "$LOGS/server.log" "$SERVER"

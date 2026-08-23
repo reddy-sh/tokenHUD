@@ -326,6 +326,17 @@ fn main() {
         return;
     }
 
+    // For a launcher that needs to know whether to ask, before it detaches a
+    // process that has nobody to ask. Exit 0 = agreed to the current manifest.
+    if has("--consent-status") {
+        if consent::granted() {
+            println!("agreed · manifest {}", manifest::digest());
+            return;
+        }
+        eprintln!("not agreed · manifest {}", manifest::digest());
+        std::process::exit(1);
+    }
+
     if has("--accept") {
         match consent::record("--accept") {
             Ok(()) => {
@@ -349,6 +360,7 @@ fn main() {
         println!("  --what-i-read   every file it opens, resolved against this machine");
         println!("  --dry-run       print the reading it would send, and send nothing");
         println!("  --accept        agree to the manifest without being prompted");
+        println!("  --consent-status  exit 0 if the current manifest is already agreed");
         println!("  --once          one cycle, then exit");
         println!("\nConfigured by TOKENHUD_SERVER, TOKENHUD_KEY, TOKENHUD_INTERVAL.");
         println!("See agent/INSTALL.md for the rest.");

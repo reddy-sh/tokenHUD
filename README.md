@@ -132,9 +132,8 @@ The agent is a Rust binary and has to be built once:
 
 The server is one too. `./scripts/build.sh` builds both.
 
-Full installation — a binary on your PATH, launch at login on macOS, a systemd
-unit for a Linux box, and how to remove all of it — is
-**[agent/INSTALL.md](agent/INSTALL.md)**.
+Full installation for **[macOS, Linux and Windows](INSTALL.md)** — launch at
+login, running one board across several machines, and how to remove all of it.
 
 `status` also says when the running processes are older than the files on
 disk. A process keeps the code it started with, and finding that out by
