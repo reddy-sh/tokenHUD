@@ -969,7 +969,17 @@ function drawTokens(daily, models) {
 
   const view = $('#tok-table-view');
   const t = el('table');
-  t.innerHTML = '<thead><tr><th>Day</th>' + names.map(n => `<th>${shortModel(n)}</th>`).join('') + '<th>Total</th></tr></thead>';
+  /* Built as nodes, not as a string. A model name arrives from a transcript and
+     travels through ingest untouched, so interpolating it into innerHTML was a
+     live XSS: `claude-opus-5<img src=x onerror=...>` round-tripped through the
+     real ingest endpoint and rendered. Every other shortModel() call site
+     already used textContent; this was the one that did not. */
+  const thead = el('thead'), htr = el('tr');
+  htr.appendChild(el('th', { textContent: 'Day' }));
+  names.forEach(n => htr.appendChild(el('th', { textContent: shortModel(n) })));
+  htr.appendChild(el('th', { textContent: 'Total' }));
+  thead.appendChild(htr);
+  t.appendChild(thead);
   const tb = el('tbody');
   rows.slice().reverse().forEach(r => {
     const tr = el('tr');
@@ -1954,8 +1964,8 @@ function render(d) {
   if (!payloads.length) {
     const c = el('div', { className: 'card' });
     c.style.borderColor = css('--warning');
-    c.innerHTML = 'No agent has reported yet. Start one with ' +
-      '<code class="mono">TOKENHUD_SERVER=… TOKENHUD_KEY=… python3 agent/agent.py</code>.';
+    c.append('No agent has reported yet. Start one with ',
+      el('code', { className: 'mono', textContent: './scripts/run.sh' }), '.');
     banner.appendChild(c);
   }
 
