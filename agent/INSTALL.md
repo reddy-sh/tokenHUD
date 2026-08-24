@@ -34,8 +34,15 @@ per-install salt, and a spool for readings that could not be sent.
 
 ## 1. Prerequisites
 
-**A Rust toolchain.** There are no prebuilt binaries yet — no GitHub Release to
-download — so you build it once. That takes about twenty seconds.
+**A running TokenHUD server**, or the intention to start one. The agent posts to
+it; without one it buffers to disk and waits, which is a supported state rather
+than an error.
+
+**A Rust toolchain** — only if you want to build from source. Prebuilt binaries
+are available for macOS and Linux (see Route A below), so most users need
+nothing installed beforehand.
+
+If you do want to build from source:
 
 ```bash
 cargo --version     # any recent stable; verified on 1.95.0
@@ -51,17 +58,31 @@ Homebrew's `rust` works too, and is what this machine has. The difference
 matters in exactly one place — [cross-compiling](#appendix-building-for-another-machine)
 — and nowhere else.
 
-**A running TokenHUD server**, or the intention to start one. The agent posts to
-it; without one it buffers to disk and waits, which is a supported state rather
-than an error.
-
 ---
 
 ## 2. Install
 
-Three routes. Pick by where you want the binary to live.
+Four routes. Pick by where you want the binary to live.
 
-### Route A — you have the repo, and want the launcher to manage it
+### Route A — prebuilt binary (no Rust required)
+
+One command. Downloads the latest release for your OS and architecture, puts it
+in `~/.local/bin`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/reddy-sh/tokenhud/main/scripts/install.sh | sh
+```
+
+Supports macOS (arm64, x86_64) and Linux (x86_64, arm64). The script
+auto-detects your platform.
+
+Or download manually from
+[GitHub Releases](https://github.com/reddy-sh/tokenhud/releases/latest) and
+place the binary anywhere on your PATH.
+
+Skip to [Configure](#3-configure).
+
+### Route B — you have the repo, and want the launcher to manage it
 
 Simplest, and the one to use on the machine you develop on.
 
@@ -79,7 +100,7 @@ building tokenhud-agent (release)…
 The binary stays in the repo and `run.sh` finds it. Skip to
 [Configure](#3-configure).
 
-### Route B — a binary on your PATH
+### Route C — a binary on your PATH (build from source)
 
 For running the agent by hand, or from a launchd/systemd unit.
 
@@ -102,7 +123,7 @@ If it isn't, add it to your shell profile:
 echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.zshrc && exec zsh
 ```
 
-### Route C — build here, run there
+### Route D — build here, run there
 
 The binary links only against libraries macOS already ships
 (`libSystem`, `CoreFoundation`, `libiconv`), so it copies to another Mac of the

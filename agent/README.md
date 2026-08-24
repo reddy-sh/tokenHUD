@@ -10,7 +10,17 @@ survived it is `tests/machine.rs`, which runs against your real machine.
 **Installing it properly — a PATH binary, launch at login, a Linux box, the
 uninstall — is [INSTALL.md](INSTALL.md).** This page is the short version.
 
-## Build and run
+## Install (no Rust required)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/reddy-sh/tokenhud/main/scripts/install.sh | sh
+```
+
+Prebuilt binaries for macOS and Linux are published to
+[GitHub Releases](https://github.com/reddy-sh/tokenhud/releases/latest) on
+every tagged version.
+
+## Build from source and run
 
 ```bash
 ./scripts/build.sh                  # needs cargo; ~20s
