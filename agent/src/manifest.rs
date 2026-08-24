@@ -289,7 +289,9 @@ pub fn inspect(s: &Source) -> Found {
         },
         Kind::Listing => Found {
             exists: p.is_dir(),
-            files: std::fs::read_dir(&p).map(|e| e.flatten().count()).unwrap_or(0),
+            files: std::fs::read_dir(&p)
+                .map(|e| e.flatten().count())
+                .unwrap_or(0),
             bytes: 0,
         },
         Kind::Command => Found {

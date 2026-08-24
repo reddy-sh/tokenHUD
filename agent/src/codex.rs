@@ -103,7 +103,12 @@ fn as_i(v: Option<&Value>) -> i64 {
 
 /// What one rollout file yields: the session, the plan windows it last saw,
 /// the stamp on that reading, and its calls counted by tool name.
-type Rollout = (Session, Vec<RateLimit>, Option<String>, BTreeMap<String, i64>);
+type Rollout = (
+    Session,
+    Vec<RateLimit>,
+    Option<String>,
+    BTreeMap<String, i64>,
+);
 
 fn read_session(path: &Path) -> Option<Rollout> {
     let text = std::fs::read_to_string(path).ok()?;
@@ -174,7 +179,10 @@ fn read_session(path: &Path) -> Option<Rollout> {
             Some("response_item") => {
                 let p = r.get("payload").cloned().unwrap_or(Value::Null);
                 let kind = p.get("type").and_then(|v| v.as_str()).unwrap_or("");
-                if matches!(kind, "function_call" | "custom_tool_call" | "local_shell_call") {
+                if matches!(
+                    kind,
+                    "function_call" | "custom_tool_call" | "local_shell_call"
+                ) {
                     let name = p
                         .get("name")
                         .and_then(|v| v.as_str())
@@ -311,7 +319,9 @@ fn project_view(sessions: &[Session]) -> Vec<Value> {
     }
     let mut by: BTreeMap<String, P> = BTreeMap::new();
     for s in sessions {
-        let Some(path) = s.project.clone() else { continue };
+        let Some(path) = s.project.clone() else {
+            continue;
+        };
         let e = by.entry(path.clone()).or_insert_with(|| P {
             path,
             branch: None,

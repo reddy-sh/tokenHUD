@@ -751,13 +751,15 @@ mod tests {
 
     #[test]
     fn tool_calls_are_counted_by_name_and_mcp_names_are_kept_whole() {
-        let idx = absorbed(&[r#"{"type":"assistant","sessionId":"s","timestamp":"2026-08-01T10:00:00Z",
+        let idx = absorbed(&[
+            r#"{"type":"assistant","sessionId":"s","timestamp":"2026-08-01T10:00:00Z",
             "message":{"model":"claude-opus-5","usage":{"output_tokens":1},"content":[
               {"type":"tool_use","name":"Bash","input":{"command":"cat /etc/shadow"}},
               {"type":"tool_use","name":"Bash","input":{"command":"ls"}},
               {"type":"tool_use","name":"mcp__playwright__browser_click","input":{}},
               {"type":"tool_use","name":"Agent","input":{"subagent_type":"Explore"}},
-              {"type":"tool_use","name":"Skill","input":{"skill":"hallmark"}}]}}"#]);
+              {"type":"tool_use","name":"Skill","input":{"skill":"hallmark"}}]}}"#,
+        ]);
         assert_eq!(idx.tools["Bash"], 2);
         assert_eq!(idx.tools["mcp__playwright__browser_click"], 1);
         assert_eq!(idx.agents["Explore"], 1);

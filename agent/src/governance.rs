@@ -154,7 +154,12 @@ fn permissions(all: &[(String, Value)]) -> Value {
         .map(|s| s.to_string());
     let extra: Vec<String> = all
         .iter()
-        .flat_map(|(_, s)| strs(s.get("permissions").and_then(|p| p.get("additionalDirectories"))))
+        .flat_map(|(_, s)| {
+            strs(
+                s.get("permissions")
+                    .and_then(|p| p.get("additionalDirectories")),
+            )
+        })
         .collect();
     out.insert("defaultMode".into(), json!(mode));
     out.insert("additionalDirectories".into(), json!(extra));
@@ -329,7 +334,11 @@ pub fn collect_claude() -> Value {
     if let Some(v) = read_json(&claude_dir().join("mcp-needs-auth-cache.json")) {
         let needs: Vec<String> = match &v {
             Value::Object(o) => o.keys().cloned().collect(),
-            Value::Array(a) => a.iter().filter_map(|x| x.as_str()).map(String::from).collect(),
+            Value::Array(a) => a
+                .iter()
+                .filter_map(|x| x.as_str())
+                .map(String::from)
+                .collect(),
             _ => Vec::new(),
         };
         for row in servers.iter_mut() {
@@ -414,7 +423,8 @@ impl Toml {
                 continue;
             }
             if let Some(h) = t.strip_prefix('[').and_then(|x| x.strip_suffix(']')) {
-                section = header_parts(h.trim_start_matches('[').trim_end_matches(']')).join("\u{1}");
+                section =
+                    header_parts(h.trim_start_matches('[').trim_end_matches(']')).join("\u{1}");
                 continue;
             }
             let Some((k, v)) = t.split_once('=') else {
@@ -498,7 +508,10 @@ pub fn collect_codex() -> Value {
                 .to_string();
             ("http", host)
         } else if !command.is_empty() {
-            ("stdio", clip(command.rsplit('/').next().unwrap_or(&command), 120))
+            (
+                "stdio",
+                clip(command.rsplit('/').next().unwrap_or(&command), 120),
+            )
         } else {
             ("unknown", String::new())
         };
@@ -530,7 +543,9 @@ pub fn collect_codex() -> Value {
         .children("projects")
         .into_iter()
         .filter(|p| {
-            t.scalar(&format!("projects\u{1}{p}"), "trust_level").as_deref() == Some("trusted")
+            t.scalar(&format!("projects\u{1}{p}"), "trust_level")
+                .as_deref()
+                == Some("trusted")
         })
         .count();
 

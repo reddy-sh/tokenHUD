@@ -16,14 +16,20 @@ use tokenhud_agent::manifest::{self, Kind};
 
 fn collector_sources() -> Vec<(&'static str, String)> {
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    ["collect.rs", "transcripts.rs", "limits.rs", "governance.rs", "codex.rs"]
-        .iter()
-        .map(|f| {
-            let text = std::fs::read_to_string(dir.join(f))
-                .unwrap_or_else(|e| panic!("cannot read {f}: {e}"));
-            (*f, text)
-        })
-        .collect()
+    [
+        "collect.rs",
+        "transcripts.rs",
+        "limits.rs",
+        "governance.rs",
+        "codex.rs",
+    ]
+    .iter()
+    .map(|f| {
+        let text =
+            std::fs::read_to_string(dir.join(f)).unwrap_or_else(|e| panic!("cannot read {f}: {e}"));
+        (*f, text)
+    })
+    .collect()
 }
 
 /// Every `.join("literal")` in the collectors, which is how a path is built here.

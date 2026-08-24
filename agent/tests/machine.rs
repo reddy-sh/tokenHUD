@@ -355,7 +355,12 @@ fn no_mcp_credential_on_this_machine_reaches_the_payload() {
                     .unwrap_or(Value::Null);
                 let listed: Vec<String> = row[if block == "env" { "env" } else { "headers" }]
                     .as_array()
-                    .map(|a| a.iter().filter_map(|x| x.as_str()).map(String::from).collect())
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(|x| x.as_str())
+                            .map(String::from)
+                            .collect()
+                    })
                     .unwrap_or_default();
                 for l in &listed {
                     assert!(
@@ -405,7 +410,10 @@ fn no_mcp_credential_on_this_machine_reaches_the_payload() {
     }
     note(
         "mcp credentials",
-        &format!("{} configured value(s), none of them in the payload", secrets.len()),
+        &format!(
+            "{} configured value(s), none of them in the payload",
+            secrets.len()
+        ),
     );
 }
 

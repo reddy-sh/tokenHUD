@@ -1178,11 +1178,15 @@ mod tests {
         assert!(looks_like_codex(
             "/Applications/ChatGPT.app/Contents/Resources/codex"
         ));
-        assert!(looks_like_codex("/opt/homebrew/bin/codex exec 'do a thing'"));
+        assert!(looks_like_codex(
+            "/opt/homebrew/bin/codex exec 'do a thing'"
+        ));
         // Every one of these is a path INSIDE ~/.codex, and none of them is a
         // running Codex. This is the case that makes the boundary check earn
         // its keep on a machine that actually runs Codex.
-        assert!(!looks_like_codex("node /Users/x/.codex/plugins/browser.mjs"));
+        assert!(!looks_like_codex(
+            "node /Users/x/.codex/plugins/browser.mjs"
+        ));
         assert!(!looks_like_codex("CODEX_HOME=/Users/x/.codex bash -lc ls"));
         assert!(!looks_like_codex("tail -f /Users/x/.codex/log/codex.log"));
         assert!(!looks_like_codex("/usr/local/bin/claude"));
