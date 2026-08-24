@@ -1,0 +1,325 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "TokenHUD Integrations",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1560,
+      680
+    ],
+    "views": [
+      {
+        "id": "fully-read",
+        "label": "Two fully read",
+        "focus": [
+          "claude_dirs",
+          "codex_dirs",
+          "claude_reader",
+          "codex_reader",
+          "snapshot"
+        ],
+        "note": "Claude Code is priced end-to-end; Codex tokens are counted exactly and left unpriced."
+      },
+      {
+        "id": "detected-only",
+        "label": "Detected, not read",
+        "focus": [
+          "others",
+          "detector",
+          "snapshot",
+          "board_view"
+        ],
+        "note": "Installed tools are listed and marked plainly when nothing reads them yet."
+      },
+      {
+        "id": "devin-line",
+        "label": "Devin and the line",
+        "focus": [
+          "devin_dirs",
+          "devin_probe",
+          "devin_cloud"
+        ],
+        "note": "Sessions are counted from filenames alone; the cloud API that holds real spend is never called."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "claude_dirs",
+      "type": "external",
+      "label": "~/.claude",
+      "sublabel": "transcripts · usage cache",
+      "pos": [
+        60,
+        120
+      ],
+      "size": [
+        170,
+        62
+      ]
+    },
+    {
+      "id": "codex_dirs",
+      "type": "external",
+      "label": "~/.codex",
+      "sublabel": "sessions · rate limits",
+      "pos": [
+        60,
+        235
+      ],
+      "size": [
+        170,
+        62
+      ]
+    },
+    {
+      "id": "devin_dirs",
+      "type": "external",
+      "label": "Devin acp-messages",
+      "sublabel": "*.db per session · macOS",
+      "pos": [
+        60,
+        465
+      ],
+      "size": [
+        170,
+        62
+      ]
+    },
+    {
+      "id": "others",
+      "type": "external",
+      "label": "Six more installs",
+      "sublabel": "Cursor · Gemini · Copilot …",
+      "pos": [
+        60,
+        350
+      ],
+      "size": [
+        170,
+        62
+      ]
+    },
+    {
+      "id": "claude_reader",
+      "type": "backend",
+      "label": "Claude collectors",
+      "sublabel": "priced end-to-end",
+      "pos": [
+        390,
+        120
+      ],
+      "size": [
+        170,
+        62
+      ]
+    },
+    {
+      "id": "codex_reader",
+      "type": "backend",
+      "label": "Codex collector",
+      "sublabel": "counted · unpriced",
+      "pos": [
+        390,
+        235
+      ],
+      "size": [
+        170,
+        62
+      ]
+    },
+    {
+      "id": "devin_probe",
+      "type": "security",
+      "label": "Devin activity probe",
+      "sublabel": "never opens a .db",
+      "pos": [
+        390,
+        465
+      ],
+      "size": [
+        170,
+        62
+      ]
+    },
+    {
+      "id": "detector",
+      "type": "backend",
+      "label": "collect_assistants",
+      "sublabel": "detected ≠ hasData",
+      "pos": [
+        390,
+        350
+      ],
+      "size": [
+        170,
+        62
+      ]
+    },
+    {
+      "id": "snapshot",
+      "type": "backend",
+      "label": "Snapshot JSON",
+      "sublabel": "one reading per cycle",
+      "pos": [
+        730,
+        292
+      ],
+      "size": [
+        160,
+        62
+      ]
+    },
+    {
+      "id": "board_view",
+      "type": "frontend",
+      "label": "Assistant dropdown",
+      "sublabel": "read · detected · marked",
+      "pos": [
+        1030,
+        292
+      ],
+      "size": [
+        170,
+        62
+      ]
+    },
+    {
+      "id": "devin_cloud",
+      "type": "cloud",
+      "label": "Devin cloud API",
+      "sublabel": "holds real spend · per-user key",
+      "pos": [
+        1290,
+        520
+      ],
+      "size": [
+        190,
+        62
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "your machine — every integration is read locally",
+      "wraps": [
+        "claude_dirs",
+        "codex_dirs",
+        "devin_dirs",
+        "others",
+        "claude_reader",
+        "codex_reader",
+        "devin_probe",
+        "detector",
+        "snapshot",
+        "board_view"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "tokenhud-agent collectors",
+      "wraps": [
+        "claude_reader",
+        "codex_reader",
+        "devin_probe",
+        "detector"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "from": "claude_dirs",
+      "to": "claude_reader",
+      "label": "transcripts · windows · stats"
+    },
+    {
+      "from": "codex_dirs",
+      "to": "codex_reader",
+      "label": "session JSONL · index"
+    },
+    {
+      "from": "devin_dirs",
+      "to": "devin_probe",
+      "label": "filenames + mtimes only",
+      "variant": "security"
+    },
+    {
+      "from": "others",
+      "to": "detector",
+      "label": "dirs and binaries exist?",
+      "variant": "dashed"
+    },
+    {
+      "from": "claude_reader",
+      "to": "snapshot",
+      "label": "priced tokens"
+    },
+    {
+      "from": "codex_reader",
+      "to": "snapshot",
+      "label": "tokens, unpriced",
+      "labelAt": [
+        585,
+        311
+      ]
+    },
+    {
+      "from": "devin_probe",
+      "to": "snapshot",
+      "label": "sessions · last active",
+      "labelAt": [
+        585,
+        428
+      ]
+    },
+    {
+      "from": "detector",
+      "to": "snapshot",
+      "label": "installed list",
+      "variant": "dashed",
+      "labelDx": -60
+    },
+    {
+      "from": "snapshot",
+      "to": "board_view",
+      "label": "assistants array",
+      "variant": "emphasis"
+    },
+    {
+      "from": "devin_probe",
+      "to": "devin_cloud",
+      "label": "never called — metrics stay local",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Two Fully Read",
+      "items": [
+        "Claude Code: sessions, tokens, spend and the plan's real usage windows, priced end-to-end",
+        "Codex CLI: sessions, tokens and rate limits counted exactly — shown unpriced rather than priced with an invented rate card"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Detected Is Not Read",
+      "items": [
+        "detected and hasData are separate facts the board refuses to conflate",
+        "Windsurf is the live example: ~/.windsurf exists and holds zero bytes of usage",
+        "Cursor, Gemini CLI, Copilot, Windsurf, Antigravity, Aider are listed as installed — never as an empty board that looks broken"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Devin: Activity, Not Usage",
+      "items": [
+        "Local session databases carry no cost and almost no token data, so reporting spend would mean inventing it",
+        "The probe counts .db files and reads timestamps — it never opens one, and no SQLite engine ships in the agent",
+        "Real accounting lives in Devin's cloud API behind a per-user key; calling it would break \"nothing leaves your machine\""
+      ]
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Consent Before Reading",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [1660, 760],
+    "views": [
+      {
+        "id": "first-run",
+        "label": "First run",
+        "focus": ["user", "runsh", "agent", "manifest"],
+        "note": "The full read manifest is resolved against your machine and shown before anything is read."
+      },
+      {
+        "id": "the-yes",
+        "label": "Recording the yes",
+        "focus": ["user", "agent", "consentfile", "collectors"],
+        "note": "Agreement is recorded against the manifest digest; only then do collectors run."
+      },
+      {
+        "id": "drift",
+        "label": "A release reads more",
+        "focus": ["agent", "manifest", "user"],
+        "note": "One more file read means a different digest — the agent asks again instead of inheriting an older yes."
+      }
+    ]
+  },
+  "participants": [
+    { "id": "user", "type": "external", "label": "You", "sublabel": "terminal" },
+    { "id": "runsh", "type": "backend", "label": "run.sh", "sublabel": "ensure_consent" },
+    { "id": "agent", "type": "backend", "label": "tokenhud-agent", "sublabel": "per host" },
+    { "id": "manifest", "type": "security", "label": "Read manifest", "sublabel": "--what-i-read" },
+    { "id": "consentfile", "type": "database", "label": "consent.json", "sublabel": "~/.tokenhud" },
+    { "id": "collectors", "type": "backend", "label": "Collectors", "sublabel": "idle until yes" }
+  ],
+  "segments": [
+    { "from": 150, "to": 400, "label": "First run" },
+    { "from": 418, "to": 530, "label": "Recording the yes" },
+    { "from": 548, "to": 700, "label": "A release reads more" }
+  ],
+  "messages": [
+    { "from": "user", "to": "runsh", "y": 180, "label": "./scripts/run.sh", "variant": "emphasis" },
+    { "from": "runsh", "to": "agent", "y": 222, "label": "--consent-status", "variant": "dashed", "note": "exit 0 means the current manifest is already agreed to" },
+    { "from": "agent", "to": "manifest", "y": 264, "label": "resolve against this machine", "variant": "default" },
+    { "from": "agent", "to": "user", "y": 306, "label": "every path · counts · sizes · what is refused", "variant": "return", "note": "nothing is read while printing, and nothing at all until you agree" },
+    { "from": "user", "to": "agent", "y": 348, "label": "agree", "variant": "emphasis" },
+    { "from": "agent", "to": "consentfile", "y": 440, "label": "record manifest digest", "variant": "security", "note": "delete the file to revoke" },
+    { "from": "agent", "to": "collectors", "y": 482, "label": "reads enabled", "variant": "emphasis" },
+    { "from": "agent", "to": "manifest", "y": 578, "label": "recompute digest", "variant": "default" },
+    { "from": "manifest", "to": "agent", "y": 620, "label": "digest differs", "variant": "return" },
+    { "from": "agent", "to": "user", "y": 662, "label": "asks again — nothing read", "variant": "security" }
+  ],
+  "activations": [
+    { "participant": "runsh", "from": 174, "to": 230, "type": "backend" },
+    { "participant": "agent", "from": 216, "to": 354, "type": "backend" },
+    { "participant": "manifest", "from": 258, "to": 312, "type": "security" },
+    { "participant": "agent", "from": 434, "to": 488, "type": "backend" },
+    { "participant": "consentfile", "from": 434, "to": 446, "type": "database" },
+    { "participant": "agent", "from": 572, "to": 668, "type": "backend" },
+    { "participant": "manifest", "from": 572, "to": 626, "type": "security" }
+  ],
+  "cards": [
+    { "dot": "rose", "title": "Consent Is a Digest", "items": ["Agreement is recorded against a stable digest of the manifest, not a one-time yes", "A release that reads one more file produces a different digest and asks again", "Revoking is deleting ~/.tokenhud/consent.json — no account, no server involved"] },
+    { "dot": "cyan", "title": "Shown Before Anything", "items": ["--what-i-read prints every path resolved against your machine — real counts and sizes, reading nothing", "--dry-run shows the exact payload it would send, sent nowhere", "With no terminal to ask on, the agent stops and tells you how to agree explicitly"] },
+    { "dot": "amber", "title": "Held to the Code by Tests", "items": ["One test greps every collector for path literals and fails on anything the manifest does not declare", "One fails if the manifest claims a path nothing reads", "One asserts the excluded ~/.claude.json keys appear nowhere in the code that opens it"] }
+  ]
+}

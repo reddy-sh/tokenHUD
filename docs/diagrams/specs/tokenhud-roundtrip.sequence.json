@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "TokenHUD Reading Round-Trip",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [1660, 760],
+    "views": [
+      {
+        "id": "reading-lands",
+        "label": "A reading lands",
+        "focus": ["agent", "http", "store", "board", "dash"],
+        "note": "One keyed POST becomes a stored snapshot, a diff, and a pushed board."
+      },
+      {
+        "id": "server-away",
+        "label": "The server is away",
+        "focus": ["agent", "buffer", "http"],
+        "note": "Readings buffer on disk and replay on reconnect — nothing is lost."
+      },
+      {
+        "id": "poll-fallback",
+        "label": "Polling stays correct",
+        "focus": ["dash", "http"],
+        "note": "When EventSource is absent or the stream errors, the timer takes over."
+      }
+    ]
+  },
+  "participants": [
+    { "id": "buffer", "type": "database", "label": "Disk buffer", "sublabel": "on the host" },
+    { "id": "agent", "type": "backend", "label": "tokenhud-agent", "sublabel": "per host" },
+    { "id": "http", "type": "backend", "label": "HTTP API", "sublabel": "tokenhud-server" },
+    { "id": "store", "type": "database", "label": "SQLite", "sublabel": "snapshots · endings" },
+    { "id": "board", "type": "backend", "label": "Board builder", "sublabel": "built once" },
+    { "id": "dash", "type": "frontend", "label": "Dashboard", "sublabel": "browser" }
+  ],
+  "segments": [
+    { "from": 150, "to": 372, "label": "A reading lands" },
+    { "from": 390, "to": 546, "label": "Server away" },
+    { "from": 564, "to": 700, "label": "Fallback read path" }
+  ],
+  "messages": [
+    { "from": "agent", "to": "http", "y": 180, "label": "POST /api/v1/ingest · X-TokenHUD-Key", "variant": "security" },
+    { "from": "http", "to": "store", "y": 222, "label": "append snapshot", "variant": "emphasis", "note": "key compared constant-time before any write" },
+    { "from": "http", "to": "agent", "y": 264, "label": "200 OK", "variant": "return" },
+    { "from": "store", "to": "board", "y": 306, "label": "diff vs previous → endings", "variant": "emphasis" },
+    { "from": "board", "to": "dash", "y": 348, "label": "SSE event · whole overview, gzipped", "variant": "emphasis" },
+    { "from": "agent", "to": "buffer", "y": 420, "label": "no server — buffer the reading", "variant": "dashed" },
+    { "from": "buffer", "to": "agent", "y": 462, "label": "backlog on reconnect", "variant": "return" },
+    { "from": "agent", "to": "http", "y": 504, "label": "POST buffered readings", "variant": "default" },
+    { "from": "dash", "to": "http", "y": 594, "label": "GET /api/v1/overview · poll fallback", "variant": "dashed", "note": "fires only when EventSource is absent or the stream errors" },
+    { "from": "http", "to": "dash", "y": 636, "label": "200 · gzipped overview", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "agent", "from": 174, "to": 270, "type": "backend" },
+    { "participant": "http", "from": 176, "to": 354, "type": "backend" },
+    { "participant": "store", "from": 216, "to": 312, "type": "database" },
+    { "participant": "board", "from": 300, "to": 354, "type": "backend" },
+    { "participant": "agent", "from": 414, "to": 510, "type": "backend" },
+    { "participant": "buffer", "from": 416, "to": 468, "type": "database" },
+    { "participant": "dash", "from": 588, "to": 642, "type": "frontend" },
+    { "participant": "http", "from": 590, "to": 642, "type": "backend" }
+  ],
+  "cards": [
+    { "dot": "rose", "title": "One Key, One Direction", "items": ["Writes require X-TokenHUD-Key, compared with a constant-time digest", "Reads are open by default; TOKENHUD_PROTECT_READS=1 closes them", "On loopback the key is ceremony; beyond loopback it is a real credential behind TLS"] },
+    { "dot": "cyan", "title": "Whole State Every Event", "items": ["Each SSE event carries the entire overview — a missed event never causes drift", "gzip with a sync flush keeps the stream as cheap as the polls it replaced", "A reconnect is a resync, not a gap to reconcile"] },
+    { "dot": "emerald", "title": "Nothing Lost Offline", "items": ["Readings buffer on disk while the server is away and replay in order", "The board schedules from intervalSeconds carried in every snapshot", "Freshness is bounded by TOKENHUD_INTERVAL — how often the agent looks"] }
+  ]
+}

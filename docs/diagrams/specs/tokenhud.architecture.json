@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "TokenHUD Architecture",
+    "quality_profile": "showcase",
+    "viewBox": [1830, 700],
+    "views": [
+      {
+        "id": "what-is-read",
+        "label": "What is read",
+        "focus": ["transcripts", "usage_cache", "processes", "manifest", "collectors"],
+        "note": "Every source is declared up front; consent is recorded against a digest of the list."
+      },
+      {
+        "id": "the-wire",
+        "label": "What crosses the wire",
+        "focus": ["agent_loop", "ingest", "store"],
+        "note": "A keyed POST carries counts and metadata only — never prompt or completion text."
+      },
+      {
+        "id": "reading-to-board",
+        "label": "From reading to board",
+        "focus": ["store", "overview", "dashboard"],
+        "note": "Consecutive readings are diffed into endings; the whole overview is pushed over SSE."
+      }
+    ]
+  },
+  "components": [
+    { "id": "transcripts", "type": "external", "label": "~/.claude/projects", "sublabel": "per-session JSONL", "pos": [60, 130], "size": [150, 62] },
+    { "id": "usage_cache", "type": "external", "label": "~/.claude.json", "sublabel": "usage windows cache", "pos": [60, 260], "size": [150, 62] },
+    { "id": "processes", "type": "external", "label": "Host processes", "sublabel": "ps · liveness", "pos": [60, 390], "size": [150, 62] },
+    { "id": "manifest", "type": "security", "label": "Read manifest", "sublabel": "--what-i-read · consent", "pos": [400, 120], "size": [150, 62] },
+    { "id": "collectors", "type": "backend", "label": "Collectors", "sublabel": "one function per source", "pos": [400, 260], "size": [150, 62] },
+    { "id": "agent_loop", "type": "backend", "label": "tokenhud-agent", "sublabel": "collect → POST · disk buffer", "pos": [660, 260], "size": [160, 62] },
+    { "id": "ingest", "type": "security", "label": "Ingest gate", "sublabel": "X-TokenHUD-Key · hmac", "pos": [665, 510], "size": [150, 62] },
+    { "id": "store", "type": "database", "label": "SQLite", "sublabel": "hosts · snapshots · endings", "pos": [965, 510], "size": [160, 62] },
+    { "id": "overview", "type": "backend", "label": "Board builder", "sublabel": "built once · SSE stream", "pos": [1275, 510], "size": [150, 62] },
+    { "id": "dashboard", "type": "frontend", "label": "Dashboard", "sublabel": "one file · no build step", "pos": [1575, 510], "size": [140, 62] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "your machine · 127.0.0.1 — nothing leaves", "wraps": ["transcripts", "usage_cache", "processes", "manifest", "collectors", "agent_loop", "ingest", "store", "overview", "dashboard"] },
+    { "kind": "security-group", "label": "tokenhud-agent · per host", "wraps": ["collectors", "manifest", "agent_loop"] },
+    { "kind": "security-group", "label": "tokenhud-server", "wraps": ["ingest", "store", "overview"] }
+  ],
+  "connections": [
+    { "from": "transcripts", "to": "collectors", "label": "appended bytes only" },
+    { "from": "usage_cache", "to": "collectors", "label": "one key read", "labelDx": -50 },
+    { "from": "processes", "to": "collectors", "label": "argv truncated" },
+    { "from": "manifest", "to": "collectors", "label": "consent gates every read", "variant": "security", "labelDy": 24 },
+    { "from": "collectors", "to": "agent_loop", "label": "JSON snapshot" },
+    { "from": "agent_loop", "to": "ingest", "label": "POST /api/v1/ingest", "variant": "security", "labelDy": 24 },
+    { "from": "ingest", "to": "store", "label": "append reading" },
+    { "from": "store", "to": "overview", "label": "diff consecutive readings" },
+    { "from": "overview", "to": "dashboard", "label": "SSE · whole state, gzipped", "variant": "emphasis" }
+  ],
+  "cards": [
+    { "dot": "rose", "title": "Privacy Boundary", "items": ["Prompt and completion text are never read into the payload — no code path collects them", "Consent is recorded against a SHA-256 digest of the read manifest; a release that reads more asks again", "Three tests hold the manifest to the code: undeclared paths fail the build"] },
+    { "dot": "cyan", "title": "Push, Not Poll", "items": ["Every SSE event carries the whole overview, so a missed event never leaves a reader behind", "Polling stays as the fallback when EventSource is absent or the stream errors", "Freshness is bounded by TOKENHUD_INTERVAL — how often the agent looks"] },
+    { "dot": "amber", "title": "Honest Numbers", "items": ["Dollar figures are estimated at API list prices and labelled so on every panel", "A model with no rate is reported unpriced, never $0", "Endings derived across a sleep are shown as a time range, not a guessed instant"] }
+  ]
+}

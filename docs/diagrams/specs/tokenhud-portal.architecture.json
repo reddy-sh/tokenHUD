@@ -1,0 +1,236 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Portal Delivery — tokenhud.com",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1740,
+      620
+    ],
+    "views": [
+      {
+        "id": "local-loop",
+        "label": "Local loop",
+        "focus": [
+          "src",
+          "lint",
+          "e2e"
+        ],
+        "note": "oxlint and Playwright gate the push; red sends the change back to the editor."
+      },
+      {
+        "id": "publish-path",
+        "label": "Publish path",
+        "focus": [
+          "repo",
+          "amplify",
+          "headers",
+          "visitor"
+        ],
+        "note": "Amplify publishes site/ and stamps the security headers on every response."
+      },
+      {
+        "id": "the-seam",
+        "label": "The seam to watch",
+        "focus": [
+          "src",
+          "amplify"
+        ],
+        "note": "site/ is now a Vite app, but amplify.yml still ships the directory as-is with no build step."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "src",
+      "type": "frontend",
+      "label": "site/",
+      "sublabel": "React 19 + Vite 8",
+      "pos": [
+        60,
+        160
+      ],
+      "size": [
+        150,
+        62
+      ]
+    },
+    {
+      "id": "lint",
+      "type": "backend",
+      "label": "oxlint",
+      "sublabel": "npm run lint",
+      "pos": [
+        330,
+        160
+      ],
+      "size": [
+        140,
+        62
+      ]
+    },
+    {
+      "id": "e2e",
+      "type": "backend",
+      "label": "Playwright",
+      "sublabel": "smoke + dashboard",
+      "pos": [
+        590,
+        160
+      ],
+      "size": [
+        150,
+        62
+      ]
+    },
+    {
+      "id": "repo",
+      "type": "external",
+      "label": "GitHub main",
+      "sublabel": "reddy-sh/tokenhud",
+      "pos": [
+        590,
+        430
+      ],
+      "size": [
+        150,
+        62
+      ]
+    },
+    {
+      "id": "amplify",
+      "type": "cloud",
+      "label": "Amplify publish",
+      "sublabel": "site/ as-is · no build",
+      "pos": [
+        880,
+        430
+      ],
+      "size": [
+        160,
+        62
+      ]
+    },
+    {
+      "id": "headers",
+      "type": "security",
+      "label": "CSP headers",
+      "sublabel": "no external origin",
+      "pos": [
+        1180,
+        430
+      ],
+      "size": [
+        160,
+        62
+      ]
+    },
+    {
+      "id": "visitor",
+      "type": "frontend",
+      "label": "tokenhud.com",
+      "sublabel": "self-hosted assets",
+      "pos": [
+        1470,
+        430
+      ],
+      "size": [
+        150,
+        62
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "security-group",
+      "label": "developer machine — local loop",
+      "wraps": [
+        "src",
+        "lint",
+        "e2e"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "AWS Amplify Hosting",
+      "wraps": [
+        "amplify",
+        "headers"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "from": "src",
+      "to": "lint",
+      "label": "local checks"
+    },
+    {
+      "from": "lint",
+      "to": "e2e",
+      "label": "green"
+    },
+    {
+      "from": "e2e",
+      "to": "src",
+      "label": "red — fix",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "top"
+    },
+    {
+      "from": "e2e",
+      "to": "repo",
+      "label": "push to main",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "from": "repo",
+      "to": "amplify",
+      "label": "webhook",
+      "variant": "emphasis"
+    },
+    {
+      "from": "amplify",
+      "to": "headers",
+      "label": "every response",
+      "variant": "security"
+    },
+    {
+      "from": "headers",
+      "to": "visitor",
+      "label": "HTTPS · HSTS",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Zero-Build Hosting",
+      "items": [
+        "amplify.yml runs no build commands — Amplify publishes the site/ directory exactly as committed",
+        "The CSP refuses every external origin, the same property the local dashboard holds",
+        "Fonts are self-hosted woff2, cached immutable for a year"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Checks Before Push",
+      "items": [
+        "oxlint and the Playwright smoke + dashboard specs run in the local loop",
+        "A .gitignore exception (!site/*.png) keeps og.png and board.png in the publish — without it Amplify would silently lose them"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Watch This Seam",
+      "items": [
+        "site/ has moved to React 19 + Vite 8, but the empty build phase still ships the raw directory",
+        "Before the React portal ships, amplify.yml needs vite build and a dist/ artifact directory",
+        "Until then, what Amplify serves is whatever site/ holds at the commit — not the Vite output"
+      ]
+    }
+  ]
+}

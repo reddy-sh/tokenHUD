@@ -1,0 +1,223 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Release and Install Pipeline",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1820,
+      620
+    ],
+    "views": [
+      {
+        "id": "tag-to-release",
+        "label": "Tag to release",
+        "focus": [
+          "dev",
+          "actions",
+          "package",
+          "release"
+        ],
+        "note": "A v* tag fans out to four targets; every asset ships with its own checksum."
+      },
+      {
+        "id": "curl-to-running",
+        "label": "curl to running",
+        "focus": [
+          "release",
+          "installer",
+          "bin",
+          "quickstart"
+        ],
+        "note": "install.sh detects OS and arch, verifies each binary, and points at the quick start."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "dev",
+      "type": "external",
+      "label": "git tag v*",
+      "sublabel": "reddy-sh/tokenhud",
+      "pos": [
+        60,
+        160
+      ],
+      "size": [
+        150,
+        62
+      ]
+    },
+    {
+      "id": "actions",
+      "type": "cloud",
+      "label": "GitHub Actions",
+      "sublabel": "4-target matrix",
+      "tag": "release.yml",
+      "pos": [
+        330,
+        160
+      ],
+      "size": [
+        150,
+        62
+      ]
+    },
+    {
+      "id": "package",
+      "type": "backend",
+      "label": "Package + sha256",
+      "sublabel": "agent + server per target",
+      "pos": [
+        630,
+        160
+      ],
+      "size": [
+        160,
+        62
+      ]
+    },
+    {
+      "id": "release",
+      "type": "cloud",
+      "label": "GitHub Release",
+      "sublabel": "8 binaries + checksums",
+      "pos": [
+        910,
+        160
+      ],
+      "size": [
+        160,
+        62
+      ]
+    },
+    {
+      "id": "installer",
+      "type": "security",
+      "label": "install.sh",
+      "sublabel": "curl -fsSL | sh",
+      "tag": "uname detect",
+      "pos": [
+        910,
+        430
+      ],
+      "size": [
+        160,
+        62
+      ]
+    },
+    {
+      "id": "bin",
+      "type": "external",
+      "label": "~/.local/bin",
+      "sublabel": "two static binaries",
+      "pos": [
+        1250,
+        430
+      ],
+      "size": [
+        150,
+        62
+      ]
+    },
+    {
+      "id": "quickstart",
+      "type": "frontend",
+      "label": "127.0.0.1:8787",
+      "sublabel": "key · server · agent",
+      "pos": [
+        1580,
+        430
+      ],
+      "size": [
+        150,
+        62
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "GitHub — free Actions, no external services",
+      "wraps": [
+        "actions",
+        "package",
+        "release"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "your machine",
+      "wraps": [
+        "installer",
+        "bin",
+        "quickstart"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "from": "dev",
+      "to": "actions",
+      "label": "on: tags v*",
+      "variant": "emphasis"
+    },
+    {
+      "from": "actions",
+      "to": "package",
+      "label": "cargo build --release ×4"
+    },
+    {
+      "from": "package",
+      "to": "release",
+      "label": "upload assets",
+      "variant": "emphasis"
+    },
+    {
+      "from": "release",
+      "to": "installer",
+      "label": "curl latest assets",
+      "variant": "emphasis",
+      "labelDy": 80
+    },
+    {
+      "from": "installer",
+      "to": "bin",
+      "label": "chmod +x · --version check"
+    },
+    {
+      "from": "bin",
+      "to": "quickstart",
+      "label": "server --new-key · agent",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Nothing To Install Beside Them",
+      "items": [
+        "Two static binaries, about 4 MB together — no interpreter, no package manager",
+        "install.sh detects OS and architecture from uname: macOS and Linux, x86_64 and arm64",
+        "An unsupported OS exits with a message rather than misbehaving — Windows means WSL2 today"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Checksummed and Verified",
+      "items": [
+        "Every release asset ships with its own .sha256 beside it",
+        "The latest tag is resolved from the GitHub API, never hard-coded",
+        "Each installed binary is exercised with --version before install.sh reports ok"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "CI Treats the Dependency List as a Test",
+      "items": [
+        "Every push runs fmt, clippy -D warnings, and tests with --nocapture so machine-dependent skips stay visible",
+        "cargo tree --depth 1 is printed in each job — a new dependency must be noticed in review, not discovered later"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,247 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "TokenHUD Spend Lineage",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1120,
+      500
+    ],
+    "views": [
+      {
+        "id": "hot-path",
+        "label": "The hot path",
+        "focus": [
+          "jsonl",
+          "index",
+          "pricing",
+          "sqlite",
+          "daily"
+        ],
+        "note": "Appended transcript bytes become priced sessions without re-reading the corpus."
+      },
+      {
+        "id": "two-sources",
+        "label": "Two sources, kept apart",
+        "focus": [
+          "jsonl",
+          "stats",
+          "daily",
+          "alltime"
+        ],
+        "note": "Transcripts and Claude Code's own rollup disagree by design; neither is reconciled into the other."
+      },
+      {
+        "id": "windows-path",
+        "label": "Usage windows",
+        "focus": [
+          "ucache",
+          "limits",
+          "sqlite",
+          "windows"
+        ],
+        "note": "The plan's real percentages are forwarded, aged, and greyed when stale — never re-estimated."
+      }
+    ]
+  },
+  "stages": [
+    {
+      "label": "Sources"
+    },
+    {
+      "label": "Read"
+    },
+    {
+      "label": "Price"
+    },
+    {
+      "label": "Store"
+    },
+    {
+      "label": "Board"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "jsonl",
+      "type": "external",
+      "label": "Transcript corpus",
+      "sublabel": "~/.claude/projects JSONL",
+      "stage": 0,
+      "row": 0,
+      "tag": "~1 GB"
+    },
+    {
+      "id": "stats",
+      "type": "external",
+      "label": "stats-cache.json",
+      "sublabel": "Claude Code's rollup",
+      "stage": 0,
+      "row": 1
+    },
+    {
+      "id": "ucache",
+      "type": "external",
+      "label": "Usage cache",
+      "sublabel": "cachedUsageUtilization",
+      "stage": 0,
+      "row": 2
+    },
+    {
+      "id": "index",
+      "type": "backend",
+      "label": "Incremental index",
+      "sublabel": "byte offset per file",
+      "stage": 1,
+      "row": 0,
+      "tag": "scan budget"
+    },
+    {
+      "id": "limits",
+      "type": "backend",
+      "label": "Limits reader",
+      "sublabel": "account id hashed",
+      "stage": 1,
+      "row": 2
+    },
+    {
+      "id": "pricing",
+      "type": "backend",
+      "label": "Rate card",
+      "sublabel": "API list prices",
+      "stage": 2,
+      "row": 1
+    },
+    {
+      "id": "sqlite",
+      "type": "database",
+      "label": "SQLite",
+      "sublabel": "snapshots · endings",
+      "stage": 3,
+      "row": 1
+    },
+    {
+      "id": "daily",
+      "type": "frontend",
+      "label": "Per-day · per-session",
+      "sublabel": "counted from transcripts",
+      "stage": 4,
+      "row": 0,
+      "width": 150
+    },
+    {
+      "id": "alltime",
+      "type": "frontend",
+      "label": "All-time model table",
+      "sublabel": "counted from stats-cache",
+      "stage": 4,
+      "row": 1,
+      "width": 144
+    },
+    {
+      "id": "windows",
+      "type": "frontend",
+      "label": "Usage windows card",
+      "sublabel": "server's own numbers",
+      "stage": 4,
+      "row": 2
+    }
+  ],
+  "flows": [
+    {
+      "from": "jsonl",
+      "to": "index",
+      "label": "appended bytes",
+      "classification": "tokens only",
+      "variant": "emphasis"
+    },
+    {
+      "from": "index",
+      "to": "pricing",
+      "label": "session token counts",
+      "classification": "no prompt text",
+      "variant": "emphasis"
+    },
+    {
+      "from": "stats",
+      "to": "pricing",
+      "label": "rollup tokens",
+      "classification": "includes pruned sessions",
+      "route": "straight"
+    },
+    {
+      "from": "ucache",
+      "to": "limits",
+      "label": "one key read",
+      "classification": "identity excluded",
+      "variant": "security"
+    },
+    {
+      "from": "pricing",
+      "to": "sqlite",
+      "label": "priced snapshot",
+      "classification": "estimate, labelled",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "from": "limits",
+      "to": "sqlite",
+      "label": "windows + resets",
+      "classification": "measured",
+      "toSide": "bottom",
+      "route": "bottom-channel"
+    },
+    {
+      "from": "sqlite",
+      "to": "daily",
+      "label": "transcript-derived rows",
+      "classification": "current to last request",
+      "variant": "emphasis",
+      "fromSide": "top"
+    },
+    {
+      "from": "sqlite",
+      "to": "alltime",
+      "label": "rollup rows",
+      "classification": "own pricing"
+    },
+    {
+      "from": "sqlite",
+      "to": "windows",
+      "label": "forwarded percentages",
+      "classification": "aged from fetchedAtMs",
+      "fromSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Metrics, Never Content",
+      "items": [
+        "Only token counts, models and timings are read — prompt text has no code path into the payload",
+        "The index stores tokens rather than dollars, so a rate-card change never re-reads the corpus",
+        "Steady state reads a few kilobytes; the first pass is bounded by TOKENHUD_SCAN_BUDGET_MB"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Two Sources, Not Reconciled",
+      "items": [
+        "The all-time table counts Claude Code's own rollup, still including pruned sessions",
+        "Per-day and per-session panels count the transcripts on disk, current to the last request",
+        "They differ by about a fifth on the reference machine — each is priced from its own numbers, and the board says which is which"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Priced, Labelled, Bounded",
+      "items": [
+        "Every dollar reads \"at API list prices · not billed\" — an estimate labelled as one",
+        "A model with no rate is counted in tokens and excluded from every dollar total, never shown as $0",
+        "Cache reads are excluded from the token chart but priced in the model table — a tenth of fresh input, not free"
+      ]
+    }
+  ]
+}
