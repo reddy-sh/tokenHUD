@@ -617,17 +617,39 @@ pub fn collect_assistants() -> Vec<Value> {
             .collect();
         let binary = bin.map(which).unwrap_or(Value::Null);
         let detected = !paths.is_empty() || !binary.is_null();
-        let supported = *id == "claude-code";
+        if !detected {
+            // Not installed here. Listing it would be advertising, not reporting.
+            continue;
+        }
+        let supported = matches!(*id, "claude-code" | "codex");
+
+        // `detected` and `hasData` are different facts and the board must not
+        // conflate them. A directory existing means the tool is installed; it
+        // says nothing about whether anything is readable in it. Windsurf on
+        // this machine is a real example: ~/.windsurf exists and holds zero
+        // bytes of usage. Offering it as a data source you can select, and then
+        // showing "no data", wastes the reader's click and their trust.
+        let has_data = match *id {
+            "claude-code" => claude_dir().join("projects").is_dir(),
+            "codex" => crate::codex::collect()["available"]
+                .as_bool()
+                .unwrap_or(false),
+            _ => false,
+        };
+
         let mut row = json!({
             "id": id,
             "name": name,
             "detected": detected,
             "supported": supported,
+            "hasData": has_data,
             "paths": paths,
             "bin": binary,
-            "note": if supported { "Read by this board." } else {
-                "Detected on this machine. No collector reads it yet — \
-                 add one to collect.rs and it appears here with data." },
+            "note": match (supported, has_data) {
+                (true, true) => "Read by this board.",
+                (true, false) => "Supported, but it has not recorded anything on this machine yet.",
+                _ => "Installed here. It does not write usage data this board can read.",
+            },
         });
         if *id == "codex" && detected {
             if let Some(n) = codex_sessions() {
@@ -639,8 +661,8 @@ pub fn collect_assistants() -> Vec<Value> {
     out.sort_by(|a, b| {
         let key = |v: &Value| {
             (
+                !v["hasData"].as_bool().unwrap_or(false),
                 !v["supported"].as_bool().unwrap_or(false),
-                !v["detected"].as_bool().unwrap_or(false),
                 v["name"].as_str().unwrap_or("").to_string(),
             )
         };
@@ -1028,6 +1050,7 @@ pub fn collect() -> Value {
             "usage": collect_usage(),
             "limits": crate::limits::collect_limits(),
             "assistants": collect_assistants(),
+            "codex": crate::codex::collect(),
             "projects": collect_claude_projects(),
             "daemon": collect_daemon(),
             "prompts": collect_prompts(),

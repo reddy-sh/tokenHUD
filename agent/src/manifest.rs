@@ -73,6 +73,13 @@ pub const READS: &[Source] = &[
         kind: Kind::File,
     },
     Source {
+        display: "~/.codex/sessions/**/*.jsonl",
+        purpose: "Codex CLI token counts, models and plan windows, per session",
+        scope: Some("only `token_count` events and session metadata; the cumulative total, not the turns"),
+        resolve: || crate::codex::sessions_root(),
+        kind: Kind::Corpus,
+    },
+    Source {
         display: "~/.codex/session_index.jsonl",
         purpose: "a count of Codex sessions, so \"detected\" means more than \"a directory exists\"",
         scope: Some("counted, not parsed"),

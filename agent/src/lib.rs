@@ -10,6 +10,7 @@
 //!     A C ABI over these functions is a small step; a C ABI over a binary is
 //!     a process to supervise.
 
+pub mod codex;
 pub mod collect;
 pub mod limits;
 pub mod manifest;

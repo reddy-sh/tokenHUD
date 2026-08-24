@@ -543,6 +543,7 @@ html { scroll-behavior: smooth; }
   <section class="rail-sec">
     <p class="rail-lab">Assistant</p>
     <select id="toolpick" title="Coding assistant"></select>
+    <p id="toolnote" class="note sub" hidden></p>
     <p class="rail-note" id="rail-tool"></p>
   </section>
 
@@ -1230,29 +1231,39 @@ function drawSessions(usage) {
 }
 
 /* ── which assistant this board is showing ───────────────────────────
-   Claude Code is the one with a collector. The others are detected and
-   listed so the dropdown tells the truth about the machine, and picking
-   one says plainly that no data is being read rather than showing an
-   empty board that looks like a broken one.                          */
+   The picker offers only tools this board can actually show something for.
+   Listing a tool that has recorded nothing, and then answering the click
+   with an empty panel, spends the reader's attention to tell them nothing;
+   the honest place for "Windsurf is installed but writes no usage data" is
+   a footnote under the list, not an entry inside it.                   */
 let toolSel = 'claude-code';
 
 function drawAssistants(list) {
   const sel = $('#toolpick');
-  const shown = list.filter(a => a.detected || a.supported);
-  if (!shown.some(a => a.id === toolSel)) toolSel = (shown[0] || {}).id || 'claude-code';
-  /* This select now sits in a permanently visible column and is reached
-     for while a reading lands. Rebuilding it while it is open collapses it
-     under the pointer, so it is rebuilt only when the list changes. */
-  const keys = shown.map(a => a.id + (a.supported ? '' : '!')).join('\u0000');
+  const withData = list.filter(a => a.hasData);
+  const installedOnly = list.filter(a => !a.hasData);
+
+  if (!withData.some(a => a.id === toolSel)) toolSel = (withData[0] || {}).id || 'claude-code';
+  /* This select sits in a permanently visible column and is reached for
+     while a reading lands. Rebuilding it while it is open collapses it under
+     the pointer, so it is rebuilt only when the list changes. */
+  const keys = withData.map(a => a.id).join('\u0000');
   if (sel.dataset.keys !== keys) {
     sel.innerHTML = '';
-    shown.forEach(a => sel.appendChild(el('option', {
-      value: a.id, textContent: a.name + (a.supported ? '' : ' · no data') })));
+    withData.forEach(a => sel.appendChild(el('option', { value: a.id, textContent: a.name })));
     sel.dataset.keys = keys;
   }
   sel.value = toolSel;
-  sel.hidden = shown.length < 2;
-  return shown.find(a => a.id === toolSel) || null;
+  sel.hidden = withData.length < 2;
+
+  /* The rest, stated once and quietly. */
+  const note = $('#toolnote');
+  if (note) {
+    const names = installedOnly.map(a => a.name).join(', ');
+    note.textContent = names ? `also installed, no usage data: ${names}` : '';
+    note.hidden = !names;
+  }
+  return withData.find(a => a.id === toolSel) || null;
 }
 
 function drawOffboard(a) {
