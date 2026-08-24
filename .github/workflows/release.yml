@@ -1,0 +1,88 @@
+# Build release binaries on tag push and attach them to a GitHub Release.
+# Targets: macOS arm64, macOS x86_64, Linux x86_64, Linux arm64.
+# All free via GitHub Actions — no external services.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS arm64
+            os: macos-latest
+            target: aarch64-apple-darwin
+            binary: tokenhud-agent
+            artifact: tokenhud-agent-aarch64-apple-darwin
+
+          - name: macOS x86_64
+            os: macos-latest
+            target: x86_64-apple-darwin
+            binary: tokenhud-agent
+            artifact: tokenhud-agent-x86_64-apple-darwin
+
+          - name: Linux x86_64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            binary: tokenhud-agent
+            artifact: tokenhud-agent-x86_64-unknown-linux-gnu
+
+          - name: Linux arm64
+            os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            binary: tokenhud-agent
+            artifact: tokenhud-agent-aarch64-unknown-linux-gnu
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: agent
+
+      - name: Build
+        run: cargo build --release --manifest-path agent/Cargo.toml --target ${{ matrix.target }}
+
+      - name: Package
+        run: |
+          mkdir -p dist
+          cp agent/target/${{ matrix.target }}/release/${{ matrix.binary }} dist/${{ matrix.artifact }}
+          chmod +x dist/${{ matrix.artifact }}
+          shasum -a 256 dist/${{ matrix.artifact }} > dist/${{ matrix.artifact }}.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: artifacts/*
