@@ -18,6 +18,8 @@ logs/
 # tooling scratch
 .playwright-mcp/
 *.png
+# …except the README's screenshot, which is generated from synthetic data
+!docs/board.png
 
 # Rust build output — a few hundred MB of it
 agent/target/

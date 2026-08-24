@@ -2,19 +2,115 @@
 
 **A heads-up display for the AI agents running on your machine.**
 
-[tokenhud.com](https://tokenhud.com) · MIT · zero dependencies · local-first
+[tokenhud.com](https://tokenhud.com) · MIT · two static binaries · nothing to install beside them
 
 ---
 
-A single developer now runs several coding agents and a shelf of MCP servers at
-once, and flies all of it blind. Token spend is metered by the provider and
-surfaced after the fact. MCP servers start, hang and die silently. A looping
-agent burns budget with no alarm anywhere in the system.
+A single developer now runs several coding agents at once and flies all of it
+blind. Token spend is metered by the provider and surfaced after the fact. A
+looping agent burns budget with no alarm anywhere in the system. Claude Code
+deletes its own session history after thirty days.
 
-TokenHUD is the instrument panel for that machine. It watches the host and
-reports what it finds: what is running, what it is costing, and when to step in.
+TokenHUD is the instrument panel for that machine. It reads what your agents
+have already written to disk, prices it, and shows you what is running, what it
+is costing, and when to step in — on `127.0.0.1`, with no account and no network.
+
+![The TokenHUD board: usage windows against your plan's real limits, what just
+finished, daily activity and tokens by model](docs/board.png)
+
+<sub>Synthetic data — the project names and figures above are generated, not a
+real machine's.</sub>
+
+## Get started
+
+Two commands after the clone. `run.sh` shows you what the agent reads, asks,
+generates an ingest key, and starts both processes.
+
+### macOS · Linux
+
+```bash
+git clone https://github.com/reddy-sh/tokenhud.git
+cd tokenhud
+./scripts/build.sh          # needs cargo — https://rustup.rs — about 30s
+./scripts/run.sh            # shows the read manifest, asks, then starts
+```
+
+Open **http://127.0.0.1:8787**.
+
+You are not asked to create a key or edit a config file. On a loopback install
+the ingest key is ceremony rather than security — both processes are yours, on
+your machine — so it is generated for you and written to `.env` at mode 600. It
+starts mattering the moment you bind beyond loopback, which is
+[its own section](INSTALL.md#linux--sharing-one-board-across-machines).
+
+### Windows
+
+**Not yet — and it will not compile rather than merely misbehave.** The agent
+calls `uname`, `getloadavg`, `kill`, `gethostname` and `getentropy` unguarded and
+shells out to `ps`. [INSTALL.md](INSTALL.md#windows) lists the four changes that
+would fix it.
+
+**Use WSL2 today.** Claude Code inside WSL writes to the WSL home directory, so
+the Linux instructions apply unchanged and the agent reads the right files.
+
+### Day to day
+
+```bash
+./scripts/run.sh status     # up? which machines? what does it hold?
+./scripts/run.sh logs       # follow both
+./scripts/run.sh restart    # after any change under server/ or agent/
+./scripts/run.sh selftest   # every test in the repo
+./scripts/run.sh stop
+```
+
+Keeping it running across logins, running one board for several machines, and
+removing all of it: **[INSTALL.md](INSTALL.md)**.
+
+## It tells you every file it will open, before it opens one
+
+This is the part worth two minutes. Run it before you trust anything else here:
+
+```console
+$ tokenhud-agent --what-i-read
+
+  ~/.claude/projects/**/*.jsonl    1130 files, 1.1 GB
+                                   per-session token counts, models, timings and tool calls
+                                   └ only lines whose type is `assistant` or `ai-title`
+
+  ~/.claude.json                   74.6 KB
+                                   your plan's real 5-hour and 7-day usage windows
+                                   └ exactly one key: `cachedUsageUtilization`.
+                                     Never `oauthAccount`, never `projects`, never `utilization.spend`
+
+  …
+
+  NEVER READ
+  prompt text and session titles   opt-in, off by default
+  ~/.claude.json → oauthAccount    your identity
+  your source code                 no collector opens a file outside the paths above
+```
+
+Resolved against *your* machine — real file counts and sizes, not a description.
+It reads nothing while printing it, and **nothing is read at all until you
+agree.** Consent is recorded against a SHA-256 digest of that list, so a release
+that reads one more file asks again instead of inheriting an older yes.
+
+The list cannot quietly drift from the code, because three tests hold it to the
+code: one greps every collector for path literals and fails on anything
+undeclared, one fails if the manifest claims a path nothing reads, and one
+asserts the keys the exclusion list names appear nowhere in the code that opens
+`~/.claude.json`.
+
+It is a grep, not an adversarial sandbox — a path assembled at runtime would slip
+past it. What it catches is the realistic failure: a well-meaning change that
+reads one more file and forgets to say so.
+
+```bash
+tokenhud-agent --dry-run     # the exact reading it would send, sent nowhere
+```
 
 ## Metrics leave. Content never does.
+
 
 This is the product's foundation, not a setting.
 
@@ -68,6 +164,7 @@ failure: a well-meaning change that reads one more file and forgets to say so.
 
 ## What works today
 
+
 This repository is the **local daemon and web dashboard**. It is real, it runs,
 and it is what the screenshots show.
 
@@ -82,6 +179,7 @@ server health, threshold alerts, and cross-machine team rollups. The roadmap
 below is a plan, not a description.
 
 ## Architecture
+
 
 ```
 ┌──────────────┐   POST /api/v1/ingest   ┌──────────────┐        ┌───────────┐
@@ -101,77 +199,8 @@ returning JSON, so other runtimes drop in beside it — and the assistant dropdo
 lists every one it finds installed, marking the ones no collector reads yet
 rather than showing an empty board that looks broken.
 
-## Quick start
-
-```bash
-git clone https://github.com/reddy-sh/tokenhud.git
-cd tokenhud
-
-cp .env.example .env
-./scripts/build.sh                                        # builds both binaries first
-./server/target/release/tokenhud-server --new-key        # paste the value into .env as TOKENHUD_KEY
-
-./scripts/run.sh                          # starts both, detached
-```
-
-Open **http://127.0.0.1:8787**.
-
-```bash
-./scripts/run.sh status     # is it up? which hosts? what does it hold?
-./scripts/run.sh logs       # follow both
-./scripts/run.sh stop
-./scripts/run.sh restart    # after any change under server/ or agent/
-./scripts/run.sh selftest   # the checks below, without remembering the path
-```
-
-The agent is a Rust binary and has to be built once:
-
-```bash
-./scripts/build.sh              # needs cargo; ~30s, then run.sh finds both
-```
-
-The server is one too. `./scripts/build.sh` builds both.
-
-Full installation for **[macOS, Linux and Windows](INSTALL.md)** — launch at
-login, running one board across several machines, and how to remove all of it.
-
-`status` also says when the running processes are older than the files on
-disk. A process keeps the code it started with, and finding that out by
-wondering why an edit did nothing is a bad afternoon.
-
-`run.sh` detaches on its own, so a trailing `&` is unnecessary (harmless if you
-type it). It refuses to double-start and reaps processes left behind by an
-earlier hand-start, so there is never more than one agent reporting per host.
-
-To run the pieces separately — a server on one box, agents on several — use
-`scripts/start-server.sh` and `scripts/start-agent.sh` instead.
-
-The first reading lands within one interval (30s by default); the board says
-so until it does.
-
-Check what the agent would send, without a server and without sending anything:
-
-```bash
-./agent/target/release/tokenhud-agent --dry-run | less
-```
-
-Check that this checkout actually works on your machine:
-
-```bash
-./scripts/run.sh selftest       # every test in the repo
-```
-
-Forty-four checks, no framework, nothing installed, nothing mocked — the real
-collectors against your real machine, a real SQLite file in a temp directory, a
-real server on a throwaway port. It verifies the rate-card arithmetic, that an
-unpriced model reports as unpriced rather than as $0, that a five-hour block is
-five hours, that the limits collector never writes to Claude Code's config and
-carries nothing identifying, that prompt text stays put without the opt-in, that
-a broken source does not drop the host, that a replayed snapshot invents no
-endings, that ingest refuses a wrong key, and that the dashboard has no external
-references and no duplicate element ids.
-
 ## Layout
+
 
 | Path | What it is |
 |---|---|
@@ -189,6 +218,7 @@ references and no duplicate element ids.
 | `docs/ARCHITECTURE.md` | what runs, what it measured, and what multi-machine would take |
 
 ## The API
+
 
 | | |
 |---|---|
@@ -214,6 +244,7 @@ than a second behind the data. Switch it off and the board freezes on what it
 already has and fetches nothing.
 
 ## Speed, and what actually made it faster
+
 
 The board is pushed to, not polled. `GET /api/v1/stream` holds a connection
 open and sends the whole overview the instant an agent's reading lands. Polling
@@ -269,6 +300,7 @@ anywhere.
 
 ## What finished while you were away
 
+
 A snapshot says which agents were running at an instant. Nobody watches a
 dashboard at every instant, and the question people actually have when they sit
 back down is *what finished* — including the notification that fired while the
@@ -285,6 +317,7 @@ Endings can only exist from the moment the server starts watching, and the
 panel says so rather than looking empty for an unexplained reason.
 
 ## Usage windows
+
 
 Claude Code asks Anthropic how much of your plan is spent and when each window
 resets, and caches the answer in `~/.claude.json` under
@@ -312,6 +345,7 @@ machine this was built on, and it is the fallback when the cache is missing.
 
 ## Saving a PDF
 
+
 The rail has a **Save as PDF** button, and `Cmd-P` does the same thing. There is
 no PDF library: the browser already writes PDFs, `.cols-2` is
 `minmax(420px, 1fr)` so an A4 content box linearises the board on its own, and a
@@ -322,6 +356,7 @@ carries them is not printed. It prints what the board is showing, including an
 unsupported assistant's warning card.
 
 ## Privacy and safety
+
 
 The defaults are chosen so that doing nothing is safe.
 
@@ -344,6 +379,7 @@ header: put TLS in front of it (a reverse proxy is the easy answer) and treat
 `TOKENHUD_KEY` as a real credential.
 
 ## Honesty
+
 
 Every number is either measured or labelled as an estimate. There is exactly
 one estimate, and this is the argument for it.
@@ -384,6 +420,7 @@ one estimate, and this is the argument for it.
 
 ## Design
 
+
 The chart palette is validated, not chosen by eye: it clears the lightness
 band, chroma floor, colour-blind separation, normal-vision floor and contrast
 checks in both light and dark. The three light-mode hues that sit under 3:1 on
@@ -391,6 +428,7 @@ the light surface are why the legend carries values and the token chart has a
 table view — identity is never carried by colour alone.
 
 ## Reading a gigabyte every 30 seconds (not doing that)
+
 
 Claude Code appends one JSONL per session; a working machine reaches a
 gigabyte and a single transcript can pass 200 MB. `agent/src/transcripts.rs` keeps
@@ -401,6 +439,7 @@ blocks on it, and the index stores token counts rather than dollars, so
 changing the rate card never means re-reading the corpus.
 
 ## Scope — now, later, and never
+
 
 The third column is the one that matters. *Later* is a scheduling decision and
 can move. **Never is a promise, and moving it would break the product.**
@@ -421,6 +460,7 @@ path, so it cannot be the reason a call fails.
 
 ## Operating principles
 
+
 1. **Metrics leave, content never does.** Not negotiable for a customer, a deal, or a quarter.
 2. **Zero-config or it does not ship.** If you have to describe your own setup, discovery failed.
 3. **Glanceable over queryable.** Every question you have to type is a number that should already be on screen.
@@ -434,6 +474,7 @@ greys out a stale percentage while leaving its countdown live.
 
 ## Pricing
 
+
 **Free forever** for one user on one machine: unlimited metering, no sampling,
 full history, local alerts, and it runs with the network off. A free user costs
 nothing to serve, because nothing is served — it all happens on your machine.
@@ -446,5 +487,6 @@ other people — the moment a second developer needs to see the same numbers —
 not an artificial ceiling on the first one.
 
 ## Licence
+
 
 MIT — see [LICENSE](LICENSE).
