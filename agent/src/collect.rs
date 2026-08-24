@@ -226,6 +226,26 @@ fn looks_like_claude(cmd: &str) -> bool {
     false
 }
 
+/// The same rule for Codex, and a separate function rather than a parameter.
+///
+/// `~/.codex` appears in half the command lines on a machine that runs Codex —
+/// `CODEX_HOME`, a plugin path, a rollout — and every one of those has a `.`
+/// before the word. Matching `/codex` on a boundary picks the binary
+/// (`/Applications/ChatGPT.app/Contents/Resources/codex`) and leaves the
+/// directories alone.
+fn looks_like_codex(cmd: &str) -> bool {
+    let b = cmd.as_bytes();
+    let mut from = 0;
+    while let Some(i) = cmd[from..].find("/codex") {
+        let end = from + i + "/codex".len();
+        if end == b.len() || (b[end] as char).is_whitespace() {
+            return true;
+        }
+        from = end;
+    }
+    false
+}
+
 /// The value of `--flag <value>`, whitespace-separated, as the Python's
 /// `--agent\s+(\S+)` reads it.
 fn flag_value(cmd: &str, flag: &str) -> Option<String> {
@@ -265,18 +285,40 @@ pub fn collect_processes() -> Vec<Value> {
             None => continue,
         };
 
-        if !looks_like_claude(cmd) {
+        // Which assistant this is, decided once. The server already carries a
+        // `tool` column on an ending; until now nothing filled it, so the
+        // board's "Running now" could only ever mean Claude Code.
+        let tool = if looks_like_claude(cmd) {
+            "claude-code"
+        } else if looks_like_codex(cmd) {
+            "codex"
+        } else {
             continue;
-        }
+        };
         if cmd.contains("tokenhud") {
             continue;
         }
 
-        let headless = cmd.contains(" -p ") || cmd.ends_with(" -p") || cmd.contains("--print");
+        let headless = if tool == "codex" {
+            // Codex spells it as a subcommand rather than a flag.
+            cmd.contains(" exec ") || cmd.ends_with(" exec")
+        } else {
+            cmd.contains(" -p ") || cmd.ends_with(" -p") || cmd.contains("--print")
+        };
         let agent = flag_value(cmd, "--agent");
         let model = flag_value(cmd, "--model");
 
-        let kind = if let Some(a) = &agent {
+        let kind = if tool == "codex" {
+            if headless {
+                "exec".to_string()
+            } else if cmd.contains(" mcp") {
+                "mcp server".to_string()
+            } else if cmd.contains("app-server") {
+                "app server".to_string()
+            } else {
+                "interactive".to_string()
+            }
+        } else if let Some(a) = &agent {
             format!("agent · {a}")
         } else if headless {
             "headless".to_string()
@@ -293,6 +335,7 @@ pub fn collect_processes() -> Vec<Value> {
             json!({
                 "pid": pid,
                 "elapsed": etime,
+                "tool": tool,
                 "kind": kind,
                 "headless": headless,
                 "agent": agent,
@@ -595,6 +638,7 @@ const ASSISTANTS: &[(&str, &str, &[&str], Option<&str>)] = &[
     ),
     ("antigravity", "Antigravity", &[".antigravity-ide"], None),
     ("aider", "Aider", &[".aider.conf.yml"], Some("aider")),
+    ("devin", "Devin", &[".devin", ".config/devin"], None),
 ];
 
 /// Codex keeps one line per session in an index file. Cheap to count, and it
@@ -926,6 +970,62 @@ fn blocks(idx: &Index) -> Value {
     })
 }
 
+/// What was actually called, by name — the other half of a governance panel.
+///
+/// The configured side of that panel comes from settings files and says what an
+/// agent MAY reach. This side says what it DID reach, and the two are shown
+/// beside each other rather than merged: an MCP server mounted for six months
+/// and never called is a fact only the pair can state.
+fn tool_view(idx: &Index) -> Value {
+    let rank = |m: &IndexMap<String, i64>| -> Vec<(String, i64)> {
+        let mut v: Vec<(String, i64)> = m.iter().map(|(k, n)| (k.clone(), *n)).collect();
+        v.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+        v
+    };
+
+    // `mcp__<server>__<tool>`. The server is everything up to the first double
+    // underscore after the prefix; a tool name's own underscores are single.
+    let mut by_server: IndexMap<String, (i64, Vec<String>)> = IndexMap::new();
+    let mut mcp_calls = 0i64;
+    let mut builtin = 0i64;
+    for (name, n) in &idx.tools {
+        match name.strip_prefix("mcp__").and_then(|r| r.split_once("__")) {
+            Some((server, tool)) => {
+                mcp_calls += n;
+                let e = by_server.entry(server.to_string()).or_default();
+                e.0 += n;
+                e.1.push(tool.to_string());
+            }
+            None => builtin += n,
+        }
+    }
+    let mut servers: Vec<Value> = by_server
+        .iter()
+        .map(|(name, (calls, tools))| json!({"server": name, "calls": calls, "tools": tools.len()}))
+        .collect();
+    servers.sort_by(|a, b| b["calls"].as_i64().cmp(&a["calls"].as_i64()));
+
+    let rows = |v: Vec<(String, i64)>, key: &str| -> Vec<Value> {
+        v.into_iter()
+            .map(|(name, calls)| json!({key: name, "calls": calls}))
+            .collect()
+    };
+
+    json!({
+        "total": idx.tools.values().sum::<i64>(),
+        "distinct": idx.tools.len(),
+        "builtinCalls": builtin,
+        "mcpCalls": mcp_calls,
+        "byTool": rows(rank(&idx.tools), "name").into_iter().take(40).collect::<Vec<_>>(),
+        "byServer": servers,
+        "agents": rows(rank(&idx.agents), "agent"),
+        "skills": rows(rank(&idx.skills), "skill"),
+        "note": "Counted from the transcripts, all time, by tool name only. A tool's \
+                 input — the command, the path, the prompt — is never read into the \
+                 index this is built from.",
+    })
+}
+
 /// Per-session usage and an estimated dollar value, from the transcripts.
 pub fn collect_usage() -> Value {
     let (idx, scan) = transcripts::scan();
@@ -1014,6 +1114,7 @@ pub fn collect_usage() -> Value {
         },
         "pricing": pricing::card(),
         "blocks": blocks(&idx),
+        "tools": tool_view(&idx),
         "allTime": {
             "estUSD": pricing::round(rows.iter().map(|r| r.est).sum::<f64>(), 2),
             "sessions": rows.len(),
@@ -1051,6 +1152,7 @@ pub fn collect() -> Value {
             "limits": crate::limits::collect_limits(),
             "assistants": collect_assistants(),
             "codex": crate::codex::collect(),
+            "governance": crate::governance::collect(),
             "projects": collect_claude_projects(),
             "daemon": collect_daemon(),
             "prompts": collect_prompts(),
@@ -1069,6 +1171,21 @@ mod tests {
         assert!(looks_like_claude("node /x/bin/claude --print"));
         assert!(!looks_like_claude("vim /Users/x/anthropic/claude-notes.md"));
         assert!(!looks_like_claude("grep claude ."));
+    }
+
+    #[test]
+    fn codex_is_matched_on_the_binary_not_on_its_directory() {
+        assert!(looks_like_codex(
+            "/Applications/ChatGPT.app/Contents/Resources/codex"
+        ));
+        assert!(looks_like_codex("/opt/homebrew/bin/codex exec 'do a thing'"));
+        // Every one of these is a path INSIDE ~/.codex, and none of them is a
+        // running Codex. This is the case that makes the boundary check earn
+        // its keep on a machine that actually runs Codex.
+        assert!(!looks_like_codex("node /Users/x/.codex/plugins/browser.mjs"));
+        assert!(!looks_like_codex("CODEX_HOME=/Users/x/.codex bash -lc ls"));
+        assert!(!looks_like_codex("tail -f /Users/x/.codex/log/codex.log"));
+        assert!(!looks_like_codex("/usr/local/bin/claude"));
     }
 
     #[test]

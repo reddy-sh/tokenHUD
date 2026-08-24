@@ -20,6 +20,8 @@ logs/
 *.png
 # …except the README's screenshot, which is generated from synthetic data
 !docs/board.png
+# …and the marketing site's images, which Amplify deploys from the repo
+!site/*.png
 
 # Rust build output — a few hundred MB of it
 agent/target/

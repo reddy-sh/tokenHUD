@@ -6,10 +6,10 @@
       "@id": "https://tokenhud.com/#app",
       "name": "TokenHUD",
       "alternateName": "Token HUD",
-      "description": "A heads-up display for the AI coding agents running on your machine. Live token metering, estimated spend, and plan-limit windows for Claude Code — running entirely on your own computer.",
+      "description": "A heads-up display for the AI coding agents running on your machine. Live token metering, estimated spend, and plan-limit windows for Claude Code and Codex CLI — running entirely on your own computer.",
       "applicationCategory": "DeveloperApplication",
       "applicationSubCategory": "Developer Monitoring Tool",
-      "operatingSystem": "macOS, Linux, Windows",
+      "operatingSystem": "macOS, Linux",
       "url": "https://tokenhud.com/",
       "downloadUrl": "https://github.com/reddy-sh/tokenhud",
       "codeRepository": "https://github.com/reddy-sh/tokenhud",
@@ -19,7 +19,7 @@
       "offers": [
         {
           "@type": "Offer",
-          "name": "Individual",
+          "name": "Solo",
           "price": "0",
           "priceCurrency": "USD",
           "description": "Free forever for one developer on one machine. Unlimited metering, no sampling, full local history. Runs with the network off."
@@ -28,20 +28,24 @@
           "@type": "Offer",
           "name": "Team",
           "priceCurrency": "USD",
-          "description": "Per seat. Cross-machine rollups, shared budgets, retained history, chargeback reports, and alerts to Slack and email.",
+          "description": "Per seat. Cross-machine rollups, shared budgets, retained history, chargeback reports, and alerts to Slack and email. Planned — not yet available.",
           "availability": "https://schema.org/PreOrder"
         }
       ],
       "featureList": [
-        "Discovers AI coding agents and MCP servers on the host with no configuration",
+        "Discovers AI coding agents and their sessions on the host with no configuration",
         "Meters token usage and estimated spend by session, agent, model and project",
         "Shows your plan's real five-hour and seven-day usage windows and when they reset",
         "Reports which agents finished while you were away",
         "Never reads prompt text, completion text, or source code"
       ],
-      "softwareRequirements": "None. Two static binaries; no interpreter, no package manager, no build step.",
-      "author": { "@id": "https://tokenhud.com/#org" },
-      "publisher": { "@id": "https://tokenhud.com/#org" }
+      "softwareRequirements": "Rust toolchain to build from source. Two static binaries; no interpreter, no package manager.",
+      "author": {
+        "@id": "https://tokenhud.com/#org"
+      },
+      "publisher": {
+        "@id": "https://tokenhud.com/#org"
+      }
     },
     {
       "@type": "Organization",
@@ -49,14 +53,18 @@
       "name": "TokenHUD",
       "url": "https://tokenhud.com/",
       "logo": "https://tokenhud.com/logo.png",
-      "sameAs": ["https://github.com/reddy-sh/tokenhud"]
+      "sameAs": [
+        "https://github.com/reddy-sh/tokenhud"
+      ]
     },
     {
       "@type": "WebSite",
       "@id": "https://tokenhud.com/#website",
       "url": "https://tokenhud.com/",
       "name": "TokenHUD",
-      "publisher": { "@id": "https://tokenhud.com/#org" }
+      "publisher": {
+        "@id": "https://tokenhud.com/#org"
+      }
     }
   ]
 }

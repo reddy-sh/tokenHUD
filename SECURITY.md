@@ -8,13 +8,25 @@ touches, what it cannot touch, and how to tell us when we get it wrong.
 Everything below is read **read-only**. The agent opens no file for writing
 outside its own state directory.
 
+`agent/src/manifest.rs` is the authoritative list; this table is its prose
+form, and `tokenhud-agent --what-i-read` prints it resolved against your own
+machine. A test greps the collectors for every path literal and fails the build
+if one is not declared there, so the two cannot drift.
+
 | Path | What is read | Why |
 |---|---|---|
 | `~/.claude/stats-cache.json` | aggregate token counts by model and day | the all-time totals |
-| `~/.claude/projects/**/*.jsonl` | assistant records only — model, token counts, timestamps, tool-use block *counts* | per-session metering |
+| `~/.claude/projects/**/*.jsonl` | assistant records only — model, token counts, timestamps, and each tool call's **name** | per-session metering, and which tools and MCP servers were actually used |
 | `~/.claude.json` | **one key**, `cachedUsageUtilization` | your plan's real five-hour and weekly windows |
+| `~/.claude/settings.json`, `settings.local.json` | permission rules, hooks, MCP servers, plugins, and the settings that decide what runs without asking | the governance panels |
+| `~/.claude/mcp-needs-auth-cache.json` | server names | which MCP servers are mounted but not signed in |
+| `~/.claude/plugins/config.json`, `installed_plugins.json` | plugin names | installed beside enabled |
+| `~/.claude/agents`, `~/.claude/skills` | a directory listing — **names only** | the extensions inventory |
 | `~/.claude/daemon.status.json` | supervisor pid and liveness | the "supervisor up" pill |
 | `~/.claude/history.jsonl` | prompt text — **only** when `TOKENHUD_SEND_PROMPTS=1` | off by default |
+| `~/.codex/sessions/**/*.jsonl` | token counts, plan windows, the approval and sandbox policy each session ran under, and each call's **name** | the Codex board |
+| `~/.codex/config.toml` | MCP servers, approval policy, sandbox mode, plugins, features | Codex governance |
+| `~/.codex/session_index.jsonl`, `~/.codex/skills` | a count, and a directory listing | detection, and the extensions inventory |
 | `ps -Ao pid,etime,command` | processes matching a Claude binary path | the running-agents list |
 
 ## What it never reads
@@ -29,11 +41,24 @@ outside its own state directory.
   enabled. Deliberately excluded; see `agent/src/limits.rs`.
 - **`projects`** in `~/.claude.json` — a per-project cost and token history.
   Deliberately excluded.
+- **A tool call's input.** The governance panel counts calls by tool name. The
+  command a Bash call ran, the file a Read call opened, the prompt a Task
+  carried — none of it is read into the index those counts come from. The two
+  exceptions are `subagent_type` and `skill`, which name a configured
+  capability rather than describe a piece of work.
+- **MCP credentials.** An MCP server's `env` and `headers` blocks are read for
+  their variable **names** — "this server is handed `GITHUB_TOKEN`" is the
+  governance fact worth showing — and never for a value. A URL-based server is
+  reported by host, so a token in a query string does not travel either.
 
-The test suite enforces three of these mechanically. One asserts the limits
+The test suite enforces five of these mechanically. One asserts the limits
 payload carries no `emailAddress`, `@`, `organizationName`, `oauthAccount` or
 `used_dollars`. Another asserts prompt text and session titles stay empty
-unless the opt-in is set. The third asserts that no `innerHTML` assignment in
+unless the opt-in is set. A third collects every credential value configured on
+*your* machine and asserts none of them appears in the governance payload, and
+that what the payload lists for a server is that block's keys rather than its
+values. A fourth asserts a tool call's input never reaches the transcript
+index. The last asserts that no `innerHTML` assignment in
 the dashboard is built from a value — what it renders (model names, project
 paths) arrives from a transcript and crosses ingest untouched, and one such
 interpolation was a live cross-site-scripting hole until it was found.

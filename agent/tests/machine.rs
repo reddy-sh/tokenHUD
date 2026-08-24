@@ -254,6 +254,7 @@ fn a_reading_is_serialisable_and_quiet() {
         "usage",
         "limits",
         "assistants",
+        "governance",
         "projects",
         "daemon",
     ] {
@@ -309,6 +310,105 @@ fn a_broken_source_is_not_a_dead_host() {
 
 static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
+// ── governance ──────────────────────────────────────────────────────────
+
+#[test]
+fn no_mcp_credential_on_this_machine_reaches_the_payload() {
+    // The governance panel lists an MCP server's environment variables so you
+    // can see that a server is handed a token. The value of that token is the
+    // single most dangerous string in any file this agent opens, and the check
+    // that it stays put cannot be a unit test against a fixture: it has to run
+    // against whatever is really configured here.
+    let gov = tokenhud_agent::governance::collect();
+    let blob = serde_json::to_string(&gov).expect("governance must serialise");
+
+    let mut secrets: Vec<String> = Vec::new();
+    // A value that is a path is excluded, and only from the LEAK check: the
+    // payload legitimately names the files it read, so `/Users/x/.codex` would
+    // match by accident and say nothing about credentials. The structural check
+    // below covers those cases instead, and it is the stronger of the two.
+    let is_secretish = |s: &str| s.len() > 6 && !s.contains('/');
+
+    if let Some(v) = std::fs::read(home().join(".claude").join("settings.json"))
+        .ok()
+        .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
+    {
+        for (name, cfg) in v["mcpServers"].as_object().into_iter().flatten() {
+            for block in ["env", "headers"] {
+                let Some(obj) = cfg[block].as_object() else {
+                    continue;
+                };
+                for val in obj.values() {
+                    if let Some(s) = val.as_str() {
+                        if is_secretish(s) {
+                            secrets.push(s.to_string());
+                        }
+                    }
+                }
+                // Structural, and immune to a value that happens to look like
+                // something the payload may legitimately carry: whatever the
+                // payload lists for this server must be the config's KEYS.
+                let row = gov["claude"]["mcpServers"]
+                    .as_array()
+                    .and_then(|a| a.iter().find(|r| r["name"] == Value::from(name.as_str())))
+                    .cloned()
+                    .unwrap_or(Value::Null);
+                let listed: Vec<String> = row[if block == "env" { "env" } else { "headers" }]
+                    .as_array()
+                    .map(|a| a.iter().filter_map(|x| x.as_str()).map(String::from).collect())
+                    .unwrap_or_default();
+                for l in &listed {
+                    assert!(
+                        obj.contains_key(l.as_str()),
+                        "{name}.{block} lists {l:?}, which is not a key in that block — \
+                         the payload is carrying a value"
+                    );
+                }
+            }
+        }
+    }
+    // Codex keeps its env values in config.toml. Anything quoted after an "="
+    // inside an `[mcp_servers.*.env]` table counts, and being over-inclusive
+    // here only makes the assertion stricter.
+    if let Ok(text) = std::fs::read_to_string(home().join(".codex").join("config.toml")) {
+        let mut in_env = false;
+        for line in text.lines() {
+            let t = line.trim();
+            if t.starts_with('[') {
+                in_env = t.starts_with("[mcp_servers.") && t.ends_with(".env]");
+                continue;
+            }
+            if !in_env {
+                continue;
+            }
+            if let Some((_, v)) = t.split_once('=') {
+                let v = v.trim().trim_matches(|c| c == '"' || c == '\'');
+                if is_secretish(v) {
+                    secrets.push(v.to_string());
+                }
+            }
+        }
+    }
+
+    if secrets.is_empty() {
+        skip(
+            "mcp credentials",
+            "no MCP server here is configured with a credential-shaped env or header value",
+        );
+        return;
+    }
+    for s in &secrets {
+        assert!(
+            !blob.contains(s.as_str()),
+            "an MCP credential value reached the governance payload"
+        );
+    }
+    note(
+        "mcp credentials",
+        &format!("{} configured value(s), none of them in the payload", secrets.len()),
+    );
+}
+
 // ── the shape the server is promised ────────────────────────────────────
 
 #[test]
@@ -327,6 +427,7 @@ fn the_payload_has_the_shape_the_board_reads() {
     if u["available"].as_bool().unwrap_or(false) {
         for key in [
             "scan", "pricing", "blocks", "allTime", "byModel", "byDay", "windows", "sessions",
+            "tools",
         ] {
             assert!(!u[key].is_null(), "usage is missing {key}");
         }

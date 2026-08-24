@@ -22,12 +22,20 @@ use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub const VERSION: u32 = 4;
+pub const VERSION: u32 = 5;
 pub const BIG_CONTEXT: i64 = 150_000;
 pub const LONG_SESSION_HOURS: f64 = 8.0;
 const KEEP_DAYS: usize = 120;
 const KEEP_SESSIONS: usize = 3000;
 const KEEP_MINUTE_DAYS: i64 = 9;
+/// A ceiling on how many DISTINCT tool names the index will learn.
+///
+/// Built-in tools are a fixed short list, but an MCP server contributes one
+/// name per tool it exports and a machine can mount many. The cap is not a
+/// guess at a sane number of tools — it is the guarantee that a broken or
+/// hostile server cannot make this index grow without bound. Names already
+/// known keep counting past it; only new ones stop being learned.
+const MAX_TOOL_NAMES: usize = 800;
 pub const BLOCK_HOURS: i64 = 5;
 /// How much of a transcript is held in memory at once. Small enough that the
 /// agent's peak is a property of this constant rather than of the user's
@@ -116,6 +124,17 @@ pub struct Index {
     pub minutes: IndexMap<String, i64>,
     #[serde(rename = "outMinutes", default)]
     pub out_minutes: IndexMap<String, i64>,
+    /// Calls per tool name, all time. An `mcp__server__tool` name is kept
+    /// whole: which server a call went to is a fact about this machine's
+    /// configuration, and splitting it here would lose the tool.
+    #[serde(default)]
+    pub tools: IndexMap<String, i64>,
+    /// Calls per `subagent_type`, from the Task and Agent tools.
+    #[serde(default)]
+    pub agents: IndexMap<String, i64>,
+    /// Invocations per skill, from the Skill tool.
+    #[serde(default)]
+    pub skills: IndexMap<String, i64>,
 }
 
 impl Default for Index {
@@ -127,6 +146,9 @@ impl Default for Index {
             days: IndexMap::new(),
             minutes: IndexMap::new(),
             out_minutes: IndexMap::new(),
+            tools: IndexMap::new(),
+            agents: IndexMap::new(),
+            skills: IndexMap::new(),
         }
     }
 }
@@ -405,8 +427,34 @@ fn absorb(idx: &mut Index, rec: &serde_json::Value, c: &mut Caches) {
     }
     if let Some(list) = msg.get("content").and_then(|v| v.as_array()) {
         for b in list {
-            if b.get("type").and_then(|v| v.as_str()) == Some("tool_use") {
-                s.tools += 1;
+            if b.get("type").and_then(|v| v.as_str()) != Some("tool_use") {
+                continue;
+            }
+            s.tools += 1;
+            let Some(name) = b.get("name").and_then(|v| v.as_str()) else {
+                continue;
+            };
+            count(&mut idx.tools, name);
+            // The tool NAME, never its input. `input` is where the prompt, the
+            // file path and the command line live; the only two fields taken
+            // out of it are the ones that name a configured capability rather
+            // than describe a piece of work.
+            let input = b.get("input");
+            match name {
+                "Task" | "Agent" => {
+                    if let Some(t) = input
+                        .and_then(|i| i.get("subagent_type"))
+                        .and_then(|v| v.as_str())
+                    {
+                        count(&mut idx.agents, t);
+                    }
+                }
+                "Skill" => {
+                    if let Some(t) = input.and_then(|i| i.get("skill")).and_then(|v| v.as_str()) {
+                        count(&mut idx.skills, t);
+                    }
+                }
+                _ => {}
             }
         }
     }
@@ -425,6 +473,15 @@ fn absorb(idx: &mut Index, rec: &serde_json::Value, c: &mut Caches) {
 
 fn clip(s: &str, n: usize) -> String {
     s.chars().take(n).collect()
+}
+
+/// One more call against a name, learning the name only while there is room.
+fn count(bucket: &mut IndexMap<String, i64>, name: &str) {
+    if let Some(n) = bucket.get_mut(name) {
+        *n += 1;
+    } else if bucket.len() < MAX_TOOL_NAMES {
+        bucket.insert(clip(name, 120), 1);
+    }
 }
 
 // ── the scan ────────────────────────────────────────────────────────────
@@ -690,6 +747,52 @@ mod tests {
         .as_str()]);
         assert_eq!(idx.sessions["s"].ctx["claude-opus-5"].tin, BIG_CONTEXT + 1);
         assert_eq!(idx.sessions["s"].max_ctx, BIG_CONTEXT + 1);
+    }
+
+    #[test]
+    fn tool_calls_are_counted_by_name_and_mcp_names_are_kept_whole() {
+        let idx = absorbed(&[r#"{"type":"assistant","sessionId":"s","timestamp":"2026-08-01T10:00:00Z",
+            "message":{"model":"claude-opus-5","usage":{"output_tokens":1},"content":[
+              {"type":"tool_use","name":"Bash","input":{"command":"cat /etc/shadow"}},
+              {"type":"tool_use","name":"Bash","input":{"command":"ls"}},
+              {"type":"tool_use","name":"mcp__playwright__browser_click","input":{}},
+              {"type":"tool_use","name":"Agent","input":{"subagent_type":"Explore"}},
+              {"type":"tool_use","name":"Skill","input":{"skill":"hallmark"}}]}}"#]);
+        assert_eq!(idx.tools["Bash"], 2);
+        assert_eq!(idx.tools["mcp__playwright__browser_click"], 1);
+        assert_eq!(idx.agents["Explore"], 1);
+        assert_eq!(idx.skills["hallmark"], 1);
+        assert_eq!(idx.sessions["s"].tools, 5);
+        // The load-bearing one: a tool's INPUT never reaches the index.
+        let dumped = serde_json::to_string(&idx).unwrap();
+        assert!(
+            !dumped.contains("shadow"),
+            "tool input must not reach the index"
+        );
+    }
+
+    #[test]
+    fn a_broken_server_cannot_grow_the_index_without_bound() {
+        let mut idx = Index::default();
+        let mut c = Caches {
+            minute: HashMap::new(),
+            day: HashMap::new(),
+        };
+        let call = |name: &str| -> serde_json::Value {
+            serde_json::from_str(&format!(
+                r#"{{"type":"assistant","sessionId":"s","timestamp":"2026-08-01T10:00:00Z",
+                "message":{{"model":"m","usage":{{"output_tokens":1}},
+                "content":[{{"type":"tool_use","name":"{name}"}}]}}}}"#
+            ))
+            .unwrap()
+        };
+        for i in 0..(MAX_TOOL_NAMES + 50) {
+            absorb(&mut idx, &call(&format!("mcp__flood__t{i}")), &mut c);
+        }
+        assert_eq!(idx.tools.len(), MAX_TOOL_NAMES);
+        // A name already known keeps counting past the cap.
+        absorb(&mut idx, &call("mcp__flood__t0"), &mut c);
+        assert_eq!(idx.tools["mcp__flood__t0"], 2);
     }
 
     #[test]

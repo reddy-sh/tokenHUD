@@ -16,7 +16,7 @@ use tokenhud_agent::manifest::{self, Kind};
 
 fn collector_sources() -> Vec<(&'static str, String)> {
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    ["collect.rs", "transcripts.rs", "limits.rs"]
+    ["collect.rs", "transcripts.rs", "limits.rs", "governance.rs", "codex.rs"]
         .iter()
         .map(|f| {
             let text = std::fs::read_to_string(dir.join(f))

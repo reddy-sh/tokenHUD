@@ -1,0 +1,17 @@
+# AWS Amplify Hosting — static deploy of the marketing site.
+#
+# The site is plain HTML + CSS + self-hosted fonts: no build step, nothing to
+# install. Amplify just publishes the site/ directory as-is. Connect the repo
+# in the Amplify console, point it at the main branch, and this file does the
+# rest. Custom headers live in customHttp.yml beside this file.
+version: 1
+frontend:
+  phases:
+    build:
+      commands: []
+  artifacts:
+    baseDirectory: site
+    files:
+      - '**/*'
+  cache:
+    paths: []

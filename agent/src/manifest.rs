@@ -31,6 +31,8 @@ pub enum Kind {
     /// A directory walked for `*.jsonl`.
     Corpus,
     File,
+    /// A directory whose ENTRY NAMES are read and whose files are not opened.
+    Listing,
     /// Not a file at all — a command this agent runs.
     Command,
 }
@@ -39,8 +41,10 @@ pub enum Kind {
 pub const READS: &[Source] = &[
     Source {
         display: "~/.claude/projects/**/*.jsonl",
-        purpose: "per-session token counts, models, timings and tool calls",
-        scope: Some("only lines whose type is `assistant` or `ai-title`; read once, by byte offset"),
+        purpose: "per-session token counts, models, timings, and which tools, subagents and skills were called",
+        scope: Some("only lines whose type is `assistant` or `ai-title`; read once, by byte offset. \
+                     A tool call contributes its NAME — plus `subagent_type` and `skill`, which name a \
+                     configured capability. Never the rest of its input: not the command, not the path"),
         resolve: || claude_dir().join("projects"),
         kind: Kind::Corpus,
     },
@@ -57,6 +61,69 @@ pub const READS: &[Source] = &[
         scope: Some("exactly one key: `cachedUsageUtilization`. Never `oauthAccount`, never `projects`, never `utilization.spend`"),
         resolve: || home().join(".claude.json"),
         kind: Kind::File,
+    },
+    Source {
+        display: "~/.claude/settings.json",
+        purpose: "governance: permission rules, hooks, MCP servers, plugins, and the settings that decide what runs without asking",
+        scope: Some("an MCP server's `env` and `headers` are read for their KEYS only — no credential value reaches the payload"),
+        resolve: || claude_dir().join("settings.json"),
+        kind: Kind::File,
+    },
+    Source {
+        display: "~/.claude/settings.local.json",
+        purpose: "the same governance facts, at the local scope that overrides them",
+        scope: Some("same key-only rule for credentials"),
+        resolve: || claude_dir().join("settings.local.json"),
+        kind: Kind::File,
+    },
+    Source {
+        display: "~/.claude/mcp-needs-auth-cache.json",
+        purpose: "which MCP servers Claude Code could not sign in to",
+        scope: Some("server names only"),
+        resolve: || claude_dir().join("mcp-needs-auth-cache.json"),
+        kind: Kind::File,
+    },
+    Source {
+        display: "~/.claude/plugins/config.json",
+        purpose: "which plugins are installed, beside which are switched on",
+        scope: Some("plugin and marketplace names only; no plugin's code is opened"),
+        resolve: || claude_dir().join("plugins").join("config.json"),
+        kind: Kind::File,
+    },
+    Source {
+        display: "~/.claude/plugins/installed_plugins.json",
+        purpose: "the same, in the shape older installs wrote it",
+        scope: Some("plugin names only"),
+        resolve: || claude_dir().join("plugins").join("installed_plugins.json"),
+        kind: Kind::File,
+    },
+    Source {
+        display: "~/.claude/agents",
+        purpose: "the names of the subagents installed on this machine",
+        scope: Some("a directory listing. No agent definition is opened"),
+        resolve: || claude_dir().join("agents"),
+        kind: Kind::Listing,
+    },
+    Source {
+        display: "~/.claude/skills",
+        purpose: "the names of the skills installed on this machine",
+        scope: Some("a directory listing. No SKILL.md is opened"),
+        resolve: || claude_dir().join("skills"),
+        kind: Kind::Listing,
+    },
+    Source {
+        display: "~/.codex/config.toml",
+        purpose: "Codex CLI governance: MCP servers, approval policy, sandbox mode, plugins",
+        scope: Some("section headers and scalar keys. An `[mcp_servers.x.env]` table is read for its KEYS only"),
+        resolve: || crate::governance::codex_home().join("config.toml"),
+        kind: Kind::File,
+    },
+    Source {
+        display: "~/.codex/skills",
+        purpose: "the names of the skills installed for Codex",
+        scope: Some("a directory listing"),
+        resolve: || crate::governance::codex_home().join("skills"),
+        kind: Kind::Listing,
     },
     Source {
         display: "~/.claude/daemon.status.json",
@@ -133,6 +200,8 @@ pub const NEVER: &[(&str, &str)] = &[
     ("~/.claude.json → oauthAccount", "your identity. The file is mode 0600 and that is the OS agreeing it is private"),
     ("~/.claude.json → utilization.spend", "actual billed dollars. The board's one estimate is labelled an estimate, and a real bill beside it would destroy the distinction"),
     ("~/.claude.json → projects", "a second, richer per-project cost history. Usage is read from the transcripts instead"),
+    ("a tool call's input", "the command it ran, the file it touched, the prompt it carried. Only the tool's NAME is counted"),
+    ("MCP credentials", "an `env` or `headers` block is read for its variable names, never for a value"),
     ("your source code", "no collector opens a file outside the paths listed above"),
     ("environment variables", "other than the TOKENHUD_* ones that configure this agent"),
 ];
@@ -218,6 +287,11 @@ pub fn inspect(s: &Source) -> Found {
                 bytes: 0,
             },
         },
+        Kind::Listing => Found {
+            exists: p.is_dir(),
+            files: std::fs::read_dir(&p).map(|e| e.flatten().count()).unwrap_or(0),
+            bytes: 0,
+        },
         Kind::Command => Found {
             exists: p.exists(),
             files: 0,
@@ -257,6 +331,7 @@ pub fn render() -> String {
             (Kind::Command, true) => "present".to_string(),
             (_, false) => "not present here".to_string(),
             (Kind::Corpus, true) => format!("{} files, {}", f.files, human(f.bytes)),
+            (Kind::Listing, true) => format!("{} entries, names only", f.files),
             (Kind::File, true) => human(f.bytes),
         };
         o.push_str(&format!("  {:<32} {}\n", s.display, state));

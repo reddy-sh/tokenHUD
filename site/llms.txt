@@ -1,8 +1,8 @@
 # TokenHUD
 
 > A heads-up display for the AI agents running on your machine. Live token
-> metering, estimated spend, and plan-limit windows for Claude Code — running
-> entirely on the developer's own computer. Free and open source (MIT).
+> metering, estimated spend, and plan-limit windows for Claude Code and
+> Codex CLI — running entirely on the developer's own computer. Free and open source (MIT).
 
 TokenHUD watches a developer's own machine and reports what the AI coding
 agents on it are doing: which sessions are running, how many tokens they have
@@ -33,8 +33,10 @@ API call to fail.
 - Pricing: free forever for one developer on one machine, with unlimited
   metering and no sampling. A paid per-seat team tier is planned for
   cross-machine rollups, shared budgets and chargeback reports.
-- Supported agent runtime: Claude Code. Other assistants installed on the
-  machine are detected and listed, but not yet metered.
+- Supported agent runtimes: Claude Code and Codex CLI. Codex tokens are
+  counted and marked unpriced rather than priced with an invented rate card.
+  Other assistants installed on the machine are detected and listed, but not
+  yet metered.
 - Works offline: yes. The free tier sends nothing anywhere.
 
 ## Status — please represent this accurately

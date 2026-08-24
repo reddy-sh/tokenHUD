@@ -1,0 +1,158 @@
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 */
+/* Hallmark · genre: modern-minimal · macrostructure: Marquee Hero · theme: custom-warm
+ * axes: paper=light-warm · display=grotesk-sans · accent=warm-coral (~22°)
+ * fonts: Space Grotesk (display) + Inter (body) + JetBrains Mono (code) — self-hosted
+ * tone: technical-warm · audience: developers running AI coding agents · use: clone and run
+ * nav: N5 (floating pill, content-sized, blur backdrop) · footer: Ft4 (dense typographic)
+ * contrast: pass (40–41) · slop: pass (42–45) · honest: pass (46) · chrome: pass (47)
+ * tokens: pass (48) · responsive: pass (49–53) · mobile: pass (34, 49, 50–57)
+ */
+
+/* ── Fonts — self-hosted, same origin, nothing external ─────────────── */
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/space-grotesk-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/space-grotesk-latin-600-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/space-grotesk-latin-700-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/inter-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/inter-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/inter-latin-600-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/jetbrains-mono-latin-600-normal.woff2") format("woff2");
+}
+
+:root {
+  /* Paper + ink — warm cream tint, warm charcoal. Never #fff/#000. */
+  --color-paper: oklch(97.5% 0.006 75);
+  --color-paper-2: oklch(95% 0.008 72);
+  --color-paper-3: oklch(92% 0.010 70);
+  --color-rule: oklch(87% 0.010 68);
+  --color-rule-2: oklch(79% 0.014 65);
+  --color-neutral: oklch(52% 0.012 55);
+  --color-muted: oklch(44% 0.014 50);
+  --color-ink: oklch(22% 0.014 45);
+  --color-ink-2: oklch(35% 0.012 50);
+
+  /* The one signal. < 5% of any viewport. Warm coral ~22° */
+  --color-accent: oklch(60% 0.17 22);
+  --color-accent-deep: oklch(52% 0.165 22);
+  --color-accent-ink: oklch(97.5% 0.006 75);
+  --color-accent-wash: oklch(93% 0.028 28);
+  --color-focus: oklch(60% 0.17 22);
+
+  /* The one dark beat — graphite band + code cards. Warm undertone. */
+  --color-graphite: oklch(21% 0.010 50);
+  --color-graphite-2: oklch(25.5% 0.010 50);
+  --color-band: oklch(19% 0.010 50);
+  --color-band-ink: oklch(92% 0.006 70);
+  --color-band-muted: oklch(68% 0.010 60);
+  --color-band-rule: oklch(32% 0.010 55);
+  --color-accent-bright: oklch(72% 0.14 22); /* coral on dark */
+
+  /* Alpha variants — overlays and the one whisper shadow */
+  --color-nav-wash: oklch(97.5% 0.006 75 / 0.82);
+  --color-veil: oklch(22% 0.014 45 / 0.32);
+  --shadow-whisper: 0 1px 3px oklch(22% 0.014 45 / 0.06);
+  --shadow-pill: 0 2px 12px oklch(22% 0.014 45 / 0.08);
+
+  /* Type — 2+1: Space Grotesk display · Inter body · JetBrains Mono code */
+  --font-display: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Inter", -apple-system, "Segoe UI", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Scale — major third from 16px */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.1875rem;
+  --text-lg: 1.5rem;
+  --text-xl: 1.9375rem;
+  --text-2xl: 2.4375rem;
+  --text-display-s: clamp(1.9375rem, 2.4vw + 1rem, 2.75rem);
+  --text-display: clamp(2.75rem, 4.8vw + 0.5rem, 4.5rem);
+
+  /* Space — 4pt scale */
+  --space-2xs: 0.25rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2.5rem;
+  --space-2xl: 4rem;
+  --space-3xl: 6rem;
+  --space-4xl: 9rem;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms;
+  --dur-short: 200ms;
+  --dur-long: 420ms;
+
+  /* Structure */
+  --rule-hair: 1px;
+  --radius-ctrl: 8px;
+  --radius-card: 12px;
+  --radius-pill: 999px;
+  --page-gutter: clamp(1rem, 4vw, 2rem);
+  --page-max: 72rem;
+
+  /* Z — named, never freestyled */
+  --z-base: 1;
+  --z-raised: 10;
+  --z-sticky: 200;
+  --z-modal: 400;
+}

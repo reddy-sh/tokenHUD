@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- TokenHUD — a HUD reticle over a token. Graphite ground, cobalt signal. -->
+  <rect width="64" height="64" rx="14" fill="#15171d"/>
+  <g stroke="#7aa7ff" stroke-width="5" fill="none" stroke-linecap="round">
+    <path d="M13 24 V17 a4 4 0 0 1 4 -4 H24"/>
+    <path d="M40 13 H47 a4 4 0 0 1 4 4 V24"/>
+    <path d="M51 40 V47 a4 4 0 0 1 -4 4 H40"/>
+    <path d="M24 51 H17 a4 4 0 0 1 -4 -4 V40"/>
+  </g>
+  <circle cx="32" cy="32" r="8.5" fill="#2f6bec"/>
+</svg>

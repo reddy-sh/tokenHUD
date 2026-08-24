@@ -48,7 +48,7 @@
       "name": "Which AI coding agents does TokenHUD support?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Claude Code today. TokenHUD also detects Codex CLI, Cursor, Gemini CLI, Windsurf and other assistants installed on the machine and lists them, marking the ones no collector reads yet rather than showing an empty dashboard."
+        "text": "Claude Code and Codex CLI today. TokenHUD also detects Cursor, Gemini CLI, Windsurf and other assistants installed on the machine and lists them, marking the ones no collector reads yet rather than showing an empty dashboard."
       }
     },
     {

@@ -127,6 +127,17 @@ button[aria-pressed="true"] { background: var(--surface-2); color: var(--ink); b
 }
 @keyframes livepulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
+/* `hidden` has to actually hide.
+   The browser's own rule is `[hidden] { display: none }`, and it is the
+   weakest rule in the cascade: ANY author rule that sets `display` outranks
+   it. `.grid`, `.card` and `.rail-nav a` all set one, so a section the
+   assistant picker had hidden stayed on screen — the whole Claude board
+   underneath the Codex board, which is what this attribute exists to
+   prevent. There was already one local patch for this (`.rail select
+   [hidden]`); this is the general form of it, so the next element hidden by
+   attribute does not need a third. */
+[hidden] { display: none !important; }
+
 /* ── layout ─────────────────────────────────────────────────────────── */
 /* align-items:start so a short card (an empty host list) sizes to its
    content instead of stretching to match a tall neighbour. */
@@ -258,6 +269,30 @@ tbody tr:last-child td { border-bottom: 0; }
 .driver .fill { height: 100%; border-radius: 3px; }
 .driver .nt { font-size: 11px; color: var(--ink-3); }
 
+/* Governance inventories. A plugin, a skill and a subagent are all "a
+   named thing that is either on or off, and was either used or not", so
+   they get one shape rather than three tables of two columns. */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; }
+.chip {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  border: 1px solid var(--rule); border-radius: 999px;
+  padding: 3px 9px; font-size: 12px; color: var(--ink-2);
+}
+.chip .n { font-variant-numeric: tabular-nums; color: var(--ink-3); font-size: 11px; }
+/* Off is stated by weight, not by colour alone: an installed-but-disabled
+   plugin is ordinary, not a warning. */
+.chip.off { opacity: 0.55; text-decoration: line-through; }
+.chip.warn { border-color: var(--warning); color: var(--warning); }
+.gov-h { font-size: 11px; color: var(--ink-3); text-transform: uppercase;
+         letter-spacing: 0.04em; margin: 14px 0 0; }
+.gov-h:first-child { margin-top: 0; }
+.rules { max-height: 260px; overflow-y: auto; margin: 6px 0 0; }
+.rules li { display: flex; gap: 8px; align-items: baseline; padding: 4px 0;
+            border-bottom: 1px solid var(--rule-soft); font-size: 12px; }
+.rules li:last-child { border-bottom: 0; }
+.rules .tag { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em;
+              color: var(--ink-3); flex: none; min-width: 42px; }
+
 details.calc { margin-top: 12px; border-top: 1px solid var(--rule-soft); padding-top: 8px; }
 details.calc summary { font-size: 11px; color: var(--ink-3); cursor: pointer; list-style: revert; }
 details.calc summary:hover { color: var(--ink-2); }
@@ -350,7 +385,7 @@ body { transition: padding-left var(--rail-ms) cubic-bezier(.4, 0, .2, 1); }
 .rail-id { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 9px; }
 .rail-id .who { font-size: 15px; font-weight: 600; letter-spacing: -.01em; color: var(--ink); overflow-wrap: anywhere; }
 .rail select { width: 100%; margin-bottom: 9px; }
-.rail select[hidden] { display: none; }
+/* (the `[hidden]` rule at the top of this sheet covers this one now) */
 .rail-note { font-size: 11px; color: var(--ink-3); margin: 0; }
 .rail-note:empty { display: none; }
 .rail-kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 0; font-size: 11px; }
@@ -517,6 +552,10 @@ html { scroll-behavior: smooth; }
   <symbol id="i-projects" viewBox="0 0 24 24"><path d="M3 6h6l2 2.5h10V19H3z"/></symbol>
   <symbol id="i-machines" viewBox="0 0 24 24"><path d="M4 5h16v5H4z M4 14h16v5H4z M7.5 7.5h.01 M7.5 16.5h.01"/></symbol>
   <symbol id="i-prompts"  viewBox="0 0 24 24"><path d="M4 5h16v10H10l-5 4v-4H4z"/></symbol>
+  <symbol id="i-plug"     viewBox="0 0 24 24"><path d="M9 3v5 M15 3v5 M6 8h12v3a6 6 0 01-6 6 6 6 0 01-6-6z M12 17v4"/></symbol>
+  <symbol id="i-tools"    viewBox="0 0 24 24"><path d="M14.5 6.5a3.5 3.5 0 004.8 4.5l-8 8a2.1 2.1 0 01-3-3l8-8a3.5 3.5 0 01-1.8-1.5z M4 5l3 3"/></symbol>
+  <symbol id="i-shield"   viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.2-2.8 7.9-7 10-4.2-2.1-7-5.8-7-10V6z M9 12l2 2 4-4"/></symbol>
+  <symbol id="i-blocks"   viewBox="0 0 24 24"><path d="M4 4h7v7H4z M13 13h7v7h-7z M13 4h7v7h-7z M4 13h7v7H4z"/></symbol>
 </defs></svg>
 
 <a class="skip" href="#board">Skip to board</a>
@@ -582,9 +621,13 @@ html { scroll-behavior: smooth; }
 <div id="offboard"></div>
 
 <div id="board">
-<section class="grid tiles" id="tiles" data-nav="Overview" data-icon="overview"></section>
+<!-- data-tool says which assistant a panel belongs to; "*" means both. The
+     picker in the rail hides everything that does not own the selection,
+     which is the whole reason it is a picker rather than a label: before
+     this, choosing Codex CLI redrew Claude Code's panels unchanged. -->
+<section class="grid tiles" id="tiles" data-tool="claude-code" data-nav="Overview" data-icon="overview"></section>
 
-<section class="grid cols-2">
+<section class="grid cols-2" data-tool="claude-code">
   <div class="card" id="uw-card" data-nav="Usage windows" data-icon="window">
     <div class="card-head">
       <div>
@@ -611,7 +654,7 @@ html { scroll-behavior: smooth; }
   </div>
 </section>
 
-<section class="grid cols-2" style="margin-top:14px">
+<section class="grid cols-2" style="margin-top:14px" data-tool="claude-code">
   <div class="card" data-nav="Activity" data-icon="activity">
     <div class="card-head">
       <div>
@@ -638,7 +681,7 @@ html { scroll-behavior: smooth; }
   </div>
 </section>
 
-<section class="grid cols-2" style="margin-top:14px">
+<section class="grid cols-2" style="margin-top:14px" data-tool="claude-code">
   <div class="card" data-nav="Value" data-icon="value">
     <div class="card-head">
       <div>
@@ -670,7 +713,7 @@ html { scroll-behavior: smooth; }
   </div>
 </section>
 
-<section class="grid" style="margin-top:14px">
+<section class="grid" style="margin-top:14px" data-tool="claude-code">
   <div class="card" data-nav="Sessions" data-icon="sessions">
     <div class="card-head">
       <div>
@@ -684,7 +727,7 @@ html { scroll-behavior: smooth; }
   </div>
 </section>
 
-<section class="grid cols-2" style="margin-top:14px">
+<section class="grid cols-2" style="margin-top:14px" data-tool="claude-code">
   <div class="card">
     <h2>When you work</h2>
     <p class="note">Sessions by hour of day, local time.</p>
@@ -698,12 +741,110 @@ html { scroll-behavior: smooth; }
   </div>
 </section>
 
-<section class="grid cols-2" style="margin-top:14px">
+<!-- ── Codex CLI ────────────────────────────────────────────────────────
+     Its own panels, from its own rollouts. Codex reports tokens and plan
+     windows but no dollars: pricing.rs is an Anthropic rate card, and a
+     column of invented OpenAI prices would be the one thing this board
+     refuses to do — present a calculation as a measurement. -->
+<section class="grid tiles" id="cx-tiles" data-tool="codex" data-nav="Codex overview" data-icon="overview"></section>
+
+<section class="grid cols-2" style="margin-top:14px" data-tool="codex">
+  <div class="card" data-nav="Codex plan" data-icon="window">
+    <div class="card-head">
+      <div>
+        <h2>Plan windows</h2>
+        <p class="note">As OpenAI last reported them inside a rollout — measured, not derived.</p>
+      </div>
+      <span class="spacer"></span>
+      <span class="sub" id="cx-lim-age"></span>
+    </div>
+    <div id="cx-limits"></div>
+  </div>
+
+  <div class="card" data-nav="Codex policy" data-icon="shield">
+    <div class="card-head">
+      <div>
+        <h2>Enforced policy</h2>
+        <p class="note">What Codex actually ran under, taken from the newest rollout that recorded it — beside the default in config.toml.</p>
+      </div>
+    </div>
+    <div id="cx-policy"></div>
+  </div>
+</section>
+
+<section class="grid" style="margin-top:14px" data-tool="codex">
+  <div class="card" data-nav="Codex sessions" data-icon="sessions">
+    <div class="card-head">
+      <div>
+        <h2>Sessions</h2>
+        <p class="note" id="cx-sessions-note"></p>
+      </div>
+      <span class="spacer"></span>
+      <span class="sub" id="cx-sessions-count"></span>
+    </div>
+    <div class="scroll-x tall"><table id="t-cx-sessions"></table></div>
+  </div>
+</section>
+
+<section class="grid cols-2" style="margin-top:14px" data-tool="codex">
+  <div class="card" data-nav="Codex models" data-icon="models">
+    <h2>Tokens by model</h2>
+    <p class="note" id="cx-models-note"></p>
+    <div class="scroll-x"><table id="t-cx-models"></table></div>
+  </div>
+
+  <div class="card">
+    <h2>Where the tokens went</h2>
+    <p class="note">Cumulative per session, summed. Cached input is reported separately because Codex bills it separately.</p>
+    <div id="cx-split"></div>
+  </div>
+</section>
+
+<section class="grid cols-2" style="margin-top:14px" data-tool="codex">
+  <div class="card" data-nav="Codex activity" data-icon="activity">
+    <div class="card-head">
+      <div>
+        <h2>Tokens per day</h2>
+        <p class="note" id="cx-day-note"></p>
+      </div>
+    </div>
+    <svg class="chart" id="c-cx-days" height="200" role="img" aria-label="Codex tokens per day"></svg>
+  </div>
+
+  <div class="card" data-nav="Codex projects" data-icon="projects">
+    <h2>Projects</h2>
+    <p class="note">Working directories Codex has run in, from each rollout's own <span class="mono">cwd</span>.</p>
+    <ul class="feed" id="cx-projects"></ul>
+  </div>
+</section>
+
+<section class="grid" style="margin-top:14px" data-tool="codex">
+  <div class="card" data-nav="Codex finished" data-icon="ended">
+    <div class="card-head">
+      <div>
+        <h2>Recently finished</h2>
+        <p class="note">Codex processes that were running at one reading and gone by the next.</p>
+      </div>
+      <span class="spacer"></span>
+      <span class="sub" id="cx-ended-count"></span>
+    </div>
+    <ul class="feed" id="cx-ended"></ul>
+  </div>
+</section>
+
+<!-- Running now is true of either assistant, so it is one panel filtered by
+     the picker rather than two that would drift apart.
+
+     It sits AFTER the Codex block deliberately. Everything between it and
+     the Claude panels above is Codex-only, so on the Claude board it still
+     lands exactly where it always did — and on the Codex board it no longer
+     comes before the Codex overview it is meant to sit under. -->
+<section class="grid cols-2" style="margin-top:14px" data-tool="*">
   <div class="card" data-nav="Running now" data-icon="running">
     <div class="card-head">
       <div>
         <h2>Running now</h2>
-        <p class="note">Live <span class="mono">claude</span> processes on this Mac.</p>
+        <p class="note" id="live-note"></p>
       </div>
       <span class="spacer"></span>
       <span id="sup-pill"></span>
@@ -711,21 +852,80 @@ html { scroll-behavior: smooth; }
     <div id="live"></div>
   </div>
 
-  <div class="card" data-nav="Projects" data-icon="projects">
+  <div class="card" data-tool="claude-code" data-nav="Projects" data-icon="projects">
     <h2>Projects</h2>
     <p class="note">By last activity. Machine-made worktrees are marked.</p>
     <ul class="feed" id="projects"></ul>
   </div>
 </section>
 
-<section class="grid cols-2" style="margin-top:14px">
+<!-- ── governance ───────────────────────────────────────────────────────
+     What the assistant may reach, beside what it did reach. The two are
+     never merged into one column: a server mounted for six months and
+     never called, and a server called a thousand times, look identical in
+     a config file and could not be more different facts. -->
+<section class="grid" style="margin-top:14px" data-tool="*">
+  <div class="card" data-nav="MCP servers" data-icon="plug">
+    <div class="card-head">
+      <div>
+        <h2>MCP servers</h2>
+        <p class="note" id="mcp-note"></p>
+      </div>
+      <span class="spacer"></span>
+      <span class="sub" id="mcp-count"></span>
+    </div>
+    <div class="scroll-x"><table id="t-mcp"></table></div>
+    <p class="note" id="mcp-foot" style="margin:12px 0 0"></p>
+  </div>
+</section>
+
+<section class="grid cols-2" style="margin-top:14px" data-tool="*">
+  <div class="card" data-nav="Tool calls" data-icon="tools">
+    <div class="card-head">
+      <div>
+        <h2>Tool calls</h2>
+        <p class="note" id="tools-note"></p>
+      </div>
+      <span class="spacer"></span>
+      <span class="sub" id="tools-count"></span>
+    </div>
+    <div id="tools-split"></div>
+    <div class="scroll-x tall"><table id="t-tools"></table></div>
+  </div>
+
+  <div class="card" data-nav="Permissions" data-icon="shield">
+    <div class="card-head">
+      <div>
+        <h2>Permissions &amp; hooks</h2>
+        <p class="note" id="perm-note"></p>
+      </div>
+      <span class="spacer"></span>
+      <span id="perm-badge"></span>
+    </div>
+    <div id="perm-body"></div>
+  </div>
+</section>
+
+<section class="grid" style="margin-top:14px" data-tool="*">
+  <div class="card" data-nav="Extensions" data-icon="blocks">
+    <div class="card-head">
+      <div>
+        <h2>Plugins, skills and subagents</h2>
+        <p class="note" id="ext-note"></p>
+      </div>
+    </div>
+    <div id="ext-body"></div>
+  </div>
+</section>
+
+<section class="grid cols-2" style="margin-top:14px" data-tool="*">
   <div class="card" data-nav="Machines" data-icon="machines">
     <h2>Reporting machines</h2>
     <p class="note">A host is "up" while its agent has checked in recently.</p>
     <ul class="feed" id="hosts"></ul>
   </div>
 
-  <div class="card" data-nav="Prompts" data-icon="prompts">
+  <div class="card" data-tool="claude-code" data-nav="Prompts" data-icon="prompts">
     <h2>Recent prompts</h2>
     <p class="note">From history.jsonl. Local only — never leaves this Mac.</p>
     <ul class="feed" id="prompts"></ul>
@@ -1282,6 +1482,513 @@ function drawOffboard(a) {
   box.appendChild(c);
 }
 
+/* ── which board the picker is showing ───────────────────────────────
+   `data-tool` on a panel names the assistant it belongs to; "*" means
+   the panel is true of any of them. Hiding is the whole mechanism, and
+   it is the point of this attribute existing: before it, choosing Codex
+   CLI in the picker left every Claude Code panel on screen, unchanged,
+   under a Codex label. Two assistants with different files, different
+   plan windows and different sandbox rules cannot share one set of
+   numbers, and a picker that pretends they can is worse than no picker.  */
+function applyTool(id) {
+  for (const n of document.querySelectorAll('#board [data-tool]')) {
+    const own = n.getAttribute('data-tool');
+    n.hidden = !(own === '*' || own === id);
+  }
+  /* A nav row pointing at a panel that is not on the board is a dead
+     link, so the rail follows the board rather than listing both. */
+  for (const t of railTargets) t.a.hidden = !!t.el.closest('[hidden]');
+}
+
+/* ── Codex CLI ────────────────────────────────────────────────────────
+   Its own rollouts, its own plan windows, and deliberately no dollar
+   column: the rate card in this build is Anthropic's, and pricing OpenAI
+   tokens with it would put a number on the board that nobody measured. */
+function windowLabel(mins) {
+  if (!mins) return '';
+  if (mins % 1440 === 0) return (mins / 1440) + '-day';
+  if (mins % 60 === 0) return (mins / 60) + 'h';
+  return mins + 'm';
+}
+
+function bar(box, pct, label, right, note, color) {
+  const row = el('div', { className: 'driver' });
+  const top = el('div', { className: 'top' });
+  top.append(el('span', { className: 'pc', textContent: label }),
+             el('span', { className: 'lb', textContent: right || '' }));
+  const track = el('div', { className: 'track' });
+  const fill = el('div', { className: 'fill' });
+  fill.style.width = Math.max(0, Math.min(100, Number(pct) || 0)) + '%';
+  fill.style.background = color;
+  track.appendChild(fill);
+  row.append(top, track, el('div', { className: 'nt', textContent: note || '' }));
+  box.appendChild(row);
+  return row;
+}
+
+function drawCodex(cx, gov, live) {
+  cx = cx || {}; gov = gov || {};
+  const tot = cx.totals || {}, tools = cx.tools || {}, sessions = cx.sessions || [];
+  const running = ((live || {}).processes || []).filter(p => procTool(p) === 'codex').length;
+
+  const box = $('#cx-tiles'); box.innerHTML = '';
+  if (!cx.available) {
+    const c = el('div', { className: 'card' });
+    c.append(el('p', { className: 'empty', textContent:
+      'Codex CLI has recorded nothing this board can read' + (cx.reason ? ' — ' + cx.reason + '.' : '.') }));
+    box.appendChild(c);
+  } else {
+    const turns = sessions.reduce((a, s) => a + (s.turns || 0), 0);
+    const win = sessions.map(s => s.contextWindow).find(Boolean);
+    for (const t of [
+      { k: 'Sessions', v: full(cx.sessionCount || 0),
+        d: sessions.length ? 'newest ' + ago(sessions[0].last) : '' },
+      { k: 'Turns', v: compact(turns), d: full(turns) },
+      { k: 'Total tokens', v: compact(tot.total || 0), d: full(tot.total || 0) },
+      { k: 'Output', v: compact(tot.output || 0),
+        d: compact(tot.reasoning || 0) + ' of it reasoning' },
+      { k: 'Cached input', v: compact(tot.cached_input || 0),
+        d: 'of ' + compact(tot.input || 0) + ' input' },
+      { k: 'Tool calls', v: compact(tools.total || 0),
+        d: (tools.distinct || 0) + ' distinct' },
+      { k: 'Context window', v: win ? compact(win) : '—',
+        d: win ? 'as the model reported it' : 'not reported' },
+      { k: 'Running now', v: String(running), d: running ? 'codex processes' : 'idle' },
+    ]) {
+      const c = el('div', { className: 'card tile' });
+      c.append(el('div', { className: 'k', textContent: t.k }),
+               el('div', { className: 'v', textContent: t.v }),
+               el('div', { className: 'd', textContent: t.d }));
+      box.appendChild(c);
+    }
+  }
+
+  /* Plan windows. Same status as Claude Code's: reported by the provider,
+     not derived here — so they carry a reset instant and no estimate. */
+  const lim = $('#cx-limits'); lim.innerHTML = '';
+  const rows = cx.limits || [];
+  uwCodex = [];
+  if (!rows.length) {
+    lim.appendChild(el('p', { className: 'empty', textContent:
+      'No plan window in the rollouts yet. Codex writes one beside a token count, so one appears after the next turn.' }));
+    $('#cx-lim-age').textContent = '';
+  } else {
+    const colors = [css('--s1'), css('--s2'), css('--s4')];
+    rows.forEach((w, i) => {
+      const span = windowLabel(w.windowMinutes);
+      const row = bar(lim, w.percent, Math.round(w.percent) + '%',
+        w.kind.charAt(0).toUpperCase() + w.kind.slice(1) + (span ? ' · ' + span : ''),
+        '', colors[i % colors.length]);
+      if (w.resetsAt) {
+        const rs = el('div', { className: 'nt' });
+        row.appendChild(rs);
+        uwCodex.push({ node: rs, at: w.resetsAt });
+      }
+    });
+    const newest = sessions.length ? sessions[0].last : null;
+    $('#cx-lim-age').textContent = newest ? 'as of ' + ago(newest) : '';
+    tickCodexWindows();
+  }
+
+  /* Enforced beside configured. The interesting row is the one where they
+     disagree: a default of "on-request" in config.toml means nothing if
+     the session that actually ran was started with approvals off. */
+  const pol = cx.policy || {}, cfg = gov.posture || {};
+  const pbox = $('#cx-policy'); pbox.innerHTML = '';
+  const net = typeof pol.network === 'boolean' ? (pol.network ? 'allowed' : 'blocked') : null;
+  const pairs = [
+    ['approval', pol.approval, cfg.approvalPolicy],
+    ['sandbox', pol.sandbox, cfg.sandboxMode],
+    ['network', net, null],
+    ['model', pol.model, cfg.model],
+    ['effort', null, cfg.effortLevel],
+  ];
+  const pt = el('table');
+  pt.innerHTML = '<thead><tr><th>Setting</th><th>Enforced, last session</th><th>Default in config.toml</th></tr></thead>';
+  const ptb = el('tbody');
+  for (const [k, ran, def] of pairs) {
+    const tr = el('tr');
+    tr.appendChild(el('td', { textContent: k }));
+    const a = el('td', { className: 'mono', textContent: ran || '—' });
+    const b = el('td', { className: 'mono', textContent: def || '—' });
+    /* Only flag a real disagreement — one side being unreported is not one. */
+    if (ran && def && ran !== def) {
+      a.style.color = css('--warning');
+      tr.title = 'The session ran under a different setting than the file declares.';
+    }
+    if (k === 'network' && ran === 'allowed') a.style.color = css('--warning');
+    tr.append(a, b);
+    ptb.appendChild(tr);
+  }
+  pt.appendChild(ptb);
+  pbox.appendChild(pt);
+  if (pol.session) {
+    pbox.appendChild(el('p', { className: 'note', style: 'margin:10px 0 0',
+      textContent: `From session ${String(pol.session).slice(0, 8)}, ${ago(pol.at)}. `
+        + `${(cfg.trustedProjects || 0)} project${cfg.trustedProjects === 1 ? '' : 's'} marked trusted in config.toml.` }));
+  }
+
+  /* Sessions. Same questions as the Claude table asks, minus the one this
+     board refuses to answer for a model it has no rate card for. */
+  $('#cx-sessions-note').textContent =
+    'One row per rollout, newest first. Token counts are cumulative per session as Codex records them — taken, never summed.';
+  $('#cx-sessions-count').textContent = sessions.length ? `${sessions.length} shown` : '';
+  const st = $('#t-cx-sessions');
+  st.innerHTML = '<thead><tr><th>Session</th><th>Project</th><th>Model</th><th>Turns</th>'
+    + '<th>Tokens</th><th>Output</th><th>Sandbox</th><th>Active</th></tr></thead>';
+  const stb = el('tbody');
+  if (!sessions.length) {
+    const tr = el('tr'), td = el('td', { colSpan: 8, className: 'empty', textContent: 'No sessions recorded.' });
+    tr.appendChild(td); stb.appendChild(tr);
+  }
+  for (const s of sessions) {
+    const tr = el('tr');
+    tr.title = [s.project, s.branch].filter(Boolean).join(' · ');
+    tr.appendChild(el('td', { className: 'mono', textContent: String(s.id).slice(0, 8) }));
+    tr.appendChild(el('td', { textContent: (s.project || '—').split('/').pop() || '—' }));
+    tr.appendChild(el('td', { textContent: s.model || '—' }));
+    tr.appendChild(el('td', { textContent: full(s.turns || 0) }));
+    tr.appendChild(el('td', { textContent: compact((s.tokens || {}).total || 0) }));
+    tr.appendChild(el('td', { textContent: compact((s.tokens || {}).output || 0) }));
+    const sb = el('td', { textContent: s.sandbox || '—' });
+    if (s.sandbox === 'danger-full-access') sb.style.color = css('--critical');
+    tr.appendChild(sb);
+    tr.appendChild(el('td', { textContent: ago(s.last) }));
+    stb.appendChild(tr);
+  }
+  st.appendChild(stb);
+
+  $('#cx-models-note').textContent = cx.pricedNote || 'Counted, not priced.';
+  const mt = $('#t-cx-models');
+  mt.innerHTML = '<thead><tr><th>Model</th><th>Total</th><th>Input</th><th>Cached</th><th>Output</th><th>Reasoning</th></tr></thead>';
+  const mtb = el('tbody');
+  for (const r of (cx.byModel || [])) {
+    const k = r.tokens || {}, tr = el('tr');
+    tr.appendChild(el('td', { textContent: r.model }));
+    for (const v of [k.total, k.input, k.cached_input, k.output, k.reasoning]) {
+      tr.appendChild(el('td', { textContent: compact(v || 0) }));
+    }
+    mtb.appendChild(tr);
+  }
+  mt.appendChild(mtb);
+
+  const split = $('#cx-split'); split.innerHTML = '';
+  const total = tot.total || 0;
+  if (!total) {
+    split.appendChild(el('p', { className: 'empty', textContent: 'Nothing counted yet.' }));
+  } else {
+    const parts = [
+      ['input', tot.input, '--s1'], ['cached input', tot.cached_input, '--s2'],
+      ['output', tot.output, '--s4'], ['reasoning', tot.reasoning, '--s5'],
+    ];
+    for (const [label, v, c] of parts) {
+      const pct = (v || 0) / total * 100;
+      bar(split, pct, Math.round(pct) + '%', label, compact(v || 0) + ' tokens', css(c));
+    }
+  }
+
+  const lead = rows.find(w => w.percent != null);
+  badge('cx-tiles', compact(tot.total || 0));
+  badge('p-codex-plan', lead ? Math.round(lead.percent) + '%' : null);
+  badge('p-codex-policy', pol.sandbox || null,
+        pol.sandbox === 'danger-full-access' || pol.network === true ? 'bad' : null);
+  badge('p-codex-sessions', compact(sessions.length));
+  badge('p-codex-models', String((cx.byModel || []).length));
+}
+
+/* One series, drawn with the same scaffolding as the hour histogram. A
+   stacked chart would need a per-model split per day, and Codex reports one
+   cumulative total per session rather than a figure per turn — so the honest
+   shape here is a single bar and a note saying what a bar means. */
+function drawCodexDays(rows, note) {
+  const node = $('#c-cx-days'), f = frame(node, 200);
+  $('#cx-day-note').textContent = note
+    || 'Total tokens per local day, from the rollouts.';
+  rows = (rows || []).slice(-45);
+  if (!rows.length) {
+    const t = svg('text', { x: 12, y: 26 });
+    t.textContent = 'No day has any tokens on it yet.';
+    node.appendChild(t);
+    return;
+  }
+  const max = niceMax(Math.max(1, ...rows.map(r => r.tokens || 0)));
+  const iw = f.w - f.m.l - f.m.r, ih = f.h - f.m.t - f.m.b;
+  const n = rows.length, step = iw / n, bw = Math.max(2, step - 3);
+  const c = css('--s2');
+
+  yAxis(node, f, max, 2);
+  node.appendChild(svg('line', { class: 'axis', x1: f.m.l, x2: f.w - f.m.r, y1: f.m.t + ih, y2: f.m.t + ih }));
+
+  rows.forEach((r, i) => {
+    const x = f.m.l + step * i + 1.5;
+    const v = r.tokens || 0;
+    const hgt = v ? Math.max(2, ih * v / max) : 0;
+    if (hgt) node.appendChild(svg('rect', { x, y: f.m.t + ih - hgt, width: bw, height: hgt, rx: 2, fill: c }));
+    const hit = svg('rect', { class: 'hit', x: x - 1.5, y: f.m.t, width: step, height: ih });
+    node.appendChild(hit);
+    hit.addEventListener('mousemove', e => showTip(e, r.date, [
+      { color: c, label: 'tokens', value: full(v) },
+      { label: 'output', value: full(r.output || 0) },
+      { label: 'sessions', value: full(r.sessions || 0) },
+    ]));
+    hit.addEventListener('mouseleave', hideTip);
+  });
+
+  xLabels(node, f, rows, r => dayLabel(r.date));
+}
+
+function drawCodexProjects(list) {
+  const ul = $('#cx-projects'); ul.innerHTML = '';
+  if (!list || !list.length) {
+    ul.appendChild(el('li', { className: 'empty', textContent: 'No rollout has recorded a working directory yet.' }));
+    return;
+  }
+  for (const p of list.slice(0, 12)) {
+    const li = el('li');
+    const head = el('div', { className: 'name' });
+    head.append(el('span', { className: 'txt', textContent: p.label }));
+    const meta = el('div', { className: 'meta' });
+    meta.append(el('span', { textContent: `${p.sessions} session${p.sessions === 1 ? '' : 's'}` }),
+                el('span', { textContent: `${full(p.turns)} turns` }),
+                el('span', { textContent: compact(p.tokens) + ' tokens' }),
+                el('span', { textContent: p.branch || '—' }),
+                el('span', { textContent: ago(p.lastActive) }));
+    li.append(head, meta);
+    li.title = p.path;
+    ul.appendChild(li);
+  }
+}
+
+/* Codex's reset instants are absolute, so they keep counting down while
+   the percentage beside them ages — the same split the Claude panel makes,
+   for the same reason: a stale number and a live clock must not share one
+   fate. */
+let uwCodex = [];
+function tickCodexWindows() {
+  for (const w of uwCodex) {
+    if (!w.node.isConnected) continue;
+    w.node.textContent = 'resets in ' + dur(until(w.at)) + ' · ' + clock(w.at);
+  }
+}
+
+/* ── governance ───────────────────────────────────────────────────────
+   Configured beside called, never merged. A config file cannot tell you
+   that a server has sat mounted and unused for six months, and a call
+   count cannot tell you that one is mounted at all; the panel is only
+   worth having because it puts the two in the same row.               */
+function drawGovernance(toolId, gov, used) {
+  gov = gov || {}; used = used || {};
+  const codex = toolId === 'codex';
+  const configured = gov.mcpServers || [];
+  const calls = new Map((used.byServer || []).map(r => [r.server, r]));
+
+  const t = $('#t-mcp');
+  t.innerHTML = '<thead><tr><th>Server</th><th>Scope</th><th>Reaches</th>'
+    + '<th>Credentials</th><th>State</th><th>Calls</th></tr></thead>';
+  const tb = el('tbody');
+
+  const row = (name, scope, transport, target, env, state, tone, hit) => {
+    const tr = el('tr');
+    tr.appendChild(el('td', { textContent: name }));
+    tr.appendChild(el('td', { className: 'sub', textContent: scope }));
+    const reach = el('td', { className: 'mono' });
+    reach.textContent = target || '—';
+    reach.title = transport || '';
+    tr.appendChild(reach);
+    /* Variable NAMES. The agent never reads a value out of an MCP
+       server's env or headers block, and this column is the visible half
+       of that promise. */
+    const cred = el('td', { className: 'sub' });
+    cred.textContent = env && env.length ? env.join(', ') : '—';
+    if (env && env.length) cred.title = 'Names only — no value is ever read.';
+    tr.appendChild(cred);
+    const st = el('td', { textContent: state });
+    if (tone) st.style.color = css(tone);
+    tr.appendChild(st);
+    const c = el('td', { textContent: hit ? full(hit.calls) : '0' });
+    if (!hit) { c.className = 'sub'; c.title = 'Configured, never called on this machine.'; }
+    else c.title = `${hit.tools} distinct tool${hit.tools === 1 ? '' : 's'} used`;
+    tr.appendChild(c);
+    tb.appendChild(tr);
+  };
+
+  for (const s of configured) {
+    const hit = calls.get(s.name);
+    calls.delete(s.name);
+    const state = s.needsAuth ? 'needs sign-in' : s.enabled ? 'enabled' : 'disabled';
+    const tone = s.needsAuth ? '--warning' : null;
+    row(s.name, s.scope, s.transport, s.target, (s.env || []).concat(s.headers || []), state, tone, hit);
+  }
+  /* Anything called but not in a settings file came from a plugin or a
+     project-level .mcp.json. Leaving it out would make the panel claim a
+     completeness it does not have. */
+  for (const [name, hit] of calls) {
+    row(name, 'plugin or project', '', '', [], 'in use', null, hit);
+  }
+  if (!tb.childNodes.length) {
+    const tr = el('tr'), td = el('td', { colSpan: 6, className: 'empty' });
+    td.textContent = 'No MCP server is configured for this assistant, and none has been called.';
+    tr.appendChild(td); tb.appendChild(tr);
+  }
+  t.appendChild(tb);
+
+  const nUsed = (used.byServer || []).length;
+  $('#mcp-count').textContent = `${configured.length} configured · ${nUsed} called`;
+  $('#mcp-note').textContent = codex
+    ? 'From ~/.codex/config.toml, beside the calls counted in the rollouts.'
+    : 'From Claude Code’s settings files, beside the calls counted in the transcripts.';
+  const idle = configured.filter(s => !(used.byServer || []).some(r => r.server === s.name)).length;
+  $('#mcp-foot').textContent = (gov.note || '')
+    + (idle ? ` ${idle} of the ${configured.length} configured server${configured.length === 1 ? '' : 's'} `
+              + `${idle === 1 ? 'has' : 'have'} never been called from this machine.` : '');
+
+  /* ── tool calls ── */
+  const byTool = used.byTool || [];
+  $('#tools-count').textContent = used.total ? `${full(used.total)} calls · ${used.distinct} names` : '';
+  $('#tools-note').textContent = used.note || '';
+  const sp = $('#tools-split'); sp.innerHTML = '';
+  const tt = used.total || 0;
+  if (tt) {
+    bar(sp, (used.mcpCalls || 0) / tt * 100, Math.round((used.mcpCalls || 0) / tt * 100) + '%',
+        'through an MCP server', full(used.mcpCalls || 0) + ' calls', css('--s2'));
+    bar(sp, (used.builtinCalls || 0) / tt * 100, Math.round((used.builtinCalls || 0) / tt * 100) + '%',
+        'built-in tools', full(used.builtinCalls || 0) + ' calls', css('--s1'));
+  }
+  const ct = $('#t-tools');
+  ct.innerHTML = '<thead><tr><th>Tool</th><th>Server</th><th>Calls</th></tr></thead>';
+  const ctb = el('tbody');
+  if (!byTool.length) {
+    const tr = el('tr'), td = el('td', { colSpan: 3, className: 'empty',
+      textContent: 'No tool calls counted yet. The index is rebuilt from scratch on a version change, so this fills in as the scan catches up.' });
+    tr.appendChild(td); ctb.appendChild(tr);
+  }
+  for (const r of byTool) {
+    const tr = el('tr');
+    /* `mcp__server__tool` split for reading, kept whole in the payload. */
+    const m = codex ? String(r.name).split('__') : String(r.name).replace(/^mcp__/, '').split('__');
+    const isMcp = codex ? m.length > 1 : String(r.name).startsWith('mcp__');
+    tr.appendChild(el('td', { className: 'mono', textContent: isMcp ? m.slice(1).join('__') : r.name }));
+    tr.appendChild(el('td', { className: 'sub', textContent: isMcp ? m[0] : '—' }));
+    tr.appendChild(el('td', { textContent: full(r.calls) }));
+    ctb.appendChild(tr);
+  }
+  ct.appendChild(ctb);
+
+  /* ── permissions and hooks ── */
+  const perm = gov.permissions || {}, hooks = gov.hooks || [];
+  const pb = $('#perm-body'); pb.innerHTML = '';
+  const badgeBox = $('#perm-badge'); badgeBox.innerHTML = '';
+  $('#perm-note').textContent = codex
+    ? 'Codex governs by approval policy and sandbox rather than by rule lists — those are on the policy card above.'
+    : 'Every rule that stands between this assistant and your machine, and everything that runs on a hook.';
+
+  if (codex) {
+    const feats = gov.features || [];
+    pb.appendChild(el('p', { className: 'gov-h', textContent: 'features' }));
+    const fc = el('div', { className: 'chips' });
+    if (!feats.length) fc.appendChild(el('span', { className: 'chip', textContent: 'none declared' }));
+    for (const f of feats) fc.appendChild(el('span', { className: 'chip' + (f.on ? '' : ' off'), textContent: f.name }));
+    pb.append(fc);
+    if (gov.sources) pb.appendChild(el('p', { className: 'note', style: 'margin:14px 0 0',
+      textContent: 'Read from ' + (gov.sources || []).join(', ') }));
+  } else {
+    const mode = perm.defaultMode;
+    if (mode) badgeBox.appendChild(el('span', { className: 'badge', textContent: mode }));
+    const dangerous = (gov.posture || {}).skipDangerousModePrompt;
+    if (dangerous) {
+      const b = el('span', { className: 'badge warn', textContent: 'skips the danger prompt' });
+      b.title = 'skipDangerousModePermissionPrompt is on: --dangerously-skip-permissions will not ask.';
+      badgeBox.appendChild(b);
+    }
+    const buckets = [['allow', perm.allow], ['deny', perm.deny], ['ask', perm.ask]];
+    const any = buckets.some(([, v]) => (v || []).length);
+    pb.appendChild(el('p', { className: 'gov-h', textContent: 'permission rules' }));
+    if (!any) {
+      pb.appendChild(el('p', { className: 'empty', textContent: 'No rule is configured; every tool call is asked for.' }));
+    } else {
+      const ul = el('ul', { className: 'rules' });
+      for (const [name, list] of buckets) {
+        for (const r of (list || [])) {
+          const li = el('li');
+          const tag = el('span', { className: 'tag', textContent: name });
+          if (name === 'deny') tag.style.color = css('--critical');
+          li.append(tag, el('span', { className: 'mono', textContent: r.rule }),
+                    el('span', { className: 'spacer' }),
+                    el('span', { className: 'sub', textContent: r.scope }));
+          ul.appendChild(li);
+        }
+      }
+      pb.appendChild(ul);
+    }
+    if ((perm.additionalDirectories || []).length) {
+      pb.appendChild(el('p', { className: 'gov-h', textContent: 'additional directories' }));
+      const dc = el('div', { className: 'chips' });
+      for (const d of perm.additionalDirectories) dc.appendChild(el('span', { className: 'chip', textContent: d }));
+      pb.appendChild(dc);
+    }
+    pb.appendChild(el('p', { className: 'gov-h', textContent: 'hooks' }));
+    if (!hooks.length) {
+      pb.appendChild(el('p', { className: 'empty', textContent: 'Nothing runs on a hook.' }));
+    } else {
+      const hc = el('div', { className: 'chips' });
+      for (const h of hooks) {
+        const c = el('span', { className: 'chip' });
+        c.append(el('span', { textContent: h.event }),
+                 el('span', { className: 'n', textContent: (h.programs || []).join(', ') || h.count }));
+        c.title = (h.matchers || []).length ? 'matches: ' + h.matchers.join(', ') : 'every call';
+        hc.appendChild(c);
+      }
+      pb.appendChild(hc);
+    }
+  }
+
+  /* ── plugins, skills, subagents ── */
+  const eb = $('#ext-body'); eb.innerHTML = '';
+  $('#ext-note').textContent = codex
+    ? 'Installed for Codex, from config.toml and ~/.codex/skills.'
+    : 'Installed here, with how often each was actually invoked — counted from the transcripts, not from a usage cache.';
+  const skillCalls = new Map((used.skills || []).map(r => [r.skill, r.calls]));
+  const agentCalls = new Map((used.agents || []).map(r => [r.agent, r.calls]));
+
+  const group = (title, items, empty) => {
+    eb.appendChild(el('p', { className: 'gov-h', textContent: title }));
+    if (!items.length) { eb.appendChild(el('p', { className: 'empty', textContent: empty })); return; }
+    const box = el('div', { className: 'chips' });
+    for (const it of items) {
+      const c = el('span', { className: 'chip' + (it.off ? ' off' : '') });
+      c.append(el('span', { textContent: it.name }));
+      if (it.n != null) c.appendChild(el('span', { className: 'n', textContent: full(it.n) }));
+      if (it.title) c.title = it.title;
+      box.appendChild(c);
+    }
+    eb.appendChild(box);
+  };
+
+  group('plugins', (gov.plugins || []).map(p => ({
+    name: p.name, off: !p.enabled,
+    title: (p.enabled ? 'enabled' : 'installed but switched off') + (p.installed ? '' : ' · not found on disk'),
+  })), 'None installed.');
+
+  /* A skill or subagent that exists and a skill or subagent that gets used
+     are different facts, so the count is on the chip rather than implied. */
+  const skills = (gov.skills || []).map(n => ({ name: n, n: skillCalls.get(n) || 0 }));
+  for (const [n, c] of skillCalls) if (!(gov.skills || []).includes(n)) skills.push({ name: n, n: c, title: 'from a plugin' });
+  group('skills', skills, 'None installed.');
+
+  const agents = (gov.agents || []).map(n => ({ name: n, n: agentCalls.get(n) || 0 }));
+  for (const [n, c] of agentCalls) if (!(gov.agents || []).includes(n)) agents.push({ name: n, n: c, title: 'built in, or from a plugin' });
+  group('subagents', agents, 'None defined, and none has been spawned.');
+
+  /* The rail carries the same numbers the panels do, read from the same
+     arrays, so a digest cannot drift from what it summarises. */
+  badge('p-mcp-servers', String(configured.length + calls.size),
+        configured.some(s => s.needsAuth) ? 'bad' : null);
+  badge('p-tool-calls', compact(used.total || 0));
+  badge('p-permissions', codex ? String((gov.features || []).length)
+        : String(((perm.allow || []).length + (perm.deny || []).length + (perm.ask || []).length)));
+  badge('p-extensions', String((gov.plugins || []).length + (gov.skills || []).length + (gov.agents || []).length));
+}
+
 /* ── usage windows ───────────────────────────────────────────────────
    These are the only percentages on the board that are not derived from
    anything: Claude Code asks Anthropic how much of the plan is spent and
@@ -1454,11 +2161,13 @@ function tickWindows() {
    instant. The server diffs consecutive readings, so this answers the
    question you actually have when you sit back down — what finished
    while I was away — including the notification you never saw.       */
-function drawEnded(list, host) {
-  const ul = $('#ended'); ul.innerHTML = '';
-  const rows = (list || []).filter(e => !host || e.host === host);
+function drawEnded(list, host, toolId, ids) {
+  ids = ids || { list: '#ended', count: '#ended-count' };
+  const ul = $(ids.list); ul.innerHTML = '';
+  const rows = (list || []).filter(e => (!host || e.host === host)
+    && (!toolId || (e.tool || 'claude-code') === toolId));
   const hour = rows.filter(e => (Date.now() - new Date(e.noticed_at).getTime()) < 3600e3).length;
-  $('#ended-count').textContent = rows.length
+  $(ids.count).textContent = rows.length
     ? `${hour} in the last hour · ${rows.length} in 24h` : '';
 
   if (!rows.length) {
@@ -1496,7 +2205,10 @@ function drawTiles(s, live, hostFacts, usage) {
   const tools = s.daily.reduce((a, d) => a + d.toolCalls, 0);
   const active = s.daily.filter(d => d.messages > 0).length;
   const out = s.models.reduce((a, m) => a + m.output, 0);
-  const running = live.processes.length;
+  /* This is Claude Code's overview tile, and the process list now carries
+     Codex too — counting both here would put another assistant's work in
+     this one's headline. */
+  const running = (live.processes || []).filter(p => procTool(p) === 'claude-code').length;
   const tiles = [
     { k: 'Sessions',    v: full(s.totalSessions), d: s.firstSessionDate ? 'since ' + s.firstSessionDate.slice(0, 10) : '' },
     { k: 'Messages',    v: compact(s.totalMessages), d: full(s.totalMessages) },
@@ -1556,25 +2268,40 @@ function drawModels(models, costReported, usage, lastComputed) {
   t.appendChild(tb);
 }
 
-function drawLive(live) {
+/* A process row now names its own assistant. A reading from an older agent
+   does not, and the only assistant that agent could see was Claude Code —
+   so an absent `tool` means claude-code rather than "unknown". */
+const procTool = p => p.tool || 'claude-code';
+
+function drawLive(live, toolId) {
   const sup = live.supervisor;
-  const pill = el('span', {
-    className: 'pill ' + (sup.alive ? 'ok' : (sup.pid ? 'bad' : 'warn')),
-    title: sup.startedAt ? 'since ' + sup.startedAt : '',
-  });
-  pill.append(el('span', { className: 'dot' }),
-    el('span', { textContent: sup.alive ? `supervisor up · pid ${sup.pid}` : (sup.pid ? 'supervisor down' : 'no supervisor') }));
-  $('#sup-pill').innerHTML = ''; $('#sup-pill').appendChild(pill);
+  const pillBox = $('#sup-pill'); pillBox.innerHTML = '';
+  /* The supervisor is Claude Code's own background daemon. Showing its pill
+     over a Codex list would attach a fact to the wrong thing. */
+  if (toolId === 'claude-code') {
+    const pill = el('span', {
+      className: 'pill ' + (sup.alive ? 'ok' : (sup.pid ? 'bad' : 'warn')),
+      title: sup.startedAt ? 'since ' + sup.startedAt : '',
+    });
+    pill.append(el('span', { className: 'dot' }),
+      el('span', { textContent: sup.alive ? `supervisor up · pid ${sup.pid}` : (sup.pid ? 'supervisor down' : 'no supervisor') }));
+    pillBox.appendChild(pill);
+  }
+
+  const procs = (live.processes || []).filter(p => procTool(p) === toolId);
+  $('#live-note').textContent = toolId === 'codex'
+    ? 'Live codex processes on this Mac. Paths inside ~/.codex are not matched — only the binary.'
+    : 'Live claude processes on this Mac.';
 
   const box = $('#live'); box.innerHTML = '';
-  if (!live.processes.length) { box.appendChild(el('p', { className: 'empty', textContent: 'Nothing running.' })); return; }
+  if (!procs.length) { box.appendChild(el('p', { className: 'empty', textContent: 'Nothing running.' })); return; }
   const ul = el('ul', { className: 'feed' });
-  for (const p of live.processes) {
+  for (const p of procs) {
     const li = el('li');
     li.title = p.cmd;                       /* the full command, on hover */
     const head = el('div', { className: 'name' });
     head.append(
-      el('span', { className: 'pill ' + (p.headless ? 'warn' : 'ok'), textContent: p.kind || 'claude' }),
+      el('span', { className: 'pill ' + (p.headless ? 'warn' : 'ok'), textContent: p.kind || procTool(p) }),
       el('span', { className: 'mono', textContent: 'pid ' + p.pid }));
     const meta = el('div', { className: 'meta' });
     meta.append(el('span', { textContent: 'up ' + p.elapsed }));
@@ -1894,20 +2621,23 @@ function drawRailScope(d, cur, tool) {
    "22 running · 1/1 up · resets in 3h" off the rail and never touches a
    chart. Every number is read from the same array the panel it links to
    renders, so it cannot drift from it. */
-function drawRailDigest(d, m, claude, usage, live, lim) {
+function drawRailDigest(d, m, claude, usage, live, lim, toolId) {
   const hosts = d.hosts || [];
   const up = hosts.filter(x => x.status === 'up').length;
-  const running = live.processes.length;
+  /* Running now is one panel filtered by the picker, so its badge counts the
+     same rows the panel draws rather than every process on the machine. */
+  const running = (live.processes || []).filter(p => procTool(p) === toolId).length;
   const days = (claude.daily || []).filter(x => x.messages > 0).length;
   const endedHour = (d.endings || []).filter(e =>
-    (!m || !e.host || e.host === (m.host || {}).hostname || true) &&
+    (e.tool || 'claude-code') === toolId &&
     (Date.now() - new Date(e.noticed_at).getTime()) < 3600e3).length;
 
   const lead = ((lim && lim.windows) || []).find(w => w.active);
   badge('tiles', null);
   badge('p-usage-windows', lead && lead.percent != null ? lead.percent + '%' : null,
         lead && (lead.severity === 'critical' ? 'bad' : null));
-  badge('p-recently-finished', endedHour ? String(endedHour) : null);
+  badge(toolId === 'codex' ? 'p-codex-finished' : 'p-recently-finished',
+        endedHour ? String(endedHour) : null);
   badge('p-activity', days + 'd');
   badge('p-value', usdShort((usage.allTime || {}).estUSD || 0));
   badge('p-sessions', compact((usage.sessions || []).length));
@@ -1920,6 +2650,10 @@ function drawRailDigest(d, m, claude, usage, live, lim) {
 
 function bootRail() {
   buildNav();
+  /* Both assistants' panels are in the document from the start, so the
+     first paint would otherwise show Claude's board with Codex's rows
+     under it for as long as the first fetch takes. */
+  applyTool('claude-code');
   measureHeader();
   new ResizeObserver(measureHeader).observe($('header'));
   addEventListener('resize', measureHeader);
@@ -1997,11 +2731,46 @@ function render(d) {
   $('#rail-nav').hidden = off;
   if (off) { paintNav(null); return; }
 
+  /* Which assistant's panels are on the board at all. Everything below is
+     drawn for one of them; nothing is shared but the machine list and the
+     governance panels, and those are told which tool they are drawing. */
+  const toolId = (tool && tool.id) || 'claude-code';
+  const gov = m.governance || {};
+  const codex = m.codex || {};
+  applyTool(toolId);
+
+  /* The governance panels are the two assistants' one common shape, so
+     the tool id is part of what makes a redraw necessary — without it,
+     switching pickers with unchanged data would leave the other tool's
+     servers on screen, which is the bug this whole change is about. */
+  if (changed('gov', [toolId, gov, codex.tools, usage.tools]))
+    drawGovernance(toolId,
+      toolId === 'codex' ? gov.codex : gov.claude,
+      toolId === 'codex' ? codex.tools : usage.tools);
+
+  if (toolId === 'codex') {
+    if (changed('codex', [codex, gov.codex, live.processes.length]))
+      drawCodex(codex, gov.codex, live);
+    if (changed('cx-days', codex.byDay)) drawCodexDays(codex.byDay, codex.byDayNote);
+    if (changed('cx-projects', codex.projects)) drawCodexProjects(codex.projects);
+    if (changed('cx-ended', [d.endings, cur && cur.host]))
+      drawEnded(d.endings, cur && cur.host, 'codex', { list: '#cx-ended', count: '#cx-ended-count' });
+    /* Running now is shared, so it is redrawn per tool rather than per
+       payload — the same processes, filtered a different way. */
+    drawLive(live, 'codex');
+    drawRailDigest(d, m, claude, usage, live, m.limits, 'codex');
+    badge('p-codex-activity', String((codex.byDay || []).length) + 'd');
+    badge('p-codex-projects', String((codex.projects || []).length));
+    elect();
+    return;
+  }
+
   /* The countdowns inside drawLimits are ticked by tickWindows() once a
      second, so the panel itself only has to be rebuilt when the numbers
      behind them move. */
   if (changed('limits', [m.limits, usage.blocks])) drawLimits(m.limits, usage.blocks || {});
-  if (changed('ended', [d.endings, cur && cur.host])) drawEnded(d.endings, cur && cur.host);
+  if (changed('ended', [d.endings, cur && cur.host]))
+    drawEnded(d.endings, cur && cur.host, 'claude-code');
   if (changed('tiles', [claude.totalSessions, claude.totalMessages, claude.daily, claude.models,
                         live.processes.length, m.host, usage.allTime]))
     drawTiles(claude, live, m.host || {}, usage);
@@ -2015,10 +2784,10 @@ function render(d) {
   if (changed('hours', claude.hours)) drawHours(claude.hours || {});
   if (changed('models', [claude.models, claude.costReported, claude.lastComputedDate, usage.pricing]))
     drawModels(claude.models || [], claude.costReported, usage, claude.lastComputedDate);
-  if (changed('live', live)) drawLive(live);
+  if (changed('live', live)) drawLive(live, 'claude-code');
   if (changed('projects', m.projects)) drawProjects(m.projects || []);
   if (changed('prompts', m.prompts)) drawPrompts(m.prompts || []);
-  drawRailDigest(d, m, claude, usage, live, m.limits);
+  drawRailDigest(d, m, claude, usage, live, m.limits, 'claude-code');
   elect();          /* panel heights just changed under the reader */
 }
 
@@ -2335,7 +3104,7 @@ addEventListener('visibilitychange', () => {
 /* The countdown. One text node, once a second — cheap enough to leave
    running, and it is the only proof the switch is doing anything between
    readings. */
-setInterval(() => { stamp(); tickWindows(); }, 1000);
+setInterval(() => { stamp(); tickWindows(); tickCodexWindows(); }, 1000);
 
 poll();   /* schedules the next one itself */
 </script>

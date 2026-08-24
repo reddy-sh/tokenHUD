@@ -14,7 +14,7 @@
      brand last. Description: ~155 chars — it does not affect ranking, but it
      is the copy a human reads before deciding to click. -->
 <title>TokenHUD — Live Token Usage & Cost for Claude Code</title>
-<meta name="description" content="See what your AI coding agents are running and costing, live on your own machine. Token metering, spend and plan limits for Claude Code. Free, local-first, zero dependencies.">
+<meta name="description" content="See what your AI coding agents run and cost, live on your own machine. Token metering, spend and plan limits for Claude Code and Codex CLI. Free, local-first, zero dependencies.">
 
 <!-- One canonical URL, or the homepage competes with its own README and
      docs for the same query. -->
@@ -33,7 +33,7 @@
 <meta property="og:site_name" content="TokenHUD">
 <meta property="og:url" content="https://tokenhud.com/">
 <meta property="og:title" content="TokenHUD — a heads-up display for the AI agents on your machine">
-<meta property="og:description" content="Live token spend, session metering and plan limits for Claude Code. Metrics leave, content never does.">
+<meta property="og:description" content="Live token spend, session metering and plan limits for Claude Code and Codex CLI. Metrics leave, content never does.">
 <meta property="og:image" content="https://tokenhud.com/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -44,23 +44,22 @@
      summary_large_image is the only card type worth using for a product. -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="TokenHUD — a heads-up display for the AI agents on your machine">
-<meta name="twitter:description" content="Live token spend, session metering and plan limits for Claude Code. Metrics leave, content never does.">
+<meta name="twitter:description" content="Live token spend, session metering and plan limits for Claude Code and Codex CLI. Metrics leave, content never does.">
 <meta name="twitter:image" content="https://tokenhud.com/og.png">
 <meta name="twitter:image:alt" content="The TokenHUD dashboard showing token spend and plan usage.">
 
 <!-- ── Browser chrome ───────────────────────────────────────────────────
      Two theme-colors so the mobile address bar matches the page in both
      schemes rather than flashing white on a dark page. -->
-<meta name="theme-color" content="#f4f4f2" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#121211" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#15171d" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
-<!-- ── Performance: only what is actually used ──────────────────────────
-     preconnect costs a connection; only list an origin the page really
-     hits. Remove these if the page ends up fully self-hosted. -->
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- ── Performance ──────────────────────────────────────────────────────
+     No preconnect: the page is fully self-hosted, fonts included. Nothing
+     here talks to any origin but tokenhud.com. -->
 
 <!-- ═══ DELIBERATELY OMITTED, so nobody helpfully adds them back ═══
      <meta name="keywords">        Google has ignored this since 2009.
@@ -87,10 +86,10 @@
       "@id": "https://tokenhud.com/#app",
       "name": "TokenHUD",
       "alternateName": "Token HUD",
-      "description": "A heads-up display for the AI coding agents running on your machine. Live token metering, estimated spend, and plan-limit windows for Claude Code — running entirely on your own computer.",
+      "description": "A heads-up display for the AI coding agents running on your machine. Live token metering, estimated spend, and plan-limit windows for Claude Code and Codex CLI — running entirely on your own computer.",
       "applicationCategory": "DeveloperApplication",
       "applicationSubCategory": "Developer Monitoring Tool",
-      "operatingSystem": "macOS, Linux, Windows",
+      "operatingSystem": "macOS, Linux",
       "url": "https://tokenhud.com/",
       "downloadUrl": "https://github.com/reddy-sh/tokenhud",
       "codeRepository": "https://github.com/reddy-sh/tokenhud",
@@ -100,7 +99,7 @@
       "offers": [
         {
           "@type": "Offer",
-          "name": "Individual",
+          "name": "Solo",
           "price": "0",
           "priceCurrency": "USD",
           "description": "Free forever for one developer on one machine. Unlimited metering, no sampling, full local history. Runs with the network off."
@@ -109,18 +108,18 @@
           "@type": "Offer",
           "name": "Team",
           "priceCurrency": "USD",
-          "description": "Per seat. Cross-machine rollups, shared budgets, retained history, chargeback reports, and alerts to Slack and email.",
+          "description": "Per seat. Cross-machine rollups, shared budgets, retained history, chargeback reports, and alerts to Slack and email. Planned — not yet available.",
           "availability": "https://schema.org/PreOrder"
         }
       ],
       "featureList": [
-        "Discovers AI coding agents and MCP servers on the host with no configuration",
+        "Discovers AI coding agents and their sessions on the host with no configuration",
         "Meters token usage and estimated spend by session, agent, model and project",
         "Shows your plan's real five-hour and seven-day usage windows and when they reset",
         "Reports which agents finished while you were away",
         "Never reads prompt text, completion text, or source code"
       ],
-      "softwareRequirements": "None. Two static binaries; no interpreter, no package manager, no build step.",
+      "softwareRequirements": "Rust toolchain to build from source. Two static binaries; no interpreter, no package manager.",
       "author": {
         "@id": "https://tokenhud.com/#org"
       },
@@ -202,7 +201,7 @@
       "name": "Which AI coding agents does TokenHUD support?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Claude Code today. TokenHUD also detects Codex CLI, Cursor, Gemini CLI, Windsurf and other assistants installed on the machine and lists them, marking the ones no collector reads yet rather than showing an empty dashboard."
+        "text": "Claude Code and Codex CLI today. TokenHUD also detects Cursor, Gemini CLI, Windsurf and other assistants installed on the machine and lists them, marking the ones no collector reads yet rather than showing an empty dashboard."
       }
     },
     {

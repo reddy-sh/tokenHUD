@@ -12,6 +12,7 @@
 
 pub mod codex;
 pub mod collect;
+pub mod governance;
 pub mod limits;
 pub mod manifest;
 pub mod pricing;
