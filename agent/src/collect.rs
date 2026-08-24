@@ -105,17 +105,13 @@ pub fn host_id() -> String {
 }
 
 fn hostname() -> String {
-    let mut buf = [0i8; 256];
-    let ok = unsafe { libc::gethostname(buf.as_mut_ptr(), buf.len()) } == 0;
+    let mut buf = [0u8; 256];
+    let ok = unsafe { libc::gethostname(buf.as_mut_ptr() as *mut libc::c_char, buf.len()) } == 0;
     if !ok {
         return String::new();
     }
-    let bytes: Vec<u8> = buf
-        .iter()
-        .take_while(|c| **c != 0)
-        .map(|c| *c as u8)
-        .collect();
-    String::from_utf8_lossy(&bytes).into_owned()
+    let len = buf.iter().position(|&c| c == 0).unwrap_or(buf.len());
+    String::from_utf8_lossy(&buf[..len]).into_owned()
 }
 
 struct Uname {
