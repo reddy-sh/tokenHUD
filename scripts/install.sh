@@ -1,10 +1,9 @@
 #!/bin/sh
-# Install tokenhud-agent from the latest GitHub Release.
+# Install tokenhud-agent and tokenhud-server from the latest GitHub Release.
 # Usage: curl -fsSL https://raw.githubusercontent.com/reddy-sh/tokenhud/main/scripts/install.sh | sh
 set -e
 
 REPO="reddy-sh/tokenhud"
-BINARY="tokenhud-agent"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 
 # Detect OS and architecture
@@ -23,7 +22,7 @@ case "$ARCH" in
   *)             echo "Unsupported architecture: $ARCH"; exit 1 ;;
 esac
 
-TARGET="${BINARY}-${arch}-${os}"
+TARGET="${arch}-${os}"
 
 # Get latest tag
 LATEST="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | cut -d'"' -f4)"
@@ -33,24 +32,36 @@ if [ -z "$LATEST" ]; then
   exit 1
 fi
 
-URL="https://github.com/${REPO}/releases/download/${LATEST}/${TARGET}"
-
-echo "Installing ${BINARY} ${LATEST} (${arch}-${os})..."
-echo "  from: ${URL}"
-echo "  to:   ${INSTALL_DIR}/${BINARY}"
-
 mkdir -p "$INSTALL_DIR"
-curl -fsSL "$URL" -o "${INSTALL_DIR}/${BINARY}"
-chmod +x "${INSTALL_DIR}/${BINARY}"
 
-# Verify
-if "${INSTALL_DIR}/${BINARY}" --version >/dev/null 2>&1; then
+for BINARY in tokenhud-agent tokenhud-server; do
+  ASSET="${BINARY}-${TARGET}"
+  URL="https://github.com/${REPO}/releases/download/${LATEST}/${ASSET}"
+
+  echo "Installing ${BINARY} ${LATEST} (${TARGET})..."
+  echo "  from: ${URL}"
+  echo "  to:   ${INSTALL_DIR}/${BINARY}"
+
+  curl -fsSL "$URL" -o "${INSTALL_DIR}/${BINARY}"
+  chmod +x "${INSTALL_DIR}/${BINARY}"
+
+  if "${INSTALL_DIR}/${BINARY}" --version >/dev/null 2>&1; then
+    echo "  ok:   $("${INSTALL_DIR}/${BINARY}" --version)"
+  else
+    echo "  ok"
+  fi
   echo ""
-  echo "Installed: $("${INSTALL_DIR}/${BINARY}" --version)"
-else
-  echo ""
-  echo "Installed ${BINARY} to ${INSTALL_DIR}/${BINARY}"
-fi
+done
+
+echo "Both installed to ${INSTALL_DIR}/"
+echo ""
+echo "Quick start:"
+echo "  tokenhud-server --new-key        # prints an ingest key"
+echo "  export TOKENHUD_KEY=<key>"
+echo "  tokenhud-server &                # starts on http://127.0.0.1:8787"
+echo "  tokenhud-agent                   # starts sending readings"
+echo ""
+echo "Then open http://127.0.0.1:8787 in your browser."
 
 # Check PATH
 case ":$PATH:" in

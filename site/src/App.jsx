@@ -1,122 +1,65 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useEffect, useState } from 'react'
+import Board from './components/Board'
+import Boundary from './components/Boundary'
+import Compare from './components/Compare'
+import CtaStrip from './components/CtaStrip'
+import Dashboard from './components/Dashboard'
+import Faq from './components/Faq'
+import Footer from './components/Footer'
+import Hero from './components/Hero'
+import Integrations from './components/Integrations'
+import Manifest from './components/Manifest'
+import Nav from './components/Nav'
+import Pricing from './components/Pricing'
+import Stats from './components/Stats'
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [dashboardOpen, setDashboardOpen] = useState(false)
+
+  /* scroll-triggered reveals */
+  useEffect(() => {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) {
+      document.querySelectorAll('.reveal').forEach(el => el.classList.add('is-in'))
+      return
+    }
+    const obs = new IntersectionObserver(
+      entries => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('is-in'); obs.unobserve(e.target) } }),
+      { threshold: 0.12 }
+    )
+    document.querySelectorAll('.reveal').forEach(el => obs.observe(el))
+    return () => obs.disconnect()
+  }, [])
 
   return (
     <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+      {/* ambient backdrop */}
+      <div className="ambient" aria-hidden="true">
+        <div className="bloom bloom--1" />
+        <div className="bloom bloom--2" />
+        <div className="grain" />
+      </div>
 
-      <div className="ticks"></div>
+      <a className="skip" href="#main">Skip to content</a>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      <Nav onDashboard={() => setDashboardOpen(true)} />
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
+      <main id="main">
+        <Hero onDashboard={() => setDashboardOpen(true)} />
+        <Stats />
+        <Board />
+        <Manifest />
+        <Boundary />
+        <Integrations />
+        <Compare />
+        <Pricing />
+        <Faq />
+        <CtaStrip onDashboard={() => setDashboardOpen(true)} />
+      </main>
+
+      <Footer />
+
+      {dashboardOpen && <Dashboard onClose={() => setDashboardOpen(false)} />}
     </>
   )
 }
-
-export default App

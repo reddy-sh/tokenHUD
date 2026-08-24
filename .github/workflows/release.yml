@@ -21,26 +21,18 @@ jobs:
           - name: macOS arm64
             os: macos-latest
             target: aarch64-apple-darwin
-            binary: tokenhud-agent
-            artifact: tokenhud-agent-aarch64-apple-darwin
 
           - name: macOS x86_64
             os: macos-latest
             target: x86_64-apple-darwin
-            binary: tokenhud-agent
-            artifact: tokenhud-agent-x86_64-apple-darwin
 
           - name: Linux x86_64
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            binary: tokenhud-agent
-            artifact: tokenhud-agent-x86_64-unknown-linux-gnu
 
           - name: Linux arm64
             os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
-            binary: tokenhud-agent
-            artifact: tokenhud-agent-aarch64-unknown-linux-gnu
 
     steps:
       - uses: actions/checkout@v4
@@ -51,22 +43,30 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: agent
+          workspaces: "agent\nserver"
 
-      - name: Build
+      - name: Build agent
         run: cargo build --release --manifest-path agent/Cargo.toml --target ${{ matrix.target }}
+
+      - name: Build server
+        run: cargo build --release --manifest-path server/Cargo.toml --target ${{ matrix.target }}
 
       - name: Package
         run: |
           mkdir -p dist
-          cp agent/target/${{ matrix.target }}/release/${{ matrix.binary }} dist/${{ matrix.artifact }}
-          chmod +x dist/${{ matrix.artifact }}
-          shasum -a 256 dist/${{ matrix.artifact }} > dist/${{ matrix.artifact }}.sha256
+          for bin in tokenhud-agent tokenhud-server; do
+            src="agent/target/${{ matrix.target }}/release/${bin}"
+            [ ! -f "$src" ] && src="server/target/${{ matrix.target }}/release/${bin}"
+            artifact="${bin}-${{ matrix.target }}"
+            cp "$src" "dist/${artifact}"
+            chmod +x "dist/${artifact}"
+            shasum -a 256 "dist/${artifact}" > "dist/${artifact}.sha256"
+          done
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
+          name: binaries-${{ matrix.target }}
           path: dist/
 
   release:
