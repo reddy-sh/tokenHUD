@@ -23,10 +23,22 @@ real machine's.</sub>
 
 ## Get started
 
+### Install the agent (no Rust required)
+
+Prebuilt binaries for macOS and Linux:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/reddy-sh/tokenhud/main/scripts/install.sh | sh
+```
+
+Or download directly from [GitHub Releases](https://github.com/reddy-sh/tokenhud/releases/latest).
+
+### Run the full stack (agent + server + dashboard)
+
 Two commands after the clone. `run.sh` shows you what the agent reads, asks,
 generates an ingest key, and starts both processes.
 
-### macOS · Linux
+#### macOS · Linux
 
 ```bash
 git clone https://github.com/reddy-sh/tokenhud.git
