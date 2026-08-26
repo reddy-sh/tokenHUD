@@ -97,7 +97,9 @@ echo ""
 if [ -n "$ENROLL" ]; then
   echo "  2. Enrolling this machine…"
   echo ""
-  exec "${INSTALL_DIR}/${BINARY}" enroll "$ENROLL"
+  # stdin is the pipe from curl, which is at EOF by now. The agent's
+  # consent prompt needs the real terminal, so redirect from /dev/tty.
+  exec "${INSTALL_DIR}/${BINARY}" enroll "$ENROLL" </dev/tty
 else
   echo "  Installed to ${INSTALL_DIR}/${BINARY}"
   echo ""
