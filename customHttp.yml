@@ -3,10 +3,10 @@
 # The page is fully self-hosted (fonts included), so the CSP refuses every
 # external origin except the AWS endpoints the portal itself talks to:
 # Cognito for sign-in, and the API (behind CloudFront) for machine data.
-# *.amazonaws.com is the tightest expression CSP allows for Cognito — the
-# region and pool id are minted at deploy time and a leftmost wildcard is
-# the only wildcard CSP accepts. No wss: — AppSync was removed; the portal
-# polls over plain HTTPS.
+# *.amazonaws.com covers the API and most AWS endpoints; *.amazoncognito.com
+# is needed separately because the Cognito hosted-UI OAuth domain lives
+# under amazoncognito.com, not amazonaws.com. No wss: — AppSync was removed;
+# the portal polls over plain HTTPS.
 customHeaders:
   - pattern: '**'
     headers:
@@ -19,7 +19,7 @@ customHeaders:
       - key: Referrer-Policy
         value: strict-origin-when-cross-origin
       - key: Content-Security-Policy
-        value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://*.amazonaws.com; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'"
+        value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://*.amazonaws.com https://*.amazoncognito.com; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'"
   - pattern: 'fonts/*.woff2'
     headers:
       - key: Cache-Control
