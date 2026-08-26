@@ -1,15 +1,15 @@
 #!/bin/sh
-# Install tokenhud-agent from the latest GitHub Release and optionally enroll.
+# Install tokenhud-agent and optionally enroll.
 #
 # One command, shown by the "Add a machine" modal:
 #   curl -fsSL https://platform.tokenhud.com/install.sh | ENROLL="<link>" sh
 #
-# Every download is checksum-verified against the .sha256 the release
-# publishes beside it, so a corrupted or tampered binary fails loudly
-# instead of installing quietly.
+# Every download is checksum-verified against the .sha256 sidecar the
+# release publishes beside it, so a corrupted or tampered binary fails
+# loudly instead of installing quietly.
 set -e
 
-REPO="reddy-sh/tokenhud"
+CDN="https://d3gu0e7g3rcz5n.cloudfront.net"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 
 echo ""
@@ -46,7 +46,7 @@ fi
 
 # ── download ─────────────────────────────────────────────────────────
 
-LATEST="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | cut -d'"' -f4)"
+LATEST="$(curl -fsSL "${CDN}/latest/version.txt")"
 
 if [ -z "$LATEST" ]; then
   echo "Could not determine latest release."
@@ -59,11 +59,10 @@ trap 'rm -rf "$TMP"' EXIT
 
 BINARY="tokenhud-agent"
 ASSET="${BINARY}-${TARGET}"
-URL="https://github.com/${REPO}/releases/download/${LATEST}/${ASSET}"
+URL="${CDN}/latest/${ASSET}"
 
 echo "  1. Installing ${BINARY} ${LATEST} (${TARGET})…"
-echo "     from: ${URL}"
-echo "     to:   ${INSTALL_DIR}/${BINARY}"
+echo "     to: ${INSTALL_DIR}/${BINARY}"
 
 curl -fsSL "$URL" -o "${TMP}/${BINARY}"
 curl -fsSL "${URL}.sha256" -o "${TMP}/${BINARY}.sha256"
