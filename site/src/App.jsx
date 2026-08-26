@@ -25,15 +25,21 @@ function parseRoute(hash) {
   return null
 }
 
+/* The dashboard lives at platform.tokenhud.com — same build artifact, but the
+   React app checks the hostname to skip the marketing page and render the
+   portal directly. On tokenhud.com the CTA navigates to the platform. */
+const isPlatform = location.hostname === 'platform.tokenhud.com'
+const platformUrl = 'https://platform.tokenhud.com'
+
 export default function App() {
   /* Routes this site has. A shared board or global leaderboard is a whole page
      rather than a panel on the marketing one — the person opening the link did
      not come for the pitch, and the link has to survive a reload and a paste
      into Slack. */
   const [route, setRoute] = useState(() => parseRoute(location.hash))
-  const [portalOpen, setPortalOpen] = useState(false)
+  const [portalOpen, setPortalOpen] = useState(isPlatform)
   /* 'cloud' = Cognito portal, 'local' = self-host board */
-  const [portalMode, setPortalMode] = useState(null)
+  const [portalMode, setPortalMode] = useState(isPlatform ? 'cloud' : null)
   /* undefined = still asking Cognito, null = signed out, string = the email */
   const [user, setUser] = useState(cloudConfigured ? undefined : null)
 
@@ -76,6 +82,11 @@ export default function App() {
   }, [])
 
   const openPortal = () => {
+    /* Cloud backend on the marketing site: send them to the platform. */
+    if (cloudConfigured && !isPlatform) {
+      window.location.href = platformUrl
+      return
+    }
     /* No cloud backend: go straight to the self-host board. */
     if (!cloudConfigured) {
       setPortalMode('local')
@@ -97,6 +108,17 @@ export default function App() {
      the first time somebody navigates. */
   if (route?.page === 'leaderboard') return <GlobalBoard />
   if (route?.page === 'share') return <PublicBoard route={route} />
+
+  /* platform.tokenhud.com: render the portal full-page, no marketing shell. */
+  if (isPlatform) {
+    return (
+      <Portal
+        user={user} onUser={setUser}
+        onClose={() => { window.location.href = 'https://tokenhud.com' }}
+        onSelfHost={() => setPortalMode('local')}
+      />
+    )
+  }
 
   return (
     <>
@@ -128,12 +150,6 @@ export default function App() {
 
       {portalOpen && portalMode === 'local' && (
         <SelfHost onClose={closePortal} />
-      )}
-      {portalOpen && portalMode === 'cloud' && (
-        <Portal
-          user={user} onUser={setUser} onClose={closePortal}
-          onSelfHost={() => setPortalMode('local')}
-        />
       )}
     </>
   )

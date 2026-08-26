@@ -69,7 +69,7 @@ const wantsDomain = Boolean(apiDomain && zoneName && zoneId);
 const origins = [
   ...(process.env.TOKENHUD_SITE_URL
     ? [process.env.TOKENHUD_SITE_URL.replace(/\/+$/, '')]
-    : ['https://tokenhud.com', 'https://www.tokenhud.com']),
+    : ['https://tokenhud.com', 'https://www.tokenhud.com', 'https://platform.tokenhud.com']),
   'http://localhost:5173',
 ];
 

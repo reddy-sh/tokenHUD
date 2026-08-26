@@ -36,11 +36,16 @@ import { defineAuth, secret } from '@aws-amplify/backend';
 // never seen a Google client still deploys.
 const withGoogle = process.env.TOKENHUD_GOOGLE === '1';
 
-// The portal is a panel on the marketing page rather than a route of its own,
-// so Google returns to the page it left. TOKENHUD_SITE_URL overrides the first
-// entry for a branch deploy that lives somewhere else.
+// The dashboard lives at platform.tokenhud.com; the marketing site at
+// tokenhud.com. Google returns to whichever the user came from — Amplify JS
+// matches the current origin against the list below. TOKENHUD_SITE_URL
+// overrides the first entry for a branch deploy that lives somewhere else.
 const site = (process.env.TOKENHUD_SITE_URL ?? 'https://tokenhud.com').replace(/\/+$/, '');
-const returnTo = [`${site}/`, 'http://localhost:5173/'];
+const returnTo = [
+  `${site}/`,
+  ...(site === 'https://tokenhud.com' ? ['https://platform.tokenhud.com/'] : []),
+  'http://localhost:5173/',
+];
 
 export const auth = defineAuth({
   loginWith: withGoogle
