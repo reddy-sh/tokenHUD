@@ -1,0 +1,12 @@
+---
+description: Never add AI coding tools as contributors or co-authors
+alwaysApply: true
+---
+
+# No Third-Party Tool Contributors
+
+Never add third-party coding tools (Devin, Claude, Copilot, Cursor, etc.) as contributors or co-authors in git commits.
+
+- Do NOT include `Co-Authored-By` trailers for any AI tool or bot
+- Do NOT include `Generated with [Tool]` lines in commit messages
+- Commits should only attribute the human developer
