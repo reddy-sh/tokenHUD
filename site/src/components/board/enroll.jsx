@@ -8,7 +8,7 @@ import { ago, useNow } from './util'
    the self-host board: the command is shown once, only hashes are stored,
    and a closed modal cannot resurrect a token. */
 
-const INSTALL_CMD = 'curl -fsSL https://raw.githubusercontent.com/reddy-sh/tokenhud/main/scripts/install.sh | sh'
+const INSTALL_URL = `${location.origin}/install.sh`
 
 /* Two vocabularies, one panel. The cloud tier registers a named machine and
    waits for it (registered → enrolling → active); a self-hosted server has no
@@ -107,7 +107,6 @@ async function fetchOverviewHosts(cloud) {
 export function AddMachineModal({ cloud, onClose }) {
   const [phase, setPhase] = useState('generate') // generate | command | waiting | done
   const [oneLiner, setOneLiner] = useState(null)
-  const [enrollCmd, setEnrollCmd] = useState(null)
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
   const started = useRef(false)
@@ -129,13 +128,12 @@ export function AddMachineModal({ cloud, onClose }) {
     setResult(null)
     try {
       if (isCloud) {
-        /* Cloud mode: register the machine via cloud.mint() and show
-           the install + enroll commands. The machine card appears in
-           the board immediately; it moves to "active" once the agent
-           completes enrollment. */
+        /* Cloud mode: register the machine via cloud.mint() and build
+           a single command that installs the agent AND enrolls it.
+           The machine card appears in the board immediately; it moves
+           to "active" once the agent completes enrollment. */
         const enrollment = await cloud.mint()
-        setOneLiner(INSTALL_CMD)
-        setEnrollCmd(enrollment.command)
+        setOneLiner(`curl -fsSL ${INSTALL_URL} | ENROLL="${enrollment.link}" sh`)
         setPhase('command')
       } else {
         /* Self-host mode: mint a one-shot install token from the
@@ -305,15 +303,12 @@ export function AddMachineModal({ cloud, onClose }) {
           <>
             <h2>Add a machine</h2>
             <p className="enroll-sub">
-              Run these commands on the machine you want to monitor.
-              The enrollment link is single-use and expires in 15 minutes.
+              Run this on the machine you want to monitor. It installs the
+              agent and enrolls it automatically. The link is single-use
+              and expires in 15 minutes.
             </p>
 
-            <p className="enroll-step">1. Install the agent</p>
             <CopyRow text={oneLiner} />
-
-            <p className="enroll-step" style={{ marginTop: 12 }}>2. Enroll this machine</p>
-            <CopyRow text={enrollCmd} />
 
             <button className="btn btn--primary" onClick={onClose} style={{ marginTop: 16, width: '100%' }}>
               Done
@@ -412,7 +407,7 @@ export function UpgradeModal({ cloud, onClose }) {
     try {
       if (isCloud) {
         /* Cloud mode: re-running the install script upgrades in place. */
-        setOneLiner(INSTALL_CMD)
+        setOneLiner(`curl -fsSL ${INSTALL_URL} | sh`)
         setPhase('command')
       } else {
         const token = await mintInstallToken(cloud)
@@ -502,7 +497,7 @@ function AssistantChips({ assistants }) {
   )
 }
 
-const UNINSTALL_CMD = 'curl -fsSL https://raw.githubusercontent.com/reddy-sh/tokenhud/main/scripts/uninstall-agent.sh | sh'
+const UNINSTALL_CMD = `curl -fsSL ${location.origin}/uninstall.sh | sh`
 
 /* Removing a machine from the account only removes its server record. The
    portal cannot execute a command on somebody else's computer, so make the
@@ -635,8 +630,8 @@ export function MachinesPanel({ machines, cloud, onAdd }) {
       {error && <div className="bv-warnbar">{error}</div>}
       {!list.length && (
         <Empty>
-          No machine is registered yet. Add one — it hands you the install and enroll
-          commands, and the board fills in as soon as the agent reports.
+          No machine is registered yet. Add one — it gives you a single command that
+          installs the agent and enrolls it, and the board fills in as soon as it reports.
         </Empty>
       )}
       {list.length > 0 && !filtered.length && (

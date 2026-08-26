@@ -27,12 +27,12 @@
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
-  DeleteCommand,
-  DynamoDBDocumentClient,
-  GetCommand,
-  PutCommand,
-  QueryCommand,
-  UpdateCommand,
+    DeleteCommand,
+    DynamoDBDocumentClient,
+    GetCommand,
+    PutCommand,
+    QueryCommand,
+    UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
 
 const TABLE = process.env.TABLE_NAME as string;
@@ -157,8 +157,8 @@ export async function listMachineRollups(sub: string): Promise<Machine[]> {
     const page = await doc.send(new QueryCommand({
       TableName: TABLE,
       KeyConditionExpression: '#pk = :pk AND begins_with(#sk, :m)',
-      ProjectionExpression: 'id, label, rollup, lastSeenAt, #status',
-      ExpressionAttributeNames: { '#pk': 'pk', '#sk': 'sk', '#status': 'status' },
+      ProjectionExpression: 'id, label, #rollup, lastSeenAt, #status',
+      ExpressionAttributeNames: { '#pk': 'pk', '#sk': 'sk', '#status': 'status', '#rollup': 'rollup' },
       ExpressionAttributeValues: { ':pk': userPk(sub), ':m': 'M#' },
       ExclusiveStartKey: start,
     }));
