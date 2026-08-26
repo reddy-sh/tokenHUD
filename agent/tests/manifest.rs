@@ -22,12 +22,23 @@ fn collector_sources() -> Vec<(&'static str, String)> {
         "limits.rs",
         "governance.rs",
         "codex.rs",
+        "copilot.rs",
+        "devin.rs",
+        "integrations.rs",
     ]
     .iter()
     .map(|f| {
         let text =
             std::fs::read_to_string(dir.join(f)).unwrap_or_else(|e| panic!("cannot read {f}: {e}"));
-        (*f, text)
+        // Scan collector CODE, not its tests: a `#[cfg(test)]` fixture that does
+        // `dir.join("rollout-test.jsonl")` is building a throwaway file, not
+        // reading a user path, and must not trip the manifest guard.
+        let code = text
+            .split("#[cfg(test)]")
+            .next()
+            .unwrap_or(&text)
+            .to_string();
+        (*f, code)
     })
     .collect()
 }
@@ -40,8 +51,11 @@ fn joined_literals(src: &str) -> BTreeSet<String> {
         rest = &rest[i + 7..];
         if let Some(j) = rest.find('"') {
             let lit = &rest[..j];
-            // `.join(" ")` is string joining, not a path.
-            if !lit.trim().is_empty() && lit != " " {
+            // `.join(" ")` and `.join("\u{1}")` are slice joins (building a
+            // delimited key), not Path::join. A real path component read here is
+            // plain text — blanks and any backslash-escape (\u, \x, \0, \t …)
+            // mark a delimiter, not a path.
+            if !lit.trim().is_empty() && lit != " " && !lit.contains('\\') {
                 out.insert(lit.to_string());
             }
             rest = &rest[j..];

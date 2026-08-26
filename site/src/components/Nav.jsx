@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-export default function Nav({ onDashboard }) {
+export default function Nav({ cta, onPortal }) {
   const navRef = useRef(null)
 
   useEffect(() => {
@@ -26,8 +26,8 @@ export default function Nav({ onDashboard }) {
           <a href="#compare">Compare</a>
           <a href="#pricing">Pricing</a>
         </nav>
-        <button className="nav__cta" onClick={onDashboard}>
-          <span>Open Dashboard</span>
+        <button className="nav__cta" onClick={onPortal}>
+          <span>{cta}</span>
           <span aria-hidden="true">→</span>
         </button>
       </div>

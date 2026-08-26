@@ -65,7 +65,9 @@ fn salt() -> String {
 
 /// 16 bytes of OS randomness, hex. `getrandom` rather than a PRNG crate: the
 /// salt is written once and a dependency for one call is not worth carrying.
-fn random_hex(n: usize) -> String {
+/// Pub because the install id (main.rs) is minted the same way for the same
+/// reasons.
+pub fn random_hex(n: usize) -> String {
     let mut buf = vec![0u8; n];
     let ok = unsafe { libc::getentropy(buf.as_mut_ptr() as *mut libc::c_void, buf.len()) } == 0;
     if !ok {

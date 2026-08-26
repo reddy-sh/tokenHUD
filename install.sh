@@ -64,20 +64,21 @@ VERSION="${TOKENHUD_VERSION:-latest}"
 BASE="https://github.com/$REPO/releases/${VERSION:+download/}$VERSION"
 [ "$VERSION" = latest ] && BASE="https://github.com/$REPO/releases/latest/download"
 
-if curl -fsSL --head "$BASE/tokenhud-$TARGET.tar.gz" >/dev/null 2>&1; then
+if curl -fsSL --head "$BASE/tokenhud-agent-$TARGET" >/dev/null 2>&1; then
   say "Downloading $VERSION for $TARGET…"
-  curl -fsSL "$BASE/tokenhud-$TARGET.tar.gz"        -o "$TMP/t.tar.gz"
-  curl -fsSL "$BASE/tokenhud-$TARGET.tar.gz.sha256" -o "$TMP/t.sha256"
-
-  # Verify before unpacking, not after.
-  ( cd "$TMP" && if command -v sha256sum >/dev/null 2>&1; then
-      sha256sum -c t.sha256
-    else
-      shasum -a 256 -c t.sha256
-    fi ) >/dev/null 2>&1 || die "checksum mismatch — do not run this binary. Report it at https://github.com/$REPO/issues"
-  say "  checksum verified: $(cut -d' ' -f1 < "$TMP/t.sha256" | cut -c1-16)…"
-
-  tar -xzf "$TMP/t.tar.gz" -C "$TMP"
+  # Releases publish each binary raw, with a .sha256 beside it. Verify each
+  # before it is allowed anywhere near $PREFIX.
+  if command -v sha256sum >/dev/null 2>&1; then hash_of() { sha256sum "$1" | cut -d' ' -f1; }
+  else hash_of() { shasum -a 256 "$1" | cut -d' ' -f1; }
+  fi
+  for b in tokenhud-agent tokenhud-server; do
+    curl -fsSL "$BASE/$b-$TARGET"        -o "$TMP/$b"
+    curl -fsSL "$BASE/$b-$TARGET.sha256" -o "$TMP/$b.sha256"
+    WANT="$(cut -d' ' -f1 < "$TMP/$b.sha256")"
+    [ -n "$WANT" ] && [ "$WANT" = "$(hash_of "$TMP/$b")" ] \
+      || die "checksum mismatch on $b — do not run it. Report at https://github.com/$REPO/issues"
+    say "  $b checksum verified: $(printf '%s' "$WANT" | cut -c1-16)…"
+  done
   mv "$TMP/tokenhud-agent" "$TMP/tokenhud-server" "$PREFIX/"
   chmod +x "$PREFIX/tokenhud-agent" "$PREFIX/tokenhud-server"
 
@@ -91,7 +92,7 @@ if curl -fsSL --head "$BASE/tokenhud-$TARGET.tar.gz" >/dev/null 2>&1; then
   fi
 else
   command -v cargo >/dev/null 2>&1 || die "no release for $TARGET yet, and cargo is not installed.
-  Install Rust from https://rustup.rs and run this again, or clone and run ./scripts/build.sh"
+  Install Rust from https://rustup.rs and run this again, or clone and run ./scripts/start-all.sh"
   say "No published binary for $TARGET yet — building from source (about 30s)…"
   SRC="$TMP/src"
   git clone --depth 1 "https://github.com/$REPO" "$SRC" >/dev/null 2>&1 || die "clone failed"
@@ -145,7 +146,13 @@ say "  set -a; . $ENVF; set +a"
 say "  tokenhud-server &"
 say "  tokenhud-agent &"
 say ""
-say "Then open http://127.0.0.1:8787"
+say "That server is API-only — no dashboard ships in it. Read it directly:"
+say ""
+say "  curl -s http://127.0.0.1:8787/api/v1/overview"
+say ""
+say "For a board, enroll this machine into the tokenhud.com portal instead:"
+say "sign in there, Machines → Add machine, and run the command it shows."
+say "Enrolling starts the reporting in the same breath."
 say ""
 say "  tokenhud-agent --what-i-read    what it reads, any time"
 say "  tokenhud-agent --dry-run        exactly what it would send"

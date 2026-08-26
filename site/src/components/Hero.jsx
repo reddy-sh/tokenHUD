@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-export default function Hero({ onDashboard }) {
+export default function Hero({ cta, onPortal }) {
   const spotRef = useRef(null)
   const heroRef = useRef(null)
 
@@ -38,8 +38,8 @@ export default function Hero({ onDashboard }) {
       </p>
 
       <div className="hero__actions">
-        <button className="btn btn--primary" onClick={onDashboard}>
-          <span>Open Dashboard</span>
+        <button className="btn btn--primary" onClick={onPortal}>
+          <span>{cta}</span>
           <span aria-hidden="true">→</span>
         </button>
         <a className="btn btn--ghost" href="https://github.com/reddy-sh/tokenhud">

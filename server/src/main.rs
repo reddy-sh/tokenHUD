@@ -16,7 +16,9 @@
 //! easy answer — and treat TOKENHUD_KEY as a real credential.
 //!
 //! Defaults are chosen so that doing nothing is safe: loopback bind, key
-//! required for writes, no CORS, and the agent sends no prompt text.
+//! required for writes, and the agent sends no prompt text. CORS is allowed —
+//! a board is a different origin from the API it reads — but it grants a
+//! browser nothing the key does not already gate.
 
 use std::path::PathBuf;
 use tokenhud_server::{board, router, store};
@@ -28,36 +30,14 @@ fn env_or(name: &str, dflt: &str) -> String {
     }
 }
 
-/// 32 bytes of OS randomness, base64url, unpadded — the shape Python's
-/// `secrets.token_urlsafe(32)` produces, so a key from either server is a key
-/// for either server.
-fn new_key() -> String {
-    const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-    let mut buf = [0u8; 32];
-    if unsafe { libc::getentropy(buf.as_mut_ptr() as *mut libc::c_void, buf.len()) } != 0 {
-        eprintln!("could not read randomness from the OS — refusing to invent a key");
-        std::process::exit(1);
-    }
-    let mut out = String::new();
-    for chunk in buf.chunks(3) {
-        let b = [
-            chunk[0],
-            *chunk.get(1).unwrap_or(&0),
-            *chunk.get(2).unwrap_or(&0),
-        ];
-        let n = ((b[0] as u32) << 16) | ((b[1] as u32) << 8) | b[2] as u32;
-        let take = chunk.len() + 1; // 3 bytes -> 4 chars, 2 -> 3, 1 -> 2
-        for i in 0..take {
-            out.push(ALPHABET[((n >> (18 - 6 * i)) & 0x3F) as usize] as char);
-        }
-    }
-    out
-}
-
 #[tokio::main]
 async fn main() {
+    if std::env::args().any(|a| a == "--version" || a == "-V") {
+        println!("tokenhud-server {}", env!("CARGO_PKG_VERSION"));
+        return;
+    }
     if std::env::args().any(|a| a == "--new-key") {
-        println!("{}", new_key());
+        println!("{}", board::new_secret());
         return;
     }
 
@@ -72,20 +52,21 @@ async fn main() {
             .to_string_lossy()
             .as_ref(),
     ));
-    let web = PathBuf::from(env_or(
-        "TOKENHUD_WEB",
-        root.join("web").to_string_lossy().as_ref(),
-    ));
     let retention: i64 = env_or("TOKENHUD_RETENTION_DAYS", "30")
         .parse()
         .unwrap_or(30);
-    // Reads are open by default so the dashboard needs no secret in the browser.
+    // Reads are open by default so a self-hosted board or tooling needs no
+    // secret in the browser.
     let protect_reads = std::env::var("TOKENHUD_PROTECT_READS").unwrap_or_default() == "1";
     // Every reader of the event stream holds a task for as long as it watches.
     // Cheap here — a task, not a thread — but still bounded rather than hoped
     // about: past the cap the endpoint says no and the board falls back to
     // polling, which still works and is what it did before.
     let max_streams: u64 = env_or("TOKENHUD_MAX_STREAMS", "64").parse().unwrap_or(64);
+    // Only needed when something sits in front of this server — a proxy, a
+    // tunnel, a hostname. A shared leaderboard link has to name an API a
+    // stranger's browser can reach, and this is the only place that knows.
+    let public_url = env_or("TOKENHUD_PUBLIC_URL", "");
 
     if key.is_empty() {
         println!("TOKENHUD_KEY is not set — ingest will reject every agent.");
@@ -104,7 +85,14 @@ async fn main() {
             std::process::exit(1);
         }
     };
-    let app = board::App::new(store, key, protect_reads, max_streams, web);
+    let app = board::App::new(
+        store,
+        key,
+        protect_reads,
+        max_streams,
+        bind == "127.0.0.1",
+        public_url.clone(),
+    );
 
     let router = router(app.clone());
 
@@ -140,6 +128,9 @@ async fn main() {
     println!("TOKENHUD server on http://{addr}");
     println!("  db        {}", db.display());
     println!("  retention {retention} days");
+    if !public_url.is_empty() {
+        println!("  public    {public_url}  (shared boards link here)");
+    }
     println!("  ctrl-c to stop");
 
     let serve = axum::serve(listener, router);

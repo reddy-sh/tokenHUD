@@ -1,11 +1,18 @@
 # CI for a project that ships two binaries and asks you to install nothing
-# beside them.
+# beside them — plus the cloud half: the portal and the ingest function.
 #
-# Both jobs are the same shape: format, lint, test against the real machine,
-# then build and run the thing. `cargo tree --depth 1` is printed in each so a
-# new dependency has to be noticed in review rather than discovered later — the
-# closest equivalent to the "no third-party imports" check this repo had while
-# it was Python, and the same intent: the dependency list is a test.
+# The Rust jobs are the same shape: format, lint, test against the real
+# machine, then build and run the thing. `cargo tree --depth 1` is printed in
+# each so a new dependency has to be noticed in review rather than discovered
+# later — the closest equivalent to the "no third-party imports" check this
+# repo had while it was Python, and the same intent: the dependency list is a
+# test.
+#
+# The `cloud` job exists for one reason above the others: the pairing code is
+# derived in three languages, and the same vectors are asserted in
+# server/tests/pairing.rs, amplify/functions/ingest/protocol.test.mjs and
+# site/tests/portal.spec.js. Any two of those can drift silently unless all
+# three run on every push.
 name: CI
 
 on:
@@ -87,3 +94,43 @@ jobs:
         run: |
           cargo build --release --manifest-path server/Cargo.toml
           ls -l server/target/release/tokenhud-server
+
+  cloud:
+    name: portal · ingest function
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            site/package-lock.json
+
+      - name: Install
+        run: |
+          npm ci
+          npm ci --prefix site
+
+      - name: The ingest function typechecks
+        run: npm run typecheck
+
+      - name: The wire protocol still agrees with the server
+        # protocol.test.mjs asserts the pairing vectors the Rust server
+        # generated; server/tests/pairing.rs asserts the same table.
+        run: npm test
+
+      - name: Portal lints and builds
+        run: |
+          npm run lint --prefix site
+          npm run build --prefix site
+
+      - name: Portal behaves
+        # The signed-out portal, and the browser's half of the pairing
+        # contract. Tests needing a deployed backend skip and say so.
+        working-directory: site
+        run: |
+          npx playwright install --with-deps chromium
+          npm test

@@ -343,7 +343,7 @@ pub fn collect_claude() -> Value {
         };
         for row in servers.iter_mut() {
             let name = row["name"].as_str().unwrap_or("").to_string();
-            row["needsAuth"] = json!(needs.iter().any(|n| *n == name));
+            row["needsAuth"] = json!(needs.contains(&name));
         }
     }
     servers.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
@@ -443,7 +443,7 @@ impl Toml {
     }
 
     fn scalar(&self, section: &str, key: &str) -> Option<String> {
-        self.get(section, key).map(|v| unquote(v))
+        self.get(section, key).map(unquote)
     }
 
     fn boolean(&self, section: &str, key: &str) -> Option<bool> {

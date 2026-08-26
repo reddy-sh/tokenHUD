@@ -18,6 +18,13 @@ however good it is otherwise.
    completion text, source code, or tool-call arguments into a payload. Not
    behind a flag, not filtered afterwards — never collected. If your feature
    needs content, it belongs in a different product.
+
+   The same rule has a second edge on the sharing path. What a public board may
+   carry is decided in one file, `server/src/share.rs`, by **naming the fields
+   that go out** — never by deleting private ones from a reading. A field you
+   add to the agent does not appear on a shared board until somebody lists it
+   there deliberately, and that is the property to preserve. See
+   [docs/sharing.md](docs/sharing.md).
 2. **Dependencies are a test.** `cargo tree --depth 1` is printed in CI so a new
    one has to be noticed in review, and every path a collector opens is declared
    in `agent/src/manifest.rs` — the build fails otherwise.

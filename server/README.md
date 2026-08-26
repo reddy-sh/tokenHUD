@@ -1,13 +1,20 @@
 # tokenhud-server
 
-Takes what agents send, keeps it, serves the board. One 2.05 MB binary with
-SQLite compiled into it and nothing to install beside it.
+Takes what agents send, keeps it, and answers the API that the portal and any
+other tooling read. One 2.2 MB binary with SQLite compiled into it and nothing
+to install beside it.
 
 ```bash
-./scripts/build.sh                       # builds this and the agent
-./server/target/release/tokenhud-server --new-key    # once, into .env
-./scripts/run.sh                         # starts both
+./scripts/start-server.sh   # builds if it is stale, mints a key into .env, waits on /healthz
+./scripts/start-agent.sh    # this machine starts reporting to it
+./scripts/status.sh         # what is up, where, and what the store is holding
 ```
+
+`start-server.sh` generates an ingest key the first time and writes it to `.env`
+(mode 600), which is where the agent and the other scripts look for it.
+`start-all.sh` runs server, agent and portal in that order — but the portal it
+starts reads the cloud account you sign in to, not this server, so a self-host
+uses the API directly.
 
 ## What it does
 
@@ -17,13 +24,105 @@ GET  /api/v1/stream      server-sent events, pushed the instant a reading lands
 GET  /api/v1/overview    latest reading for every host  (key optional)
 GET  /api/v1/history     one host's recent snapshots
 GET  /api/v1/endings     agents that stopped recently
-GET  /                   the dashboard
+GET  /healthz            liveness, no key
 ```
 
-Loopback by default, key required for writes, no CORS. Doing nothing is safe.
-**Reads are open by default** so the dashboard needs no secret in the browser —
-set `TOKENHUD_PROTECT_READS=1` to require the key on `GET` too, and read the
-note in `main.rs` before binding anything other than `127.0.0.1`.
+Plus the enrollment routes — how a machine comes to hold a key of its own:
+
+```text
+POST /api/v1/enroll/new         mint a one-shot link           (key required)
+POST /api/v1/enroll             a new machine claims one       (the token is the credential)
+GET  /api/v1/enroll/await       that machine polls for a decision
+POST /api/v1/machines/decide    approve, deny, or revoke one   (key required)
+POST /api/v1/stream-token       trade the key for a 60s stream token
+```
+
+And the share routes — how a leaderboard becomes a URL anyone can open:
+
+```text
+GET  /api/v1/share              every share this fleet has minted (key required)
+POST /api/v1/share              mint one, or edit a live one      (key required)
+POST /api/v1/share/revoke       take it private again             (key required)
+GET  /api/v1/public/board?s=…   the shared leaderboard            (no key: the slug is one)
+```
+
+No dashboard ships in the binary any more: the board lives in the tokenhud.com
+portal, and this server is the self-host API. Everything unrouted — `/`
+included — is a JSON 404.
+
+Every route, with its request shape and the public payload schema, is in
+[docs/api.md](../docs/api.md); every environment variable is in
+[docs/configuration.md](../docs/configuration.md).
+
+## Enrolling a machine, without a UI
+
+The portal signs into the cloud and shows that account's machines; it cannot
+read this server. So self-host enrollment is two API calls of your own, with the
+new machine's `enroll` in between. Mint a link:
+
+```bash
+curl -sX POST http://127.0.0.1:8787/api/v1/enroll/new \
+  -H "X-TokenHUD-Key: $TOKENHUD_KEY"
+# {"token":"…","code":"…","expiresAt":"…","ttlSeconds":900}
+```
+
+Give the new machine `<server-url>#<token>` and let it claim the link — it will
+print a pairing code and wait:
+
+```bash
+tokenhud-agent enroll "http://127.0.0.1:8787#<token>"
+```
+
+Check that code against the one the mint returned, then approve by `installId`,
+which `GET /api/v1/overview` lists for a caller holding the key:
+
+```bash
+curl -sX POST http://127.0.0.1:8787/api/v1/machines/decide \
+  -H "X-TokenHUD-Key: $TOKENHUD_KEY" -H 'Content-Type: application/json' \
+  -d '{"installId":"…","action":"approve"}'
+```
+
+The machine's next poll collects a key that is its alone, writes it to
+`~/.tokenhud/machine.json`, and starts reporting in the same command. `"revoke"`
+takes it back and shuts that one door.
+
+## Sharing a leaderboard
+
+`POST /api/v1/share` mints a slug. The slug is the whole credential — 96 bits of
+the same randomness the ingest key uses — and `GET /api/v1/public/board?s=<slug>`
+serves that board to anyone who has it, with no key and regardless of
+`TOKENHUD_PROTECT_READS`: closing the private API to anonymous readers is a
+different decision from publishing a link on purpose.
+
+```bash
+curl -sX POST http://127.0.0.1:8787/api/v1/share \
+  -H "X-TokenHUD-Key: $TOKENHUD_KEY" -H 'Content-Type: application/json' \
+  -d '{"title":"Engineering","identities":"alias"}'
+# {"slug":"…","apiUrl":"http://127.0.0.1:8787","reachable":false}
+```
+
+What that URL carries is decided in exactly one place, `src/share.rs`, and it
+is decided by **naming the fields that go out** rather than by deleting the
+private ones from a reading. `reachable` is the server telling the truth about
+itself: bound to `127.0.0.1` with no `TOKENHUD_PUBLIC_URL` set, a "public" link
+works for the person who minted it and for nobody else.
+
+Revoking is immediate and total — the board behind a link is computed from live
+data on every request, so there is no rendered copy anywhere to keep serving. A
+revoked slug and an invented one answer identically, which is what stops the
+endpoint being a way to test slugs for existence.
+
+Full detail — the field-by-field whitelist, the identity modes, the
+three-machine rule on the hour curve — is in
+[docs/sharing.md](../docs/sharing.md).
+
+Loopback by default, key required for writes. Doing nothing is safe. CORS
+exists, because the portal is a different origin, but only on the routes a
+browser legitimately calls — the reads, the stream and its token, and the two
+key-gated fleet actions. Ingest and the enrollment routes are agent-facing and
+carry no CORS headers at all. **Reads are open by default** so tooling needs no
+secret — set `TOKENHUD_PROTECT_READS=1` to require the key on `GET` too, and
+read the note in `main.rs` before binding anything other than `127.0.0.1`.
 
 ## It replaced a Python server
 
@@ -72,11 +171,12 @@ the wire the most valuable thing left in that document.
 |---|---|
 | `src/store.rs` | SQLite: `hosts` (now) + `snapshots` (then, as differences) + `endings` |
 | `src/board.rs` | the overview, and the cache that builds it once for everyone |
-| `src/http.rs` | ingest, query, the event stream, the static dashboard |
-| `src/main.rs` | configuration, `--new-key`, and the routing table |
+| `src/http.rs` | ingest, enrollment, query, the event stream |
+| `src/lib.rs` | the routing table, and which routes a browser is allowed to call |
+| `src/main.rs` | configuration, `--new-key`, and the listener |
 | `tests/` | thirteen checks: the store on a real file, the server on a real socket |
 
-Eight direct dependencies. `rusqlite` is `bundled`, so SQLite is compiled in
+Twelve direct dependencies. `rusqlite` is `bundled`, so SQLite is compiled in
 rather than linked from the system — one file with nothing beside it is the
 point, and a version skew between two machines is what that rules out.
 

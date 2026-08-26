@@ -2,7 +2,7 @@
 name = "tokenhud-server"
 version = "0.2.0"
 edition = "2021"
-description = "TokenHUD server — takes what agents send, keeps it, serves the board"
+description = "TokenHUD server — takes what agents send, keeps it, answers the API"
 license = "MIT"
 
 [dependencies]
@@ -27,6 +27,8 @@ chrono = { version = "0.4", default-features = false, features = ["std", "clock"
 futures-core = "0.3"
 async-stream = "0.3"
 libc = "0.2"
+sha2 = "0.10"
+tower-http = { version = "0.7.0", features = ["cors"] }
 
 [profile.release]
 opt-level = "s"

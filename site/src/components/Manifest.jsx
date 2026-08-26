@@ -6,7 +6,7 @@ export default function Manifest() {
         <p>Run this before you trust anything else here.</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-xl)', alignItems: 'start' }}>
+      <div className="manifest-grid">
         <div className="code-card">
           <div className="code-card__label">
             <span>tokenhud-agent --what-i-read</span>

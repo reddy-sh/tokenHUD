@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Run the API server at login, and keep it running.
+
+  Install:
+    cp server/dist/com.tokenhud.server.plist ~/Library/LaunchAgents/
+    # edit the two REPLACE-ME values below, then:
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.tokenhud.server.plist
+
+  Stop and remove:
+    launchctl bootout gui/$(id -u)/com.tokenhud.server
+    rm ~/Library/LaunchAgents/com.tokenhud.server.plist
+
+  A LaunchAgent like the agent's: it runs as you and writes the database
+  under your home. If this Mac is a board other machines report to, it also
+  needs to stay awake — System Settings → Energy, or `caffeinate`.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.tokenhud.server</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>REPLACE-ME/path/to/tokenhud-server</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>TOKENHUD_KEY</key>
+    <string>REPLACE-ME-with-your-key</string>
+    <key>TOKENHUD_DB</key>
+    <string>REPLACE-ME/home/.tokenhud/tokenhud.db</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/tokenhud-server.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/tokenhud-server.log</string>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>LowPriorityIO</key>
+  <true/>
+</dict>
+</plist>

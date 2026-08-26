@@ -350,7 +350,7 @@ fn no_mcp_credential_on_this_machine_reaches_the_payload() {
                 // payload lists for this server must be the config's KEYS.
                 let row = gov["claude"]["mcpServers"]
                     .as_array()
-                    .and_then(|a| a.iter().find(|r| r["name"] == Value::from(name.as_str())))
+                    .and_then(|a| a.iter().find(|r| r["name"] == *name.as_str()))
                     .cloned()
                     .unwrap_or(Value::Null);
                 let listed: Vec<String> = row[if block == "env" { "env" } else { "headers" }]

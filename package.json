@@ -1,0 +1,27 @@
+{
+  "name": "tokenhud",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"amplify/functions/**/*.test.mjs\" \"shared/*.test.mjs\"",
+    "typecheck": "tsc --noEmit -p amplify/tsconfig.json"
+  },
+  "devDependencies": {
+    "@aws-amplify/backend": "^1.16.1",
+    "@aws-amplify/backend-cli": "^1.8.0",
+    "@types/aws-lambda": "^8.10.145",
+    "@types/node": "^26.3.0",
+    "aws-cdk-lib": "^2.189.1",
+    "constructs": "^10.4.2",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1118.0",
+    "@aws-sdk/lib-dynamodb": "^3.1118.0",
+    "aws-amplify": "^6.15.0",
+    "aws-jwt-verify": "^5.2.1"
+  }
+}

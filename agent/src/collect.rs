@@ -623,8 +623,8 @@ const ASSISTANTS: &[(&str, &str, &[&str], Option<&str>)] = &[
     (
         "copilot",
         "GitHub Copilot",
-        &[".config/github-copilot"],
-        None,
+        &[".config/github-copilot", ".copilot"],
+        Some("copilot"),
     ),
     (
         "windsurf",
@@ -634,7 +634,12 @@ const ASSISTANTS: &[(&str, &str, &[&str], Option<&str>)] = &[
     ),
     ("antigravity", "Antigravity", &[".antigravity-ide"], None),
     ("aider", "Aider", &[".aider.conf.yml"], Some("aider")),
-    ("devin", "Devin", &[".devin", ".config/devin"], None),
+    (
+        "devin",
+        "Devin",
+        &[".devin", ".config/devin", ".local/share/devin"],
+        None,
+    ),
 ];
 
 /// Codex keeps one line per session in an index file. Cheap to count, and it
@@ -661,7 +666,7 @@ pub fn collect_assistants() -> Vec<Value> {
             // Not installed here. Listing it would be advertising, not reporting.
             continue;
         }
-        let supported = matches!(*id, "claude-code" | "codex");
+        let supported = matches!(*id, "claude-code" | "codex" | "copilot" | "devin");
 
         // `detected` and `hasData` are different facts and the board must not
         // conflate them. A directory existing means the tool is installed; it
@@ -674,6 +679,13 @@ pub fn collect_assistants() -> Vec<Value> {
             "codex" => crate::codex::collect()["available"]
                 .as_bool()
                 .unwrap_or(false),
+            // Copilot's two halves disagree: the CLI writes real token counts,
+            // the IDE extension writes none. `hasData` is about this machine,
+            // so it follows whichever half is actually installed here.
+            "copilot" => crate::copilot::collect()["available"]
+                .as_bool()
+                .unwrap_or(false),
+            "devin" => crate::devin::cli_db().exists(),
             _ => false,
         };
 
@@ -694,6 +706,16 @@ pub fn collect_assistants() -> Vec<Value> {
         if *id == "codex" && detected {
             if let Some(n) = codex_sessions() {
                 row["sessions"] = json!(n);
+            }
+        }
+        if *id == "devin" && detected {
+            // Real local usage now: Devin CLI persists per-session credit/ACU
+            // cost, read via sqlite3 without ever opening a conversation table.
+            // Desktop sessions add activity only. See devin.rs.
+            if let Some(extra) = crate::devin::activity() {
+                for (k, v) in extra {
+                    row[k] = v;
+                }
             }
         }
         out.push(row);
@@ -1136,6 +1158,21 @@ pub fn collect_usage() -> Value {
 
 /// One full reading of this machine, ready to POST.
 pub fn collect() -> Value {
+    // Collected once and passed on. The integrations catalogue needs to know
+    // which collectors found anything, and running them a second time to ask
+    // would double the reading cost of the whole cycle to answer a question
+    // already answered.
+    let codex = crate::codex::collect();
+    let copilot = crate::copilot::collect();
+    let available = |v: &Value| v["available"].as_bool().unwrap_or(false);
+    let integrations = crate::integrations::collect(&[
+        ("claude-code", claude_dir().join("projects").is_dir()),
+        ("codex", available(&codex)),
+        ("copilot-cli", available(&copilot)),
+        ("devin", crate::devin::cli_db().exists()),
+    ]);
+    let integration_summary = crate::integrations::summary(&integrations);
+
     json!({
         "host": host_id(),
         "agentVersion": AGENT_VERSION,
@@ -1147,7 +1184,10 @@ pub fn collect() -> Value {
             "usage": collect_usage(),
             "limits": crate::limits::collect_limits(),
             "assistants": collect_assistants(),
-            "codex": crate::codex::collect(),
+            "integrations": integrations,
+            "integrationSummary": integration_summary,
+            "codex": codex,
+            "copilot": copilot,
             "governance": crate::governance::collect(),
             "projects": collect_claude_projects(),
             "daemon": collect_daemon(),

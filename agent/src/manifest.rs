@@ -140,6 +140,41 @@ pub const READS: &[Source] = &[
         kind: Kind::File,
     },
     Source {
+        display: "~/.local/share/devin/cli/sessions.db",
+        purpose: "Devin CLI usage — per-session credit and ACU cost, model, and mode",
+        scope: Some("read read-only via sqlite3, naming ONLY id/model/mode/timestamps and metadata cost; the prompt_history, message_nodes, tool_call_state tables and the title/cogs_json columns are never queried"),
+        resolve: crate::devin::cli_db,
+        kind: Kind::File,
+    },
+    Source {
+        display: "~/Library/Application Support/Devin/User/acp-messages/",
+        purpose: "Devin Desktop activity — how many sessions exist and when one was last active",
+        scope: Some("the session databases are listed by name and timestamp, never opened; Desktop records no tokens or cost there to read"),
+        resolve: crate::devin::desktop_sessions_dir,
+        kind: Kind::Listing,
+    },
+    Source {
+        display: "~/.config/devin/mcp_config.json",
+        purpose: "Devin MCP servers — which servers are configured",
+        scope: Some("server names and transports only; the env and headers values (which hold API keys) are never parsed or surfaced"),
+        resolve: crate::devin::mcp_config,
+        kind: Kind::File,
+    },
+    Source {
+        display: "~/.config/devin/config.json",
+        purpose: "Devin config — the legacy location of the MCP server list",
+        scope: Some("read as JSON for the mcpServers key only; no secrets surfaced"),
+        resolve: || crate::transcripts::home().join(".config").join("devin").join("config.json"),
+        kind: Kind::File,
+    },
+    Source {
+        display: "~/.config/devin/agents/",
+        purpose: "Devin custom subagents — their names",
+        scope: Some("filenames only; the agent bodies (author-written prose) are never read"),
+        resolve: crate::devin::agents_dir,
+        kind: Kind::Listing,
+    },
+    Source {
         display: "~/.codex/sessions/**/*.jsonl",
         purpose: "Codex CLI token counts, models and plan windows, per session",
         scope: Some("only `token_count` events and session metadata; the cumulative total, not the turns"),
@@ -154,6 +189,17 @@ pub const READS: &[Source] = &[
         kind: Kind::File,
     },
     Source {
+        display: "~/.copilot/session-state/**/events.jsonl",
+        purpose: "GitHub Copilot CLI token counts, premium requests and AI units, per session",
+        scope: Some("only `session.start`, `session.resume`, `assistant.turn_start`, \
+                     `tool.execution_start` and `session.shutdown` records. A tool call \
+                     contributes its NAME and never its `arguments`; the `user.message` and \
+                     `assistant.message` records, which hold the conversation, are skipped \
+                     by type and never parsed"),
+        resolve: crate::copilot::sessions_root,
+        kind: Kind::Corpus,
+    },
+    Source {
         display: "ps -Ao pid,etime,command",
         purpose: "which coding agents are running right now",
         scope: Some("command lines are truncated to 200 characters before they leave this machine"),
@@ -164,9 +210,16 @@ pub const READS: &[Source] = &[
 
 /// Checked for existence only — never opened. This is how the board can say
 /// "Cursor is installed here" without reading anything Cursor wrote.
+///
+/// The list is longer than the set of tools with collectors, on purpose. The
+/// integrations catalogue reports a tool that is installed but unreadable —
+/// and what to do about it — which it can only do by knowing the tool is
+/// there. Every one of these is an existence check: `is_dir`, `exists`, and
+/// nothing else.
 pub const PROBED: &[&str] = &[
     "~/.claude",
     "~/.codex",
+    "~/.copilot",
     "~/.cursor",
     "~/.gemini",
     "~/.config/github-copilot",
@@ -174,6 +227,22 @@ pub const PROBED: &[&str] = &[
     "~/.codeium",
     "~/.antigravity-ide",
     "~/.aider.conf.yml",
+    "~/.aider",
+    "~/.cline",
+    "~/.roo",
+    "~/.kilocode",
+    "~/.continue",
+    "~/.local/share/opencode",
+    "~/.local/share/goose",
+    "~/.config/goose",
+    "~/.lmstudio",
+    "~/.cache/lm-studio",
+    "~/.ollama",
+    "~/.aws/amazonq",
+    "~/.cache/JetBrains",
+    "~/Library/Caches/JetBrains",
+    "~/.config/zed",
+    "~/Library/Application Support/Zed",
 ];
 
 /// Written. This list is exhaustive.
@@ -191,6 +260,14 @@ pub const WRITES: &[(&str, &str)] = &[
         "a random per-install salt, so the account hash is not a cross-machine identifier",
     ),
     ("~/.tokenhud/consent.json", "what you agreed to, and when"),
+    (
+        "~/.tokenhud/id",
+        "a random machine id, so two laptops with the same hostname stay two rows on the board",
+    ),
+    (
+        "~/.tokenhud/machine.json",
+        "this machine's enrollment: the server it reports to and its own key, written by `tokenhud-agent enroll`",
+    ),
 ];
 
 /// Deliberately never read, with the reason. These are the load-bearing ones —

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 
-export default function CtaStrip({ onDashboard }) {
+export default function CtaStrip({ cta, onPortal }) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = useCallback(() => {
@@ -37,8 +37,8 @@ export default function CtaStrip({ onDashboard }) {
       </div>
 
       <div style={{ display: 'flex', gap: 'var(--space-md)', justifyContent: 'center', flexWrap: 'wrap' }}>
-        <button className="btn btn--primary" onClick={onDashboard}>
-          <span>Open Dashboard</span>
+        <button className="btn btn--primary" onClick={onPortal}>
+          <span>{cta}</span>
           <span aria-hidden="true">→</span>
         </button>
         <a className="btn btn--ghost" href="https://github.com/reddy-sh/tokenhud">

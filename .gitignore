@@ -17,11 +17,20 @@ logs/
 
 # tooling scratch
 .playwright-mcp/
+site/test-results/
+site/playwright-report/
 *.png
 # …except the README's screenshot, which is generated from synthetic data
 !docs/board.png
-# …and the marketing site's images, which Amplify deploys from the repo
+# …and the portal's images, which Amplify deploys from the repo
 !site/*.png
+!site/public/*.png
+
+# Amplify backend — per-branch outputs and generated code are deploy products
+node_modules/
+amplify_outputs.json
+.amplify/
+.npm/
 
 # Rust build output — a few hundred MB of it
 agent/target/

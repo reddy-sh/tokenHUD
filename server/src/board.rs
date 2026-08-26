@@ -5,9 +5,66 @@ use chrono::Utc;
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
 use std::io::Write;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+
+/// 32 bytes of OS randomness, base64url, unpadded — the shape Python's
+/// `secrets.token_urlsafe(32)` produces. Used for the board key, enrollment
+/// tokens, and per-machine keys alike, so every secret in the system has the
+/// same strength and the same look.
+pub fn new_secret() -> String {
+    const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    let mut buf = [0u8; 32];
+    if unsafe { libc::getentropy(buf.as_mut_ptr() as *mut libc::c_void, buf.len()) } != 0 {
+        eprintln!("could not read randomness from the OS — refusing to invent a secret");
+        std::process::exit(1);
+    }
+    let mut out = String::new();
+    for chunk in buf.chunks(3) {
+        let b = [
+            chunk[0],
+            *chunk.get(1).unwrap_or(&0),
+            *chunk.get(2).unwrap_or(&0),
+        ];
+        let n = ((b[0] as u32) << 16) | ((b[1] as u32) << 8) | b[2] as u32;
+        let take = chunk.len() + 1; // 3 bytes -> 4 chars, 2 -> 3, 1 -> 2
+        for i in 0..take {
+            out.push(ALPHABET[((n >> (18 - 6 * i)) & 0x3F) as usize] as char);
+        }
+    }
+    out
+}
+
+/// Secrets are stored and looked up as hashes, never as themselves.
+pub fn sha256_hex(s: &str) -> String {
+    let mut h = Sha256::new();
+    h.update(s.as_bytes());
+    h.finalize().iter().map(|b| format!("{b:02x}")).collect()
+}
+
+/// The human half of the handshake: six characters derived from the token, so
+/// the terminal that ran `enroll` and the board deciding whether to approve it
+/// can be checked against each other by eye. The alphabet drops 0/O/1/I/L/U —
+/// a code someone reads aloud must not have two spellings.
+pub fn pairing_code(token: &str) -> String {
+    const ALPHABET: &[u8] = b"ABCDEFGHJKMNPQRSTVWXYZ23456789";
+    let mut h = Sha256::new();
+    h.update(b"tokenhud-pair:");
+    h.update(token.as_bytes());
+    let d = h.finalize();
+    let pick = |i: usize| ALPHABET[d[i] as usize % ALPHABET.len()] as char;
+    format!(
+        "{}{}{}-{}{}{}",
+        pick(0),
+        pick(1),
+        pick(2),
+        pick(3),
+        pick(4),
+        pick(5)
+    )
+}
 
 /// One counter and a notification, which is all a fan-out needs here.
 ///
@@ -55,15 +112,42 @@ pub struct App {
     pub key: String,
     pub protect_reads: bool,
     pub max_streams: u64,
-    pub web: std::path::PathBuf,
+    /// True when the server is bound to 127.0.0.1 — only then is it safe
+    /// for the portal to fetch the admin key without a header.
+    pub loopback_only: bool,
+    /// The address this server is reachable at from outside, when that is not
+    /// the address a request arrived on — a reverse proxy, a tunnel, a
+    /// hostname. Empty means "answer with whatever Host the caller used",
+    /// which is right until something sits in front.
+    ///
+    /// It exists for one reason: a share link has to name an API a stranger's
+    /// browser can reach, and only the operator knows what that is.
+    pub public_url: String,
     cache: Mutex<Cache>,
+    /// One-time stream tokens: EventSource cannot set a header, and putting
+    /// the board key itself in a URL would write the fleet's admin credential
+    /// into every access log. So the browser trades the key (in a header) for
+    /// a 60-second single-use token, and only THAT rides the query string —
+    /// worthless the moment it is seen.
+    stream_tokens: Mutex<std::collections::HashMap<String, std::time::Instant>>,
+    /// One-time install tokens: same idea as stream tokens, but for the
+    /// install-script endpoint. The portal trades the admin key for a token
+    /// that rides the curl URL, so the admin key itself never appears in a
+    /// command the user copies. 5-minute window, single use.
+    install_tokens: Mutex<std::collections::HashMap<String, std::time::Instant>>,
 }
 
+/// The overview is cached in two shapes: the public one, and the one for a
+/// caller holding the board key. They differ by exactly one field — the
+/// machines list, which carries pending pairing codes and fleet inventory
+/// that open-by-default reads have no business serving.
 #[derive(Default)]
 struct Cache {
     key: Option<(u64, i64)>,
-    json: Vec<u8>,
-    gzip: Vec<u8>,
+    json_public: Vec<u8>,
+    json_admin: Vec<u8>,
+    gzip_public: Vec<u8>,
+    gzip_admin: Vec<u8>,
 }
 
 impl App {
@@ -72,7 +156,8 @@ impl App {
         key: String,
         protect_reads: bool,
         max_streams: u64,
-        web: std::path::PathBuf,
+        loopback_only: bool,
+        public_url: String,
     ) -> Arc<App> {
         Arc::new(App {
             store,
@@ -80,9 +165,52 @@ impl App {
             key,
             protect_reads,
             max_streams,
-            web,
+            loopback_only,
+            public_url: public_url.trim_end_matches('/').to_string(),
             cache: Mutex::new(Cache::default()),
+            stream_tokens: Mutex::new(Default::default()),
+            install_tokens: Mutex::new(Default::default()),
         })
+    }
+
+    /// Trade the board key (already verified by the caller) for a one-time
+    /// stream token.
+    pub fn mint_stream_token(&self) -> String {
+        let token = new_secret();
+        let mut t = self.stream_tokens.lock().unwrap();
+        // A tab that fetched a token and never opened the stream must not
+        // accumulate: sweep anything stale while we are here.
+        t.retain(|_, at| at.elapsed().as_secs() < 60);
+        t.insert(token.clone(), std::time::Instant::now());
+        token
+    }
+
+    /// Redeem a stream token. True at most once per token, and only inside
+    /// its 60-second window.
+    pub fn take_stream_token(&self, token: &str) -> bool {
+        let mut t = self.stream_tokens.lock().unwrap();
+        match t.remove(token) {
+            Some(at) => at.elapsed().as_secs() < 60,
+            None => false,
+        }
+    }
+
+    /// Trade the board key for a one-time install token (5-minute window).
+    pub fn mint_install_token(&self) -> String {
+        let token = new_secret();
+        let mut t = self.install_tokens.lock().unwrap();
+        t.retain(|_, at| at.elapsed().as_secs() < 300);
+        t.insert(token.clone(), std::time::Instant::now());
+        token
+    }
+
+    /// Redeem an install token. True at most once, within 5 minutes.
+    pub fn take_install_token(&self, token: &str) -> bool {
+        let mut t = self.install_tokens.lock().unwrap();
+        match t.remove(token) {
+            Some(at) => at.elapsed().as_secs() < 300,
+            None => false,
+        }
     }
 
     /// Everything the board reads, in one object.
@@ -90,7 +218,38 @@ impl App {
     /// Built in one place because two callers need it identical: the poll and
     /// the event stream. A stream that sent a different shape from the poll it
     /// replaces would be a bug that only appeared on reconnect.
-    fn overview(&self) -> Value {
+    fn overview(&self, admin: bool) -> Value {
+        let hosts = self.hosts_with_status();
+        let mut out = json!({
+            "generatedAt": crate::store::iso(Utc::now()),
+            "hosts": hosts,
+            "latest": self.store.all_latest(),
+            // Carried here rather than left to its own endpoint: "what finished
+            // while I was away" is the first thing someone returning to the
+            // board wants, and a second round trip to learn it would be worse.
+            "endings": self.store.endings(40, 24, None),
+            "store": self.store.counts(),
+            "streams": {
+                "open": self.bus.readers.load(Ordering::SeqCst),
+                "max": self.max_streams,
+            },
+        });
+        // Enrollment state rides the same payload the board already watches,
+        // so a machine claiming a link appears on screen the moment it happens
+        // — but only for a reader holding the board key. Pending pairing codes
+        // and the fleet inventory are not for the open-reads default.
+        if admin {
+            out["machines"] = json!(self.store.machines());
+        }
+        out
+    }
+
+    /// Every reporting machine with its liveness worked out.
+    ///
+    /// Public because the shared board needs the same verdict the private one
+    /// shows: two places calling a machine "up" by different rules would be a
+    /// difference nobody could explain.
+    pub fn hosts_with_status(&self) -> Vec<Value> {
         let now = Utc::now();
         let mut hosts = self.store.hosts();
         for h in &mut hosts {
@@ -111,20 +270,7 @@ impl App {
                 _ => "down",
             });
         }
-        json!({
-            "generatedAt": crate::store::iso(now),
-            "hosts": hosts,
-            "latest": self.store.all_latest(),
-            // Carried here rather than left to its own endpoint: "what finished
-            // while I was away" is the first thing someone returning to the
-            // board wants, and a second round trip to learn it would be worse.
-            "endings": self.store.endings(40, 24, None),
-            "store": self.store.counts(),
-            "streams": {
-                "open": self.bus.readers.load(Ordering::SeqCst),
-                "max": self.max_streams,
-            },
-        })
+        hosts
     }
 
     /// One reader's work, done once, for every reader.
@@ -141,26 +287,37 @@ impl App {
     /// a new reading must never wait, the second because two fields —
     /// `generatedAt` and each host's age — are answers about now rather than
     /// about the data, and a second is finer than anyone reads a status board.
-    pub fn board_json(&self) -> Vec<u8> {
+    pub fn board_json(&self, admin: bool) -> Vec<u8> {
         let key = (self.bus.current(), Utc::now().timestamp());
         let mut c = self.cache.lock().unwrap();
         if c.key != Some(key) {
-            c.json = serde_json::to_vec(&self.overview()).unwrap_or_default();
-            c.gzip.clear();
+            c.json_public = serde_json::to_vec(&self.overview(false)).unwrap_or_default();
+            c.json_admin = serde_json::to_vec(&self.overview(true)).unwrap_or_default();
+            c.gzip_public.clear();
+            c.gzip_admin.clear();
             c.key = Some(key);
         }
-        c.json.clone()
+        if admin {
+            c.json_admin.clone()
+        } else {
+            c.json_public.clone()
+        }
     }
 
-    pub fn board_gzip(&self) -> Vec<u8> {
-        let raw = self.board_json();
+    pub fn board_gzip(&self, admin: bool) -> Vec<u8> {
+        let raw = self.board_json(admin);
         let mut c = self.cache.lock().unwrap();
-        if c.gzip.is_empty() {
+        let slot = if admin {
+            &mut c.gzip_admin
+        } else {
+            &mut c.gzip_public
+        };
+        if slot.is_empty() {
             let mut e = GzEncoder::new(Vec::new(), Compression::new(6));
             let _ = e.write_all(&raw);
-            c.gzip = e.finish().unwrap_or_default();
+            *slot = e.finish().unwrap_or_default();
         }
-        c.gzip.clone()
+        slot.clone()
     }
 
     /// `compare_digest`, not `==`, so a wrong key cannot be found one byte at a

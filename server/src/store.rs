@@ -5,11 +5,12 @@
 //! all three on one file with no daemon, no container and no ops. When one box
 //! stops being enough, the schema below ports to Postgres unchanged.
 //!
-//! Three tables:
+//! The tables:
 //!
 //!   hosts      one row per machine, overwritten — "what is true now"
 //!   snapshots  append-only history — "what was true then"
 //!   endings    derived — "what stopped, and when nobody was looking"
+//!   shares     one row per public leaderboard link — "who may look, as what"
 //!
 //! `endings` is the one that is not just storage. A snapshot says which agents
 //! were running at an instant; nobody watches a dashboard at every instant. The
@@ -79,6 +80,65 @@ CREATE TABLE IF NOT EXISTS endings (
   last_seen   TEXT NOT NULL,
   noticed_at  TEXT NOT NULL,
   UNIQUE (host, pid, last_seen)
+);
+
+-- One row per enrollment link. The token itself never lands here: only its
+-- hash, so the database is not a second place the secret lives. `install_id`
+-- is NULL until a machine claims the link, and the row is deleted the moment
+-- the machine key is delivered — a link is a one-shot thing.
+CREATE TABLE IF NOT EXISTS enroll_tokens (
+  token_hash TEXT PRIMARY KEY,
+  code       TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  install_id TEXT
+);
+
+-- One row per machine that has ever enrolled. The machine's key is stored as
+-- a hash for the same reason the token is; `label` is the name every other
+-- table files this machine under, disambiguated at claim time so two laptops
+-- called MacBook-Pro.local stay two rows.
+CREATE TABLE IF NOT EXISTS machines (
+  install_id       TEXT PRIMARY KEY,
+  label            TEXT NOT NULL UNIQUE,
+  hostname         TEXT NOT NULL,
+  platform         TEXT,
+  agent_version    TEXT,
+  manifest_digest  TEXT,
+  assistants       TEXT,
+  code             TEXT NOT NULL,
+  status           TEXT NOT NULL,
+  key_hash         TEXT,
+  -- Hash of a secret the CLAIMING machine invented. Key delivery requires it,
+  -- so a link that leaked after the claim delivers nothing to the thief: the
+  -- token says which enrollment, the secret says which machine may collect.
+  poll_secret_hash TEXT,
+  created_at       TEXT NOT NULL,
+  decided_at       TEXT
+);
+
+-- One row per share link. A share is a public, read-only view of the
+-- leaderboard: a URL anyone may open, holding token counts, model names and
+-- daily activity — and nothing that says what the work was about. What may
+-- leave is decided in one place, `share.rs`, by naming the fields that go
+-- rather than the fields that stay.
+--
+-- `identities` is the one thing the person sharing chooses about privacy:
+-- 'alias' replaces every machine name with a pseudonym derived from the slug,
+-- so two shares of the same fleet cannot be lined up against each other;
+-- 'host' prints the real names, which is what a team board wants.
+--
+-- Revoking sets `revoked_at` rather than deleting the row: a link that was
+-- public once is worth remembering, and the view count is the only evidence
+-- of who ever looked.
+CREATE TABLE IF NOT EXISTS shares (
+  slug       TEXT PRIMARY KEY,
+  title      TEXT NOT NULL,
+  identities TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  revoked_at TEXT,
+  views      INTEGER NOT NULL DEFAULT 0,
+  last_view  TEXT
 );
 "#;
 
@@ -284,6 +344,26 @@ impl Store {
         if !has_base {
             db.execute_batch("ALTER TABLE snapshots ADD COLUMN base_id INTEGER")?;
         }
+        let has_secret = db
+            .prepare("PRAGMA table_info(machines)")?
+            .query_map([], |r| r.get::<_, String>(1))?
+            .filter_map(Result::ok)
+            .any(|n| n == "poll_secret_hash");
+        if !has_secret {
+            db.execute_batch("ALTER TABLE machines ADD COLUMN poll_secret_hash TEXT")?;
+        }
+        // Stable machine identity: survives hostname renames.
+        let hosts_cols: Vec<String> = db
+            .prepare("PRAGMA table_info(hosts)")?
+            .query_map([], |r| r.get::<_, String>(1))?
+            .filter_map(Result::ok)
+            .collect();
+        if !hosts_cols.iter().any(|n| n == "machine_id") {
+            db.execute_batch("ALTER TABLE hosts ADD COLUMN machine_id TEXT")?;
+        }
+        if !hosts_cols.iter().any(|n| n == "label") {
+            db.execute_batch("ALTER TABLE hosts ADD COLUMN label TEXT")?;
+        }
         db.execute_batch(INDEXES)?;
         Ok(Store {
             path: path.to_path_buf(),
@@ -296,11 +376,44 @@ impl Store {
     // ── writes ──────────────────────────────────────────────────────────
 
     pub fn ingest(&self, snapshot: &Value) -> rusqlite::Result<()> {
+        let machine_id = snapshot
+            .get("machineId")
+            .and_then(|v| v.as_str())
+            .map(str::to_string);
         let host = snapshot
             .get("host")
             .and_then(|v| v.as_str())
             .unwrap_or("unknown")
             .to_string();
+
+        // If a machineId is present and we already know this machine under a
+        // different hostname, update the row to the new name. This makes
+        // hostname renames seamless: the board keeps the history.
+        if let Some(mid) = &machine_id {
+            let db = self.db.lock().unwrap();
+            if let Ok(old_host) =
+                db.query_row("SELECT host FROM hosts WHERE machine_id = ?", [mid], |r| {
+                    r.get::<_, String>(0)
+                })
+            {
+                if old_host != host {
+                    // Same machine, different hostname: update in place.
+                    db.execute(
+                        "UPDATE hosts SET host = ? WHERE machine_id = ?",
+                        rusqlite::params![&host, mid],
+                    )?;
+                    db.execute(
+                        "UPDATE snapshots SET host = ? WHERE host = ?",
+                        rusqlite::params![&host, &old_host],
+                    )?;
+                    db.execute(
+                        "UPDATE endings SET host = ? WHERE host = ?",
+                        rusqlite::params![&host, &old_host],
+                    )?;
+                }
+            }
+            drop(db);
+        }
         // `collectedAt` is caller-supplied and it is what retention compares
         // against, so a reading stamped 9999-01-01 is stored verbatim and never
         // prunes. The past is left alone — an agent that spooled through a week
@@ -343,14 +456,18 @@ impl Store {
             // true now", and a replayed or back-dated reading must not rewind
             // it. The endings check three lines above already refuses to look
             // backwards; this row was the one place that still did.
-            "INSERT INTO hosts (host, last_seen, agent_version, payload) VALUES (?,?,?,?) \
+            "INSERT INTO hosts (host, last_seen, agent_version, machine_id, payload) \
+             VALUES (?,?,?,?,?) \
              ON CONFLICT(host) DO UPDATE SET last_seen=excluded.last_seen, \
-             agent_version=excluded.agent_version, payload=excluded.payload \
+             agent_version=excluded.agent_version, \
+             machine_id=COALESCE(excluded.machine_id, hosts.machine_id), \
+             payload=excluded.payload \
              WHERE excluded.last_seen > hosts.last_seen",
             params![
                 &host,
                 &at,
                 snapshot.get("agentVersion").and_then(|v| v.as_str()),
+                &machine_id,
                 &blob
             ],
         )?;
@@ -542,9 +659,10 @@ impl Store {
 
     pub fn hosts(&self) -> Vec<Value> {
         let db = self.db.lock().unwrap();
-        let mut stmt = match db
-            .prepare("SELECT host, last_seen, agent_version FROM hosts ORDER BY last_seen DESC")
-        {
+        let mut stmt = match db.prepare(
+            "SELECT host, last_seen, agent_version, machine_id, label \
+             FROM hosts ORDER BY last_seen DESC",
+        ) {
             Ok(s) => s,
             Err(_) => return Vec::new(),
         };
@@ -553,10 +671,30 @@ impl Store {
                 "host": r.get::<_, String>(0)?,
                 "last_seen": r.get::<_, String>(1)?,
                 "agent_version": r.get::<_, Option<String>>(2)?,
+                "machine_id": r.get::<_, Option<String>>(3)?,
+                "label": r.get::<_, Option<String>>(4)?,
             }))
         })
         .map(|r| r.filter_map(Result::ok).collect())
         .unwrap_or_default()
+    }
+
+    pub fn rename_host(&self, machine_id: &str, label: &str) -> rusqlite::Result<bool> {
+        let db = self.db.lock().unwrap();
+        let n = db.execute(
+            "UPDATE hosts SET label = ? WHERE machine_id = ?",
+            params![label, machine_id],
+        )?;
+        Ok(n > 0)
+    }
+
+    pub fn remove_host(&self, host: &str) -> rusqlite::Result<bool> {
+        let db = self.db.lock().unwrap();
+        let n = db.execute("DELETE FROM hosts WHERE host = ?", params![host])?;
+        // Clean up related data.
+        let _ = db.execute("DELETE FROM snapshots WHERE host = ?", params![host]);
+        let _ = db.execute("DELETE FROM endings WHERE host = ?", params![host]);
+        Ok(n > 0)
     }
 
     pub fn all_latest(&self) -> Vec<Value> {
@@ -638,6 +776,451 @@ impl Store {
             }
         }
         out
+    }
+
+    // ── enrollment ──────────────────────────────────────────────────────
+    //
+    // The flow, end to end: the board mints a link (a one-time token); a new
+    // machine claims it, which creates a `machines` row in `pending`; a person
+    // approves that row on the board; the machine's next status poll delivers
+    // its own key, exactly once, and the token row is deleted. From then on the
+    // machine authenticates with its key alone, and revoking it removes one
+    // machine — never the fleet.
+
+    /// How long a minted link is claimable, and how long an unapproved claim
+    /// may sit before the whole attempt expires.
+    pub const ENROLL_TTL_SECS: i64 = 900;
+
+    /// Record a freshly minted enrollment token (as its hash). Expired,
+    /// never-delivered attempts are swept here rather than on a timer: minting
+    /// is rare, and it is the moment staleness could actually accumulate.
+    pub fn enroll_mint(&self, token_hash: &str, code: &str) -> rusqlite::Result<String> {
+        let now = Utc::now();
+        let expires = iso(now + chrono::Duration::seconds(Self::ENROLL_TTL_SECS));
+        let db = self.db.lock().unwrap();
+        // An UNCLAIMED link dies at its TTL. A claimed one must outlive it:
+        // approval can legitimately land after the link's own window, and the
+        // agent is still polling — deleting its token then would strand an
+        // approved machine keyless. Claimed tokens die at delivery, at denial,
+        // or after a day, whichever comes first.
+        db.execute(
+            "DELETE FROM enroll_tokens WHERE expires_at < ? AND install_id IS NULL",
+            [&now_iso()],
+        )?;
+        db.execute(
+            "DELETE FROM enroll_tokens WHERE created_at < ?",
+            [&iso(now - chrono::Duration::hours(24))],
+        )?;
+        // Pending rows whose token is gone: a first-time attempt is a dead
+        // card and is dropped; a machine that had been decided before (it
+        // re-claimed a link and stalled) falls back to revoked rather than
+        // being erased — its label is what the history tables file data under.
+        db.execute(
+            "DELETE FROM machines WHERE status='pending' AND decided_at IS NULL \
+             AND install_id NOT IN \
+             (SELECT install_id FROM enroll_tokens WHERE install_id IS NOT NULL)",
+            [],
+        )?;
+        db.execute(
+            "UPDATE machines SET status='revoked' WHERE status='pending' \
+             AND decided_at IS NOT NULL AND install_id NOT IN \
+             (SELECT install_id FROM enroll_tokens WHERE install_id IS NOT NULL)",
+            [],
+        )?;
+        db.execute(
+            "INSERT INTO enroll_tokens (token_hash, code, created_at, expires_at) VALUES (?,?,?,?)",
+            params![token_hash, code, iso(now), &expires],
+        )?;
+        Ok(expires)
+    }
+
+    /// A machine presents a link's token, a secret it just invented (key
+    /// delivery will demand it back), and its facts. Idempotent for the same
+    /// install id, so a retried request is a refresh rather than an error.
+    /// Nine arguments because they are nine columns of one row; a struct
+    /// with one caller would be ceremony.
+    #[allow(clippy::too_many_arguments)]
+    pub fn enroll_claim(
+        &self,
+        token_hash: &str,
+        poll_secret_hash: &str,
+        install_id: &str,
+        hostname: &str,
+        platform: &str,
+        agent_version: &str,
+        manifest_digest: &str,
+        assistants: &Value,
+    ) -> rusqlite::Result<Result<String, &'static str>> {
+        let db = self.db.lock().unwrap();
+        let row: Option<(String, String, Option<String>)> = db
+            .query_row(
+                "SELECT code, expires_at, install_id FROM enroll_tokens WHERE token_hash=?",
+                [token_hash],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .ok();
+        let (code, expires_at, bound) = match row {
+            Some(r) => r,
+            None => return Ok(Err("unknown enrollment link")),
+        };
+        if expires_at < now_iso() {
+            return Ok(Err("enrollment link expired"));
+        }
+        // One link, one machine. The same machine retrying is fine; a second
+        // machine on a link someone already used is exactly the theft this
+        // check exists for.
+        if let Some(b) = &bound {
+            if b != install_id {
+                return Ok(Err("enrollment link already used"));
+            }
+        }
+        // An approved machine holding a working key must not be dragged back
+        // to pending by a claim — that would revoke it without a decision.
+        // Whoever wants to re-enroll it revokes it on the board first.
+        let approved: bool = db
+            .query_row(
+                "SELECT 1 FROM machines WHERE install_id=? AND status='approved' \
+                 AND key_hash IS NOT NULL",
+                [install_id],
+                |_| Ok(true),
+            )
+            .unwrap_or(false);
+        if approved {
+            return Ok(Err(
+                "this machine is already enrolled — revoke it on the board first",
+            ));
+        }
+        // A denial is terminal for THIS link: the machine may not re-claim its
+        // way back onto the pending list and ask again. A fresh link, minted
+        // by a person who changed their mind, enrolls it fine.
+        if bound.is_some() {
+            let denied: bool = db
+                .query_row(
+                    "SELECT 1 FROM machines WHERE install_id=? AND status='denied'",
+                    [install_id],
+                    |_| Ok(true),
+                )
+                .unwrap_or(false);
+            if denied {
+                return Ok(Err("denied on this board — ask for a fresh link"));
+            }
+        }
+
+        // The label is what every other table files this machine under, and
+        // the namespace is shared with legacy shared-key hosts — so a name is
+        // taken if EITHER table knows it. Collisions get a suffix of the
+        // install id, lengthened until unique, so two identically named
+        // laptops stay two rows and an enrolling machine can never write over
+        // a legacy host's data.
+        let existing_label: Option<String> = db
+            .query_row(
+                "SELECT label FROM machines WHERE install_id=?",
+                [install_id],
+                |r| r.get(0),
+            )
+            .ok();
+        let label = match existing_label {
+            Some(l) => l,
+            None => {
+                let taken = |candidate: &str| -> bool {
+                    db.query_row(
+                        "SELECT 1 FROM machines WHERE label=? AND install_id != ?",
+                        params![candidate, install_id],
+                        |_| Ok(true),
+                    )
+                    .unwrap_or(false)
+                        || db
+                            .query_row("SELECT 1 FROM hosts WHERE host=?", [candidate], |_| {
+                                Ok(true)
+                            })
+                            .unwrap_or(false)
+                };
+                let mut pick = hostname.to_string();
+                let mut n = 4;
+                while taken(&pick) && n <= install_id.len() {
+                    pick = format!("{} · {}", hostname, &install_id[..n]);
+                    n += 2;
+                }
+                pick
+            }
+        };
+
+        db.execute(
+            "INSERT INTO machines (install_id, label, hostname, platform, agent_version, \
+             manifest_digest, assistants, code, status, key_hash, poll_secret_hash, \
+             created_at, decided_at) \
+             VALUES (?,?,?,?,?,?,?,?,'pending',NULL,?,?,NULL) \
+             ON CONFLICT(install_id) DO UPDATE SET hostname=excluded.hostname, \
+             platform=excluded.platform, agent_version=excluded.agent_version, \
+             manifest_digest=excluded.manifest_digest, assistants=excluded.assistants, \
+             code=excluded.code, status='pending', key_hash=NULL, \
+             poll_secret_hash=excluded.poll_secret_hash",
+            params![
+                install_id,
+                &label,
+                hostname,
+                platform,
+                agent_version,
+                manifest_digest,
+                serde_json::to_string(assistants).unwrap_or_default(),
+                &code,
+                poll_secret_hash,
+                &now_iso(),
+            ],
+        )?;
+        db.execute(
+            "UPDATE enroll_tokens SET install_id=? WHERE token_hash=?",
+            params![install_id, token_hash],
+        )?;
+        Ok(Ok(code))
+    }
+
+    /// One status poll. When the machine is approved and no key has been
+    /// delivered yet, the caller's candidate key is committed and returned —
+    /// and never again: the token row is deleted in the same transaction-shaped
+    /// moment, so a second poll (or a stolen link replayed later) gets nothing.
+    ///
+    /// Delivery demands the poll secret from the CLAIM, not just the token: a
+    /// link that leaked (chat, shell history, a shoulder) identifies the
+    /// enrollment, but only the machine that claimed it can collect the key.
+    pub fn enroll_state(
+        &self,
+        token_hash: &str,
+        poll_secret_hash: &str,
+        candidate_key: &str,
+        candidate_hash: &str,
+    ) -> Option<Value> {
+        let db = self.db.lock().unwrap();
+        let install_id: Option<String> = db
+            .query_row(
+                "SELECT install_id FROM enroll_tokens WHERE token_hash=?",
+                [token_hash],
+                |r| r.get(0),
+            )
+            .ok()?;
+        let install_id = install_id?; // minted but never claimed: nothing to report
+        let (status, key_hash, label, code): (String, Option<String>, String, String) = db
+            .query_row(
+                "SELECT status, key_hash, label, code FROM machines \
+                 WHERE install_id=? AND poll_secret_hash=?",
+                params![&install_id, poll_secret_hash],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+            )
+            .ok()?;
+        match status.as_str() {
+            "approved" if key_hash.is_none() => {
+                if db
+                    .execute(
+                        "UPDATE machines SET key_hash=? WHERE install_id=? AND key_hash IS NULL",
+                        params![candidate_hash, &install_id],
+                    )
+                    .unwrap_or(0)
+                    == 1
+                {
+                    let _ =
+                        db.execute("DELETE FROM enroll_tokens WHERE token_hash=?", [token_hash]);
+                    Some(json!({
+                        "status": "approved",
+                        "key": candidate_key,
+                        "installId": install_id,
+                        "label": label,
+                    }))
+                } else {
+                    Some(json!({"status": "approved", "delivered": true}))
+                }
+            }
+            "approved" => Some(json!({"status": "approved", "delivered": true})),
+            other => Some(json!({"status": other, "code": code})),
+        }
+    }
+
+    /// Approve, deny, or revoke one machine. Revoking clears the key hash, so
+    /// a revoked laptop cannot come back without a fresh link — re-approval is
+    /// re-enrollment, not a toggle. Deny and revoke also burn the enrollment
+    /// token, so a denied machine cannot use the same link to reappear as
+    /// pending and ask again.
+    pub fn machine_decide(&self, install_id: &str, action: &str) -> rusqlite::Result<bool> {
+        let db = self.db.lock().unwrap();
+        let n = match action {
+            "approve" => db.execute(
+                "UPDATE machines SET status='approved', decided_at=? \
+                 WHERE install_id=? AND status='pending'",
+                params![&now_iso(), install_id],
+            )?,
+            // The token survives a denial so the waiting agent's next poll can
+            // say "denied" rather than vanishing on it; enroll_claim refuses a
+            // re-claim on a denied machine's link, so surviving ≠ reusable.
+            "deny" => db.execute(
+                "UPDATE machines SET status='denied', decided_at=?, key_hash=NULL \
+                 WHERE install_id=? AND status='pending'",
+                params![&now_iso(), install_id],
+            )?,
+            "revoke" => {
+                let n = db.execute(
+                    "UPDATE machines SET status='revoked', decided_at=?, key_hash=NULL \
+                     WHERE install_id=? AND status IN ('approved','pending')",
+                    params![&now_iso(), install_id],
+                )?;
+                if n == 1 {
+                    db.execute("DELETE FROM enroll_tokens WHERE install_id=?", [install_id])?;
+                }
+                n
+            }
+            _ => 0,
+        };
+        Ok(n == 1)
+    }
+
+    /// Every machine that has ever enrolled, for the board. The pairing code
+    /// travels only while the decision is still open — once decided it is
+    /// nobody's business, and before that it is exactly the thing the person
+    /// approving is asked to compare.
+    pub fn machines(&self) -> Vec<Value> {
+        let db = self.db.lock().unwrap();
+        let mut stmt = match db.prepare(
+            "SELECT install_id, label, hostname, platform, agent_version, manifest_digest, \
+             assistants, code, status, created_at, decided_at FROM machines ORDER BY created_at DESC",
+        ) {
+            Ok(s) => s,
+            Err(_) => return Vec::new(),
+        };
+        stmt.query_map([], |r| {
+            let status: String = r.get(8)?;
+            Ok(json!({
+                "installId": r.get::<_, String>(0)?,
+                "label": r.get::<_, String>(1)?,
+                "hostname": r.get::<_, String>(2)?,
+                "platform": r.get::<_, Option<String>>(3)?,
+                "agentVersion": r.get::<_, Option<String>>(4)?,
+                "manifestDigest": r.get::<_, Option<String>>(5)?,
+                "assistants": r.get::<_, Option<String>>(6)?
+                    .and_then(|s| serde_json::from_str::<Value>(&s).ok())
+                    .unwrap_or(Value::Null),
+                "code": if status == "pending" { json!(r.get::<_, String>(7)?) } else { Value::Null },
+                "status": status,
+                "created_at": r.get::<_, String>(9)?,
+                "decided_at": r.get::<_, Option<String>>(10)?,
+            }))
+        })
+        .map(|r| r.filter_map(Result::ok).collect())
+        .unwrap_or_default()
+    }
+
+    // ── shares ──────────────────────────────────────────────────────────
+    //
+    // A share is a slug and two settings. Everything a public reader sees is
+    // computed from live data at request time, so revoking one really does
+    // stop it: there is no rendered copy anywhere to keep serving.
+
+    /// Mint a share. The slug is the credential — unguessable, and the only
+    /// thing standing between a public URL and this fleet's numbers.
+    pub fn share_create(&self, slug: &str, title: &str, identities: &str) -> rusqlite::Result<()> {
+        let db = self.db.lock().unwrap();
+        db.execute(
+            "INSERT INTO shares (slug, title, identities, created_at) VALUES (?,?,?,?)",
+            params![slug, title, identities, now_iso()],
+        )?;
+        Ok(())
+    }
+
+    /// Change a live share's title or identity mode. Returns false for a slug
+    /// that does not exist or has been revoked — a revoked share is finished,
+    /// not paused.
+    pub fn share_update(
+        &self,
+        slug: &str,
+        title: Option<&str>,
+        identities: Option<&str>,
+    ) -> rusqlite::Result<bool> {
+        let db = self.db.lock().unwrap();
+        let n = db.execute(
+            "UPDATE shares SET title = COALESCE(?, title), \
+             identities = COALESCE(?, identities) \
+             WHERE slug = ? AND revoked_at IS NULL",
+            params![title, identities, slug],
+        )?;
+        Ok(n == 1)
+    }
+
+    /// A live share, by slug. `None` covers both "no such share" and "revoked",
+    /// which is the same answer as far as a public reader is concerned.
+    pub fn share_get(&self, slug: &str) -> Option<Value> {
+        let db = self.db.lock().unwrap();
+        db.query_row(
+            "SELECT slug, title, identities, created_at, views, last_view \
+             FROM shares WHERE slug = ? AND revoked_at IS NULL",
+            [slug],
+            |r| {
+                Ok(json!({
+                    "slug": r.get::<_, String>(0)?,
+                    "title": r.get::<_, String>(1)?,
+                    "identities": r.get::<_, String>(2)?,
+                    "createdAt": r.get::<_, String>(3)?,
+                    "views": r.get::<_, i64>(4)?,
+                    "lastView": r.get::<_, Option<String>>(5)?,
+                }))
+            },
+        )
+        .ok()
+    }
+
+    /// Every share this fleet has ever minted, newest first — revoked ones
+    /// included, because "this link used to be public" is something the person
+    /// running the board should be able to see.
+    pub fn share_list(&self) -> Vec<Value> {
+        let db = self.db.lock().unwrap();
+        let mut stmt = match db.prepare(
+            "SELECT slug, title, identities, created_at, revoked_at, views, last_view \
+             FROM shares ORDER BY created_at DESC",
+        ) {
+            Ok(s) => s,
+            Err(_) => return Vec::new(),
+        };
+        stmt.query_map([], |r| {
+            Ok(json!({
+                "slug": r.get::<_, String>(0)?,
+                "title": r.get::<_, String>(1)?,
+                "identities": r.get::<_, String>(2)?,
+                "createdAt": r.get::<_, String>(3)?,
+                "revokedAt": r.get::<_, Option<String>>(4)?,
+                "views": r.get::<_, i64>(5)?,
+                "lastView": r.get::<_, Option<String>>(6)?,
+            }))
+        })
+        .map(|r| r.filter_map(Result::ok).collect())
+        .unwrap_or_default()
+    }
+
+    /// Take a share private again. Idempotent: revoking twice is not an error,
+    /// but only the first one returns true.
+    pub fn share_revoke(&self, slug: &str) -> rusqlite::Result<bool> {
+        let db = self.db.lock().unwrap();
+        let n = db.execute(
+            "UPDATE shares SET revoked_at = ? WHERE slug = ? AND revoked_at IS NULL",
+            params![now_iso(), slug],
+        )?;
+        Ok(n == 1)
+    }
+
+    /// Count a public read. Best-effort on purpose — a failed counter must
+    /// never be the reason a shared board does not render.
+    pub fn share_viewed(&self, slug: &str) {
+        let db = self.db.lock().unwrap();
+        let _ = db.execute(
+            "UPDATE shares SET views = views + 1, last_view = ? WHERE slug = ?",
+            params![now_iso(), slug],
+        );
+    }
+
+    /// The machine behind a presented key, if that machine is still approved.
+    pub fn machine_by_key_hash(&self, key_hash: &str) -> Option<(String, String)> {
+        let db = self.db.lock().unwrap();
+        db.query_row(
+            "SELECT install_id, label FROM machines WHERE key_hash=? AND status='approved'",
+            [key_hash],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .ok()
     }
 
     pub fn counts(&self) -> Value {

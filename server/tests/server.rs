@@ -5,8 +5,8 @@
 //! to mock: the router is the real one,
 //! the port is a real ephemeral port, and the store is a real SQLite file.
 //!
-//! The last two are the seams nothing else covers — the dashboard the server
-//! serves, and a reading from the real agent binary going in the front door.
+//! The last one is the seam nothing else covers — a reading from the real
+//! agent binary going in the front door.
 
 use serde_json::{json, Value};
 use std::io::{Read, Write};
@@ -21,19 +21,12 @@ struct Harness {
     app: Arc<App>,
 }
 
-fn web_dir() -> std::path::PathBuf {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("web")
-}
-
 async fn start(name: &str) -> Harness {
     let dir = std::env::temp_dir().join(format!("tokenhud-srv-{}-{}", name, std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let store = Store::open(&dir.join("t.db"), 30).unwrap();
-    let app = App::new(store, KEY.into(), false, 8, web_dir());
+    let app = App::new(store, KEY.into(), false, 8, true, String::new());
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
     let r = router(app.clone());
@@ -301,84 +294,6 @@ async fn the_event_stream_pushes() {
         pushed,
         "an ingest must reach an open stream without waiting for a timer"
     );
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn the_dashboard_is_self_contained() {
-    // The board makes no external request of any kind — no CDN, no font, no
-    // analytics. It is served from a loopback address to a machine that may be
-    // offline, and a page that phones out is a page that hangs.
-    let h = start("dash").await;
-    let (code, head, body) = get(h.port, "/", false);
-    assert_eq!(code, 200, "the dashboard should be served");
-    assert!(
-        head.contains("content-type: text/html"),
-        "wrong content type"
-    );
-    let html = String::from_utf8_lossy(&body);
-
-    for marker in ["http://", "https://", "//cdn", "src=\"//"] {
-        // Only fetchable attributes: a URL in prose or a comment is not a
-        // request, and failing on one would make the check unmaintainable.
-        for attr in ["src=\"", "href=\"", "url("] {
-            let needle = format!("{attr}{marker}");
-            assert!(
-                !html.contains(&needle),
-                "the dashboard reaches out to {needle}"
-            );
-        }
-    }
-
-    // The shapes that have actually shown up in files like this one.
-    for bad in [
-        "<script src=",
-        "<link rel=\"stylesheet\"",
-        "cdn.",
-        "unpkg.com",
-        "jsdelivr",
-    ] {
-        assert!(!html.contains(bad), "external reference: {bad}");
-    }
-
-    // No innerHTML assignment may interpolate a value. Model names, project
-    // paths and session titles all arrive from a transcript, travel through
-    // ingest untouched, and land in this file — one `innerHTML` with a
-    // template literal in it was a live XSS that round-tripped through the
-    // real endpoint. Static markup is fine; a `${...}` or a `+` is not.
-    for line in html.lines() {
-        let Some(at) = line.find("innerHTML") else {
-            continue;
-        };
-        let rhs = &line[at..];
-        if !rhs.contains('=') {
-            continue;
-        }
-        assert!(
-            !rhs.contains("${") && !rhs.contains("' +") && !rhs.contains("\" +"),
-            "innerHTML is being built from a value — use textContent:\n  {}",
-            line.trim()
-        );
-    }
-
-    let mut ids: Vec<&str> = Vec::new();
-    let mut rest = html.as_ref();
-    while let Some(i) = rest.find("id=\"") {
-        rest = &rest[i + 4..];
-        if let Some(j) = rest.find('"') {
-            ids.push(&rest[..j]);
-            rest = &rest[j..];
-        }
-    }
-    let mut sorted = ids.clone();
-    sorted.sort_unstable();
-    let before = sorted.len();
-    sorted.dedup();
-    assert_eq!(
-        before,
-        sorted.len(),
-        "the dashboard has duplicate element ids"
-    );
-    assert!(!ids.is_empty(), "no ids found — is this the dashboard?");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

@@ -1,0 +1,52 @@
+# Run the API server on a Linux box — the machine that holds the board's
+# database and takes every agent's readings.
+#
+# Install as a USER service, same as the agent:
+#
+#   mkdir -p ~/.config/systemd/user
+#   cp server/dist/tokenhud-server.service ~/.config/systemd/user/
+#   mkdir -p ~/.config/tokenhud && $EDITOR ~/.config/tokenhud/env   # see below
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now tokenhud-server
+#
+#   systemctl --user status tokenhud-server
+#   journalctl --user -u tokenhud-server -f
+#
+# The server must outlive your login session — an agent that keeps reporting
+# to a board that died at logout is the fleet's most confusing failure. So:
+#
+#   sudo loginctl enable-linger $USER
+#
+# ~/.config/tokenhud/env holds (the same file the agent unit reads):
+#   TOKENHUD_KEY=…                       # tokenhud-server --new-key
+#   TOKENHUD_DB=%h/.tokenhud/tokenhud.db # optional; this is the unit's default
+#   TOKENHUD_BIND=127.0.0.1              # read INSTALL.md before changing this
+# chmod 600 it. It has a credential in it.
+
+[Unit]
+Description=TokenHUD API server
+Documentation=https://github.com/reddy-sh/tokenhud
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/tokenhud/env
+Environment=TOKENHUD_DB=%h/.tokenhud/tokenhud.db
+ExecStart=%h/.local/bin/tokenhud-server
+Restart=on-failure
+RestartSec=5
+
+# It listens on one port and writes one SQLite file. Nothing here needs more.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+# The one directory it writes: the database, its WAL, and its journal.
+ReadWritePaths=%h/.tokenhud
+
+[Install]
+WantedBy=default.target

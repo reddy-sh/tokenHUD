@@ -7,17 +7,24 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "playwright test"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.2.5",
+    "@fontsource/inter-tight": "^5.2.5",
+    "@fontsource/jetbrains-mono": "^5.2.5",
+    "aws-amplify": "^6.15.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",
     "oxlint": "^1.79.0",
+    "playwright": "^1.62.1",
     "vite": "^8.2.2"
   }
 }

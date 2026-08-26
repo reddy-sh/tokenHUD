@@ -82,3 +82,27 @@
   --max-width:   80rem;
   --measure:     60ch;
 }
+
+/* === Light theme ================================================= */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --color-paper:        oklch(98% 0.005 70);
+  --color-paper-2:      oklch(95% 0.006 65);
+  --color-paper-3:      oklch(91% 0.008 60);
+  --color-paper-4:      oklch(86% 0.010 55);
+  --color-ink:          oklch(18% 0.020 50);
+  --color-ink-2:        oklch(38% 0.018 50);
+  --color-ink-3:        oklch(55% 0.015 50);
+  --color-rule:         oklch(88% 0.008 60);
+  --color-rule-strong:  oklch(78% 0.012 55);
+  --color-accent:       oklch(62% 0.200 50);
+  --color-accent-2:     oklch(56% 0.220 18);
+  --color-accent-soft:  oklch(62% 0.060 50);
+  --color-accent-ink:   oklch(99% 0.010 70);
+  --color-focus:        oklch(68% 0.200 50);
+  --color-error:        oklch(55% 0.220 25);
+  --color-success:      oklch(55% 0.160 145);
+  --color-bloom-1:      oklch(62% 0.200 50);
+  --color-bloom-2:      oklch(50% 0.200 15);
+}

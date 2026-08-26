@@ -15,6 +15,49 @@ until you say yes.** That is the first command below on every platform.
 
 ---
 
+## Cloud portal — the two-command path
+
+No server to run. Install the agent:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/reddy-sh/tokenhud/main/scripts/install.sh | sh
+```
+
+Sign in at [tokenhud.com](https://tokenhud.com) with an email and a password,
+open **Machines → Add machine**, and run the command it shows on the machine
+you just installed on:
+
+```bash
+tokenhud-agent enroll "<ingest-url>#<token>"
+```
+
+The link is one-shot and expires in 15 minutes. Enrolling shows the read
+manifest and waits for your yes, writes the machine's own key to
+`~/.tokenhud/machine.json` (mode 600) — no environment variables, no `.env` —
+and then keeps going: it falls through into the reporting loop rather than
+exiting, so the first reading goes out at once and the board fills in from it.
+Ctrl-C stops it.
+
+That run lasts as long as the terminal does. To keep it reporting across
+logins, install the unit — [launchd](#keep-it-running-across-logins) on macOS,
+[systemd](#keep-it-running--systemd) on Linux. A cloud-enrolled agent needs no
+environment at all: delete the `TOKENHUD_SERVER` and `TOKENHUD_KEY` entries
+from the plist, leaving the path to the binary as its only REPLACE-ME, or
+leave those two lines out of `~/.config/tokenhud/env` — `machine.json` already
+carries the ingest URL and this machine's key. The systemd unit reads that env
+file unconditionally, so the file still has to exist; empty is fine.
+
+Readings go to the ingest URL printed in the link — an AWS Lambda Function
+URL, not `tokenhud.com` — which is the host to allow if egress from that
+machine is filtered. Revoking the machine in the portal shuts that one door;
+nothing else rotates.
+
+Nothing leaves the machine until you run that enroll command, and when you do,
+metrics leave — content never does. The rest of this page is the self-host
+path: the same agent, the same protocol, your own server, no account anywhere.
+
+---
+
 ## macOS
 
 ### Quickest — from source
@@ -24,18 +67,60 @@ Needs `cargo` ([rustup.rs](https://rustup.rs)); the build takes about thirty sec
 ```bash
 git clone https://github.com/reddy-sh/tokenhud.git
 cd tokenhud
-./scripts/build.sh
-./scripts/run.sh
+./scripts/start-all.sh
 ```
 
-`run.sh` does the rest in the right order. It shows you the read manifest, asks,
-generates an ingest key, writes it to `.env` with mode 600, and starts both
-processes. Then open **http://127.0.0.1:8787**.
+`start-all.sh` does the rest in the right order: server, then agent, then the
+portal dev server. It builds what it needs, generates an ingest key, writes it
+to `.env` with mode 600, and the agent shows you the read manifest and asks
+before anything is sent.
 
-You never create the key by hand. On a loopback install it is ceremony rather
-than security — both processes are yours, on your machine, started by the same
-script. It still exists because it stops mattering only while you stay on
-loopback; see [sharing a board](#linux--sharing-one-board-across-machines).
+A self-host server is **API-only** — `GET /` is a JSON 404, no dashboard ships
+in the binary — so you read the board through `/api/v1/*` on `127.0.0.1:8787`:
+
+```bash
+./scripts/status.sh                                   # what is up, and what the server holds
+curl -s 127.0.0.1:8787/api/v1/overview | python3 -m json.tool | head -40
+curl -N 127.0.0.1:8787/api/v1/stream                  # pushed the instant a reading lands
+```
+
+The portal that `start-all.sh` also starts, on **http://localhost:5174**, is
+the cloud portal running locally: it signs in to a TokenHUD account and
+subscribes to that account's machines. It has no server-URL or key field, so it
+never reads `127.0.0.1:8787` and cannot be pointed at it.
+
+You never create the key by hand when using the start scripts. On a loopback install it
+is ceremony rather than security — both processes are yours, on your machine,
+started by the same script. It still exists because it stops mattering only
+while you stay on loopback; see [sharing a board](#linux--sharing-one-board-across-machines).
+
+### The ingest key
+
+The key authenticates the agent → server direction (writes). **API reads are
+open by default** — no key is needed to read the board's data. The machines
+list is the exception: pairing codes and the fleet inventory travel only to a
+caller that presents the key, whatever the read setting is.
+
+| How you started | Where the key lives |
+|---|---|
+| `./scripts/start-server.sh` | Auto-generated, written to `.env` in the repo root (mode 600) |
+| `scripts/install.sh` (curl install) | Not written — installs binaries only; generate with `tokenhud-server --new-key`, or use `./install.sh` which writes `~/.tokenhud/env` |
+| Manual / standalone binaries | Generate with `tokenhud-server --new-key` |
+
+**Manual setup** (when not using the start scripts):
+
+```bash
+tokenhud-server --new-key        # prints a key to stdout
+export TOKENHUD_KEY=<that key>
+tokenhud-server &                # starts on http://127.0.0.1:8787
+tokenhud-agent                   # starts sending readings
+```
+
+To require the key for **reading** the API too:
+
+```bash
+export TOKENHUD_PROTECT_READS=1
+```
 
 ### Look before you agree
 
@@ -62,9 +147,23 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.tokenhud.agent.plist
 
 Stop it with `launchctl bootout gui/$(id -u)/com.tokenhud.agent`.
 
+The two REPLACE-ME values are the path to the binary and `TOKENHUD_KEY`. A
+cloud-enrolled machine has one: set the path, and delete the `TOKENHUD_SERVER`
+and `TOKENHUD_KEY` entries — `~/.tokenhud/machine.json` supplies both, and an
+env value would override half an enrollment.
+
 A **LaunchAgent, not a LaunchDaemon**, on purpose: it runs as you, in your login
 session, and can read your home directory. A daemon runs as root before you log
 in — more privilege than this needs, and the wrong user to read `~/.claude` as.
+
+The **server** has its own LaunchAgent — without it, the API dies at logout
+while the agents keep spooling at it:
+
+```bash
+cp server/dist/com.tokenhud.server.plist ~/Library/LaunchAgents/
+$EDITOR ~/Library/LaunchAgents/com.tokenhud.server.plist  # the REPLACE-ME values
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.tokenhud.server.plist
+```
 
 ### If you downloaded a binary rather than building one
 
@@ -88,11 +187,12 @@ Same two commands.
 ```bash
 git clone https://github.com/reddy-sh/tokenhud.git
 cd tokenhud
-./scripts/build.sh
-./scripts/run.sh
+./scripts/start-all.sh
 ```
 
-Then **http://127.0.0.1:8787**.
+Then read it the same way — `./scripts/status.sh`, or `/api/v1/*` on
+`127.0.0.1:8787`. The server ships no HTML, and the portal on
+`localhost:5174` reads a cloud account rather than this server.
 
 ### Keep it running — systemd
 
@@ -105,6 +205,21 @@ chmod 600 ~/.config/tokenhud/env
 systemctl --user daemon-reload
 systemctl --user enable --now tokenhud-agent
 journalctl --user -u tokenhud-agent -f
+```
+
+That `printf` writes the shared-key configuration. A cloud-enrolled machine
+needs neither variable — `~/.tokenhud/machine.json` carries the ingest URL and
+its own key — but the unit's `EnvironmentFile=` is not optional, so create
+`~/.config/tokenhud/env` anyway: empty, or holding only `TOKENHUD_INTERVAL=30`.
+
+On the machine that runs the board, install the **server unit** too, and let
+it outlive your logins:
+
+```bash
+cp server/dist/tokenhud-server.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now tokenhud-server
+sudo loginctl enable-linger $USER
 ```
 
 A **user service**, for the same reason as the LaunchAgent. Run it as root and
@@ -130,34 +245,87 @@ consent stops rather than looping. Give it consent once:
 This is the case the ingest key exists for: **one server, several machines
 reporting to it.** A laptop, a desktop and two build boxes on one board.
 
+The [cloud portal](#cloud-portal--the-two-command-path) is the hosted version
+of exactly this flow — Add machine, one-shot link, per-machine key — with the
+approval step absorbed by sign-in: the owner minted the link seconds earlier,
+so nothing is left to decide. A self-host server speaks the same enrollment
+protocol with no UI in front of it. Minting and approving are two API calls,
+made with the board key.
+
 **On the machine running the board:**
 
 ```bash
 # bind beyond loopback — deliberately
-TOKENHUD_BIND=0.0.0.0 ./scripts/run.sh restart
-grep '^TOKENHUD_KEY=' .env          # this is the value the others need
+TOKENHUD_BIND=0.0.0.0 ./scripts/stop-server.sh
+TOKENHUD_BIND=0.0.0.0 ./scripts/start-server.sh
+KEY="$(grep '^TOKENHUD_KEY=' .env | cut -d= -f2)"   # the board key
 ```
 
-**On every other machine — agent only, no server:**
+**For every other machine — enroll it (recommended).** Mint a link. This is
+the one write that creates a credential, so it always needs the key, whatever
+`TOKENHUD_PROTECT_READS` says:
 
 ```bash
-./scripts/build.sh
+curl -s -X POST http://board.local:8787/api/v1/enroll/new -H "X-TokenHUD-Key: $KEY"
+# {"token":"…","code":"…","expiresAt":"…","ttlSeconds":900}
+```
+
+Give the new machine the server URL and that token, joined by a `#`:
+
+```bash
+tokenhud-agent enroll "http://board.local:8787#<token>"
+```
+
+It shows the read manifest, asks, claims the link, prints its pairing code and
+waits. The claim is now **pending** on the board — read it *with* the key: the
+machines list carries pairing codes and the fleet inventory, so it is not part
+of the open-reads default.
+
+```bash
+curl -s http://board.local:8787/api/v1/overview -H "X-TokenHUD-Key: $KEY" |
+  python3 -c 'import json,sys
+for m in json.load(sys.stdin).get("machines", []):
+    print(m["status"], m.get("code"), m["installId"], m["hostname"])'
+```
+
+Each pending row carries the pairing code, the AI assistants that machine runs
+and its consent-manifest digest. Check the code against the one the terminal
+printed, then decide that `installId` — `approve`, `deny` or `revoke`:
+
+```bash
+curl -s -X POST http://board.local:8787/api/v1/machines/decide \
+  -H "X-TokenHUD-Key: $KEY" -H 'content-type: application/json' \
+  -d '{"installId":"<from above>","action":"approve"}'
+```
+
+The waiting agent's next poll collects **its own key**, writes it to
+`~/.tokenhud/machine.json` (mode 600) and starts reporting in that same
+process — no environment variables, then or later. Revoking shuts *that* door
+without touching any other machine. Links are one-shot and expire in 15
+minutes; a revoked machine needs a fresh one to rejoin.
+
+Two machines with the same hostname stay two rows — enrollment tells them
+apart by a random per-install id, not by name.
+
+**Or the shared-key way (still works):**
+
+```bash
 export TOKENHUD_SERVER=http://board.local:8787   # or the IP
 export TOKENHUD_KEY=<the key from the board>
 ./agent/target/release/tokenhud-agent --what-i-read    # look first
 ./agent/target/release/tokenhud-agent --accept
-./scripts/start-agent.sh
+./scripts/start-agent.sh                         # builds the agent if needed
 ```
 
-The board will show each machine as its own host. If two of them share a
-hostname, set `TOKENHUD_HOST` on one — otherwise they merge into a single row.
+With the shared key, the board shows each machine as its own host — but if two
+of them share a hostname, set `TOKENHUD_HOST` on one, or enroll them instead.
 
 > **Read this before binding to anything but loopback.** The key is a bearer
 > secret in a plain HTTP header. On a LAN that is adequate against accident and
 > **useless against anyone listening.** Anyone who can reach the port and has
 > the key can write readings to your board; anyone who can reach the port can
-> *read* it, because reads are unauthenticated by default so the dashboard needs
-> no secret in the browser.
+> *read* it, because reads are unauthenticated by default — so that a `curl`, a
+> script or `./scripts/status.sh` needs no credential to ask how things are.
 >
 > Two things to do if this leaves your own machine:
 > - put TLS in front of it — a reverse proxy is the easy answer
@@ -166,8 +334,8 @@ hostname, set `TOKENHUD_HOST` on one — otherwise they merge into a single row.
 > Treat `TOKENHUD_KEY` as a real credential: it is mode 600 in `.env` for a
 > reason, and pasting it into a shell puts it in your history.
 
-Per-device keys, revocation and TLS by default are the cloud tier's job, not
-this one's. Today there is one key per board.
+Per-device keys and revocation are what `tokenhud-agent enroll` gives you.
+TLS by default is still yours to add — a reverse proxy is the easy answer.
 
 ---
 
@@ -199,7 +367,7 @@ work.
 ## Uninstalling
 
 ```bash
-./scripts/run.sh stop
+./scripts/stop-all.sh
 
 launchctl bootout gui/$(id -u)/com.tokenhud.agent     # macOS, if installed
 systemctl --user disable --now tokenhud-agent          # Linux, if installed
@@ -214,8 +382,9 @@ modified, and nothing else on your machine was touched.
 
 ## Troubleshooting
 
-**`TOKENHUD_KEY is not set`** — you are on an older build. `git pull` and run
-`./scripts/run.sh` again; it generates the key itself now.
+**`No key — the server will refuse this agent`** — the agent found neither an
+enrollment nor a key. Enroll the machine, or run `./scripts/start-server.sh`,
+which generates a key into `.env` for the agent on the same machine to read.
 
 **The agent starts and immediately stops** — it has not been given consent, and
 whatever started it had no terminal to ask on. Run
@@ -240,3 +409,16 @@ cargo test --manifest-path agent/Cargo.toml -- --nocapture
 
 Eleven of those run the real collectors against your real files, and a check
 whose source is missing skips and says why — which is often the answer.
+
+---
+
+## Next
+
+| | |
+|---|---|
+| [The dashboard](docs/dashboard.md) | Navigating the board once it is up |
+| [The Leaderboard](docs/leaderboard.md) | Ranking a fleet, and what every metric means |
+| [Sharing a board](docs/sharing.md) | Publishing a public link, and exactly what it carries |
+| [Configuration](docs/configuration.md) | Every environment variable, with its default |
+| [All documentation](docs/) | The index |
+

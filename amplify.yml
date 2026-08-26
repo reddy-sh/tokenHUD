@@ -1,17 +1,29 @@
-# AWS Amplify Hosting — static deploy of the marketing site.
+# AWS Amplify Hosting — full-stack deploy of the portal.
 #
-# The site is plain HTML + CSS + self-hosted fonts: no build step, nothing to
-# install. Amplify just publishes the site/ directory as-is. Connect the repo
-# in the Amplify console, point it at the main branch, and this file does the
-# rest. Custom headers live in customHttp.yml beside this file.
+# The backend phase deploys amplify/ (Cognito auth, the Machine table, the
+# ingest function and its public URL) and writes amplify_outputs.json at the
+# repo root. The frontend phase builds the Vite app in site/, which imports
+# that outputs file to find the user pool, the data API and the ingest URL.
+# Custom headers live in customHttp.yml beside this file.
 version: 1
-frontend:
+backend:
   phases:
     build:
-      commands: []
+      commands:
+        - npm ci --cache .npm --prefer-offline
+        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - cd site && npm ci --cache ../.npm --prefer-offline
+    build:
+      commands:
+        - cd site && npm run build
   artifacts:
-    baseDirectory: site
+    baseDirectory: site/dist
     files:
       - '**/*'
   cache:
-    paths: []
+    paths:
+      - .npm/**/*

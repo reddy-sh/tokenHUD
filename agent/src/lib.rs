@@ -12,7 +12,10 @@
 
 pub mod codex;
 pub mod collect;
+pub mod copilot;
+pub mod devin;
 pub mod governance;
+pub mod integrations;
 pub mod limits;
 pub mod manifest;
 pub mod pricing;
