@@ -18,10 +18,11 @@ frontend:
     preBuild:
       commands:
         - nvm use 22
-        - cd site && npm install
+        - cd site
+        - npm install
     build:
       commands:
-        - cd site && npm run build
+        - npm run build
   artifacts:
     baseDirectory: site/dist
     files:
