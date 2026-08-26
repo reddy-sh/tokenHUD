@@ -136,7 +136,12 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
       /* Show it immediately rather than at the next poll: somebody who just
          pressed the button should see the card it made. */
       setMachines(prev => [machine, ...(prev ?? [])])
-      const link = `${apiUrl}#${token}`
+      /* Use the site origin (platform.tokenhud.com) rather than the raw
+         Lambda URL. Amplify Hosting proxies /api/* to the function, so
+         the agent reaches the same handler without the internal URL
+         leaking into clipboard-pasted commands. */
+      const publicBase = location.origin
+      const link = `${publicBase}#${token}`
       return {
         token,
         code,
