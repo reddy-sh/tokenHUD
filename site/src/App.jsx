@@ -82,8 +82,12 @@ export default function App() {
   }, [])
 
   const openPortal = () => {
-    /* Cloud backend on the marketing site: send them to the platform. */
-    if (cloudConfigured && !isPlatform) {
+    /* Production marketing site: send visitors to the platform subdomain.
+       On localhost (dev) the portal opens inline so tests and development
+       work without a redirect. */
+    const isMarketingSite = location.hostname === 'tokenhud.com'
+      || location.hostname === 'www.tokenhud.com'
+    if (cloudConfigured && isMarketingSite) {
       window.location.href = platformUrl
       return
     }
@@ -150,6 +154,12 @@ export default function App() {
 
       {portalOpen && portalMode === 'local' && (
         <SelfHost onClose={closePortal} />
+      )}
+      {portalOpen && portalMode === 'cloud' && (
+        <Portal
+          user={user} onUser={setUser} onClose={closePortal}
+          onSelfHost={() => setPortalMode('local')}
+        />
       )}
     </>
   )
