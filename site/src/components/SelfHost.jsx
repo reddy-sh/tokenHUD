@@ -564,6 +564,19 @@ export default function SelfHost({ onClose }) {
     return row ? row.rank : null
   }, [profiles, meId])
 
+  /* Integration summary across all snapshots for the badge. */
+  const intSummary = useMemo(() => {
+    const snaps = shaped?.latest || []
+    let reading = 0, known = 0
+    const seen = new Set()
+    for (const s of snaps) {
+      const sum = s.metrics?.integrationSummary
+      if (sum) { reading = Math.max(reading, sum.reading || 0); known = Math.max(known, sum.known || 0) }
+      for (const r of (s.metrics?.integrations || [])) seen.add(r.id)
+    }
+    return { reading, known: known || seen.size }
+  }, [shaped])
+
   /* ── routing: probing and offline don't get the admin shell ── */
   if (phase === 'probing') return <Probing />
   if (phase === 'offline') {
@@ -602,6 +615,7 @@ export default function SelfHost({ onClose }) {
           badges={{
             monitoring: (data?.hosts || []).length || null,
             leaderboard: myRank ? '#' + myRank : null,
+            integrations: intSummary.known ? intSummary.reading + '/' + intSummary.known : null,
           }}
         />
 
@@ -691,6 +705,9 @@ export default function SelfHost({ onClose }) {
               onShare={() => setShareOpen(true)}
               onGoToMachines={() => goto('monitoring')}
             />
+          )}
+          {section === 'integrations' && (
+            <IntegrationsPage snapshots={shaped?.latest || []} />
           )}
           {section === 'settings' && (
             <Settings

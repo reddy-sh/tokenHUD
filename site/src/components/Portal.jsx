@@ -246,6 +246,19 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
     return row ? row.rank : null
   }, [profiles, meId])
 
+  /* Integration summary across all snapshots for the badge. */
+  const intSummary = useMemo(() => {
+    const snaps = data?.latest || []
+    let reading = 0, known = 0
+    const seen = new Set()
+    for (const s of snaps) {
+      const sum = s.metrics?.integrationSummary
+      if (sum) { reading = Math.max(reading, sum.reading || 0); known = Math.max(known, sum.known || 0) }
+      for (const r of (s.metrics?.integrations || [])) seen.add(r.id)
+    }
+    return { reading, known: known || seen.size }
+  }, [data])
+
   const hasSubNav = section === 'monitoring' || section === 'leaderboard'
 
   /* App is still asking Cognito whether a session exists — don't flash the
@@ -285,6 +298,7 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
           badges={{
             monitoring: (data?.hosts || []).length || null,
             leaderboard: myRank ? '#' + myRank : null,
+            integrations: intSummary.known ? intSummary.reading + '/' + intSummary.known : null,
           }}
         />
 
@@ -345,6 +359,9 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
               meId={meId}
               onGoToMachines={() => goto('monitoring')}
             />
+          )}
+          {section === 'integrations' && (
+            <IntegrationsPage snapshots={data?.latest || []} />
           )}
           {section === 'settings' && (
             <div className="adm-page" style={{ padding: 'var(--space-xl) var(--page-gutter)' }}>

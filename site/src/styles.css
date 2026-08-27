@@ -1624,6 +1624,15 @@ a { color: inherit; text-decoration: none; }
 .bv-int-body p { margin: 2px 0; }
 .bv-int-docs { font-size: var(--text-xs); color: var(--color-accent); text-decoration: none; display: inline-block; margin-top: var(--space-xs); }
 .bv-int-docs:hover { text-decoration: underline; }
+.bv-int-machines {
+  display: flex; flex-wrap: wrap; gap: var(--space-xs); margin-top: 4px;
+}
+.bv-int-machine {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: var(--text-xs); color: var(--color-ink-3);
+  background: var(--color-paper-1); border-radius: var(--radius-pill);
+  padding: 1px 8px 1px 4px;
+}
 
 /* ── admin shell (self-host portal) ────────────────────────── */
 
