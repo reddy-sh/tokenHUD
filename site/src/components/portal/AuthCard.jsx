@@ -5,7 +5,7 @@ import {
 import { useCallback, useState } from 'react'
 import { cloudConfigured, googleConfigured } from '../../lib/cloud'
 
-/* Email + password against Cognito, in the site's own clothes — the Amplify
+/* Email + password against Cognito, in the site's own clothes - the Amplify
    UI kit would drag its own design system in. Five small screens: sign in,
    create account, confirm the emailed code, and the two reset steps.
  *
@@ -88,14 +88,14 @@ export default function AuthCard({ onClose, onSignedIn, onSelfHost }) {
   }, [onSignedIn])
 
   if (!cloudConfigured) {
-    /* No Amplify backend — go straight to the self-host board. If onSelfHost
+    /* No Amplify backend - go straight to the self-host board. If onSelfHost
        is wired (App passes it), switch mode; otherwise the caller already
        rendered SelfHost directly and this branch is unreachable. */
     if (onSelfHost) { onSelfHost(); return null }
     return (
       <Card onClose={onClose} title="Portal not deployed">
         <p style={MUTED}>
-          This build has no <code className="mono">amplify_outputs.json</code> — the Amplify backend
+          This build has no <code className="mono">amplify_outputs.json</code> - the Amplify backend
           (sign-in, machine registry, ingest endpoint) has not been deployed for it. Deploy the
           branch through Amplify Hosting, or run <code className="mono">npx ampx sandbox</code> at
           the repo root for a personal backend, then rebuild.
@@ -112,7 +112,7 @@ export default function AuthCard({ onClose, onSignedIn, onSelfHost }) {
   if (mode === 'signup') {
     return (
       <Card onClose={onClose} title="Create your account"
-        sub="One account, all your machines. Free for one user on one machine — forever.">
+        sub="One account, all your machines. Free for one user on one machine - forever.">
         {error && <div className="bv-warnbar">{error}</div>}
         <GoogleButton busy={busy} onError={setError} />
         <form onSubmit={e => { e.preventDefault(); run(async () => {
@@ -212,7 +212,7 @@ export default function AuthCard({ onClose, onSignedIn, onSelfHost }) {
 
   return (
     <Card onClose={onClose} title="Sign in"
-      sub="Your machines, your board — from anywhere.">
+      sub="Your machines, your board - from anywhere.">
       {notice && <div className="bv-warnbar">{notice}</div>}
       {error && <div className="bv-warnbar">{error}</div>}
       <GoogleButton busy={busy} onError={setError} />

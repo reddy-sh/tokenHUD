@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Ic } from '../board/Rail'
+import { Ic } from '../board/icons'
 import { Pill } from '../board/panels'
 
 function MachineRow({ h, isCur, outdated, collapsed, onPick, onRename, onRemove }) {
@@ -76,12 +76,18 @@ function MachineRow({ h, isCur, outdated, collapsed, onPick, onRename, onRemove 
 }
 
 export default function AdminSidebar({
-  collapsed, onCollapse, phase,
-  /* board state — null when not live */
+  collapsed, onCollapse,
+  /* Which of the self-host board's two states this is. There is no setup
+     wizard on the cloud board - a machine is enrolled from the board itself -
+     so that backend has no phase to be in and passes neither of these. It used
+     to pass `phase="live"` with an empty function beside it, which is a prop
+     that exists only to be ignored; absent says the same thing and cannot
+     silently stop being called. */
+  phase = 'live', onPhase,
+  /* board state - null when not live */
   board,
   /* setup-time data */
-  hosts, serverUrl,
-  onPhase,
+  hosts,
   latestRelease,
   onRename,
   onRemove,
@@ -115,7 +121,7 @@ export default function AdminSidebar({
               collapsed={collapsed}
               onPick={() => {
                 if (bs.onPickHost) bs.onPickHost(h.host)
-                if (phase !== 'live') onPhase('live')
+                if (phase !== 'live') onPhase?.('live')
               }}
               onRename={onRename}
               onRemove={onRemove}

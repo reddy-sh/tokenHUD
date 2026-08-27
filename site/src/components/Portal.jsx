@@ -2,22 +2,25 @@ import { fetchUserAttributes, signOut } from 'aws-amplify/auth'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api, apiUrl } from '../lib/cloud'
 import { newToken, pairingCode, sha256Hex } from '../lib/enrollment'
-import { fleetOf, rankBoard } from '../lib/leaderboard'
 import { buildOverview } from '../lib/overview'
-import AdminSidebar from './admin/AdminSidebar'
-import AdminTopbar from './admin/AdminTopbar'
-import LeaderboardPage, { LEADERBOARD_KEYS, LEADERBOARD_PAGES } from './admin/LeaderboardPage'
-import RootRail, { SECTIONS } from './admin/RootRail'
-import SectionRail from './admin/SectionRail'
+import AdminShell from './admin/AdminShell'
+import Settings from './admin/Settings'
 import { useNow } from './board/util'
 import BoardView from './BoardView'
 import AuthCard from './portal/AuthCard'
 
 /* The portal: sign in, register machines, watch the board.
  *
+ * Everything below the sign-in card is the shared admin shell - the same
+ * component the self-host board mounts, handed a different adapter. This file
+ * is now only the cloud half of that adapter: where the readings come from,
+ * what the actions do, and who is signed in. It used to be the shell as well,
+ * hand-copied, which is why the cloud board quietly lost four things the
+ * self-host board had.
+ *
  * Data comes from one polled endpoint. There is no live socket: the agents
  * report every thirty seconds, so a board that refreshed faster than that
- * would be redrawing the same numbers — and holding a subscription open per
+ * would be redrawing the same numbers - and holding a subscription open per
  * tab is the one part of this backend that would have cost real money at rest.
  * Polling on the agents' own cadence shows everything a push would have, at
  * the price of one request.
@@ -30,14 +33,14 @@ import AuthCard from './portal/AuthCard'
    screen, and far enough under that a missed poll is invisible. */
 const POLL_MS = 20_000
 
-const SECTION_KEYS = SECTIONS.map(x => x.key)
-const SK_SECTION = 'tokenhud_cloud_section'
-const SK_LBPAGE = 'tokenhud_cloud_lb_page'
-const SK_ROOTNAV = 'tokenhud_cloud_nav_root'
-const SK_SUBNAV = 'tokenhud_cloud_nav_sub'
-
-function load(k, fb) { try { return localStorage.getItem(k) || fb } catch { return fb } }
-function save(k, v) { try { localStorage.setItem(k, v) } catch {} }
+/* The cloud board's own navigation keys. Prefixed apart from the self-host
+   board's so somebody who runs both does not have one overwrite the other. */
+const KEYS = {
+  section: 'tokenhud_cloud_section',
+  lbPage: 'tokenhud_cloud_lb_page',
+  rootNav: 'tokenhud_cloud_nav_root',
+  subNav: 'tokenhud_cloud_nav_sub',
+}
 
 export default function Portal({ onClose, user, onUser, onSelfHost }) {
   const [machines, setMachines] = useState(null)
@@ -47,19 +50,6 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
   const [nonce, setNonce] = useState(0) /* bump to force a reload */
   const [lastUpdate, setLastUpdate] = useState(null)
   const [synced, setSynced] = useState(false)
-
-  /* ── admin shell state ── */
-  const [section, setSection] = useState(() => {
-    const v = load(SK_SECTION, 'monitoring')
-    return SECTION_KEYS.includes(v) ? v : 'monitoring'
-  })
-  const [lbPage, setLbPage] = useState(() => {
-    const v = load(SK_LBPAGE, 'standings')
-    return LEADERBOARD_KEYS.includes(v) ? v : 'standings'
-  })
-  const [rootMini, setRootMini] = useState(() => load(SK_ROOTNAV, '') === '1')
-  const [collapsed, setCollapsed] = useState(() => load(SK_SUBNAV, '') === '1')
-  const [boardState, setBoardState] = useState(null)
 
   /* Every fetch this component has in flight, so a sign-out or a close does
      not land a response into an unmounted tree. */
@@ -92,7 +82,7 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
       }
     }
 
-    /* The first load runs even when the tab is hidden — the portal was just
+    /* The first load runs even when the tab is hidden - the portal was just
        opened, so somebody is looking whatever the visibility API believes. */
     loadData(ctrl.signal).catch(e => {
       if (e?.name === 'AbortError') return
@@ -114,7 +104,7 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
   }, [user, live, nonce, loadData])
 
   /* The account: the handle, and whether it is on the public board. Read once
-     — it only changes when this page changes it. */
+     - it only changes when this page changes it. */
   useEffect(() => {
     if (!user) return
     let cancelled = false
@@ -145,8 +135,8 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
        board it is the address of your own server, here it is the API. */
     ingestUrl: apiUrl,
     /* Mint a one-shot enrollment. The token is generated here and hashed here;
-       only the hash is sent. It exists in exactly two places — the command
-       shown once, and the agent's memory while it enrolls — which is the same
+       only the hash is sent. It exists in exactly two places - the command
+       shown once, and the agent's memory while it enrolls - which is the same
        discipline the self-host store keeps. */
     mint: async (label) => {
       const token = newToken()
@@ -213,42 +203,20 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
     [machines, now],
   )
 
-  /* ── admin shell helpers ── */
-  const toggleCollapse = useCallback(() => {
-    setCollapsed(c => { save(SK_SUBNAV, c ? '' : '1'); return !c })
-  }, [])
-  const toggleRoot = useCallback(() => {
-    setRootMini(c => { save(SK_ROOTNAV, c ? '' : '1'); return !c })
-  }, [])
-  const goto = useCallback(key => { setSection(key); save(SK_SECTION, key) }, [])
-  const gotoLb = useCallback(key => { setLbPage(key); save(SK_LBPAGE, key) }, [])
+  /* The rail hands a removal back with the identity it drew the row with, and
+     on this board that is the machine's label: `buildOverview` folds a Machine
+     row into `{host: m.label, …}` and emits no `host` field anywhere. This
+     used to match on `x.host || x.id`, neither of which a cloud machine has,
+     so the lookup failed every time and removing a machine did nothing at all
+     - no error, no request, the row simply stayed. The self-host board removes
+     by hostname because its rows have one; here the label is the name, and the
+     id is what the API wants. */
+  const removeMachine = useCallback((host) => {
+    const m = (machines || []).find(x => x.label === host || x.id === host)
+    if (m) cloud.remove(m.id).catch(() => {})
+  }, [machines, cloud])
 
-  /* The fleet in the shape the Leaderboard pages expect. Computed here rather
-     than inside the board: the Leaderboard is its own section and must not
-     need the board mounted to have something to show. */
-  const fleet = useMemo(() => (data ? fleetOf(data) : { entries: [] }), [data])
-  const profiles = fleet.entries
-
-  /* "You" on the leaderboard. */
-  const meId = boardState?.cur?.host || data?.latest?.[0]?.host || null
-
-  const liveCount = useMemo(
-    () => profiles.reduce((a, e) => a + (e.running || []).length, 0),
-    [profiles],
-  )
-  const modelCount = useMemo(
-    () => new Set(profiles.flatMap(e => (e.models || []).filter(m => m.tokens > 0).map(m => m.model))).size,
-    [profiles],
-  )
-  const myRank = useMemo(() => {
-    if (!meId || profiles.length < 2) return null
-    const row = rankBoard(profiles, { metric: 'tokens', period: 'all' }).rows.find(r => r.id === meId)
-    return row ? row.rank : null
-  }, [profiles, meId])
-
-  const hasSubNav = section === 'monitoring' || section === 'leaderboard'
-
-  /* App is still asking Cognito whether a session exists — don't flash the
+  /* App is still asking Cognito whether a session exists - don't flash the
      sign-in card at a returning visitor. */
   if (user === undefined) return null
 
@@ -260,109 +228,61 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
   }
 
   return (
-    <div className="dashboard-frame adm">
-      <AdminTopbar
-        onCollapse={toggleRoot}
-        onClose={onClose}
-        onSignOut={handleSignOut}
-        streaming={synced}
-        lastUpdate={lastUpdate}
-        live={live}
-        onToggleLive={() => setLive(l => !l)}
-        error={error}
-        crumb={SECTIONS.find(x => x.key === section)?.label}
-        connLabel={user}
-      />
-      <div className={'adm-shell'
-        + (rootMini ? ' adm-shell--rootmini' : '')
-        + (collapsed ? ' adm-shell--submini' : '')
-        + (hasSubNav ? '' : ' adm-shell--nosub')}>
-
-        <RootRail
-          section={section} onSection={goto}
-          collapsed={rootMini} onCollapse={toggleRoot}
-          serverLabel={user}
-          badges={{
-            monitoring: (data?.hosts || []).length || null,
-            leaderboard: myRank ? '#' + myRank : null,
-          }}
+    <AdminShell adapter={{
+      data,
+      keys: KEYS,
+      onClose,
+      /* The account, not the server: this board has no server to name. The
+         dot means the aggregate is on the public leaderboard, which is the
+         only thing a cloud board publishes. */
+      identity: {
+        title: 'Cloud account',
+        detail: user,
+        live: !!profile?.publicLeaderboard,
+      },
+      topbar: {
+        onSignOut: handleSignOut,
+        streaming: synced,
+        lastUpdate,
+        live,
+        onToggleLive: () => setLive(l => !l),
+        error,
+        connLabel: user,
+      },
+      /* No `phase`: there is no setup wizard here, a machine is enrolled from
+         the board itself. No `onRename` either - the rail only offers renaming
+         on rows that carry a `machine_id`, and a cloud host row does not. */
+      sidebar: { onRemove: removeMachine },
+      monitoring: ({ onBoardState }) => (
+        <BoardView
+          data={data}
+          loading={machines == null}
+          error={error}
+          streaming={synced}
+          lastUpdate={lastUpdate}
+          live={live}
+          onToggleLive={() => setLive(l => !l)}
+          onRetry={() => setNonce(n => n + 1)}
+          connLabel={user}
+          onClose={onClose}
+          onSignOut={handleSignOut}
+          cloud={cloud}
+          embedded
+          onBoardState={onBoardState}
         />
-
-        {section === 'leaderboard' && (
-          <SectionRail
-            title="Leaderboard"
-            rows={LEADERBOARD_PAGES.map(row => ({
-              ...row,
-              badge: row.key === 'standings' && myRank ? '#' + myRank
-                : row.key === 'live' ? String(liveCount) || null
-                  : row.key === 'models' ? String(modelCount) || null
-                    : null,
-              tone: row.key === 'live' && liveCount ? 'on' : null,
-            }))}
-            active={lbPage}
-            onPick={gotoLb}
-            collapsed={collapsed}
-            onCollapse={toggleCollapse}
-          />
-        )}
-
-        {section === 'monitoring' && (
-          <AdminSidebar
-            collapsed={collapsed} onCollapse={toggleCollapse}
-            phase="live"
-            board={boardState}
-            hosts={data?.hosts || []}
-            onPhase={() => {}}
-            onRename={(id, label) => cloud.rename(id, label).catch(() => {})}
-            onRemove={(host) => {
-              /* Cloud uses machine id, not hostname. Find the machine. */
-              const m = (machines || []).find(x => x.host === host || x.id === host)
-              if (m) cloud.remove(m.id).catch(() => {})
-            }}
-          />
-        )}
-
-        <main className="adm-content">
-          {section === 'monitoring' && (
-            <BoardView
-              data={data}
-              loading={machines == null}
-              error={error}
-              streaming={synced}
-              lastUpdate={lastUpdate}
-              live={live}
-              onToggleLive={() => setLive(l => !l)}
-              onRetry={() => setNonce(n => n + 1)}
-              connLabel={user}
-              onClose={onClose}
-              onSignOut={handleSignOut}
-              cloud={cloud}
-              publicBoard={publicBoard}
-              embedded
-              onBoardState={setBoardState}
-            />
-          )}
-          {section === 'leaderboard' && (
-            <LeaderboardPage
-              board={fleet}
-              page={lbPage}
-              meId={meId}
-              onGoToMachines={() => goto('monitoring')}
-            />
-          )}
-          {section === 'settings' && (
-            <div className="adm-page" style={{ padding: 'var(--space-xl) var(--page-gutter)' }}>
-              <h2>Account</h2>
-              <p style={{ color: 'var(--color-ink-2)', marginTop: 'var(--space-sm)' }}>
-                Signed in as <strong>{user}</strong>
-              </p>
-              <div style={{ marginTop: 'var(--space-lg)', display: 'flex', gap: 'var(--space-md)' }}>
-                <button className="btn btn--ghost" onClick={handleSignOut}>Sign out</button>
-              </div>
-            </div>
-          )}
-        </main>
-      </div>
-    </div>
+      ),
+      settings: ({ rootCollapsed, onRootCollapsed, subCollapsed, onSubCollapsed, hosts, latestRelease }) => (
+        <Settings
+          account={{ email: user, onSignOut: handleSignOut }}
+          live={live} onToggleLive={() => setLive(l => !l)}
+          lastUpdate={lastUpdate}
+          rootCollapsed={rootCollapsed} onRootCollapsed={onRootCollapsed}
+          subCollapsed={subCollapsed} onSubCollapsed={onSubCollapsed}
+          publicBoard={publicBoard}
+          hosts={hosts}
+          latestRelease={latestRelease}
+        />
+      ),
+    }} />
   )
 }

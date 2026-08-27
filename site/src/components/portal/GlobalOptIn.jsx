@@ -4,7 +4,7 @@ import { Card } from '../board/panels'
 /* The global leaderboard opt-in, shown below the private leaderboard.
  *
  * Joining is a two-step act: pick a handle, then flip the switch. Neither is
- * a default. Leaving deletes the roster row on the server — "my numbers are
+ * a default. Leaving deletes the roster row on the server - "my numbers are
  * not on that page" is true of the database, not just of the query.
  *
  * `publicBoard` carries the profile state (`handle`, `publicLeaderboard`,
@@ -36,7 +36,7 @@ export default function GlobalOptIn({ publicBoard }) {
   return (
     <Card
       title="Global leaderboard"
-      note="Opt in to appear on the public leaderboard at tokenhud.com. Token counts, model names and daily activity — never projects, prompts or paths."
+      note="Opt in to appear on the public leaderboard at tokenhud.com. Token counts, model names and daily activity - never projects, prompts or paths."
     >
       {error && <div className="bv-warnbar">{error}</div>}
 
@@ -70,7 +70,7 @@ export default function GlobalOptIn({ publicBoard }) {
           <span className="bv-sub">
             {publicLeaderboard
               ? 'Your aggregate appears on the global leaderboard'
-              : 'Off — your numbers stay private'}
+              : 'Off - your numbers stay private'}
           </span>
         </div>
         <div className="set-row-control">
@@ -90,7 +90,7 @@ export default function GlobalOptIn({ publicBoard }) {
 
       {!handle && !publicLeaderboard && (
         <p className="bv-note">
-          Choose a handle first — the public board shows it instead of your email.
+          Choose a handle first - the public board shows it instead of your email.
         </p>
       )}
 

@@ -1,4 +1,4 @@
-import { Ic } from '../board/Rail'
+import { Ic } from '../board/icons'
 
 /* The second rail, for sections that have one.
  *
