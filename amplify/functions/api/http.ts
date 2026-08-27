@@ -9,7 +9,7 @@
 // carry a bearer token: a page on any origin being able to read the response
 // of a request it made with somebody's ID token is the exact thing the
 // same-origin policy exists to prevent. The public leaderboard is the one
-// exception and says so explicitly — it is published data, read without a
+// exception and says so explicitly - it is published data, read without a
 // credential, and it is meant to be embeddable.
 
 import type { LambdaFunctionURLResult } from 'aws-lambda';

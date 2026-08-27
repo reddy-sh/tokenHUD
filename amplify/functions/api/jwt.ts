@@ -12,9 +12,14 @@
 
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
 
+import { required } from './env';
+
 const verifier = CognitoJwtVerifier.create({
-  userPoolId: process.env.USER_POOL_ID as string,
-  clientId: process.env.USER_POOL_CLIENT_ID as string,
+  // Not `as string`: a pool id that is missing rather than wrong makes this
+  // verifier reject every token the portal ever sends, and it does it with the
+  // same generic 401 an expired token gets. See env.ts.
+  userPoolId: required('USER_POOL_ID'),
+  clientId: required('USER_POOL_CLIENT_ID'),
   // The ID token, not the access token: the portal needs `sub` and `email`,
   // and the access token carries scopes this API does not use.
   tokenUse: 'id',
@@ -24,8 +29,8 @@ export type Caller = { sub: string; email: string | null };
 
 /* The signed-in account behind a request, or null.
  *
- * Null covers every way a caller can fail to be signed in — no header, a
- * malformed one, an expired token, a token minted for another pool — because
+ * Null covers every way a caller can fail to be signed in - no header, a
+ * malformed one, an expired token, a token minted for another pool - because
  * the answer to all of them is the same 401, and telling them apart would tell
  * an attacker which of their guesses was closer. */
 export async function callerOf(headers: Record<string, string | undefined>): Promise<Caller | null> {

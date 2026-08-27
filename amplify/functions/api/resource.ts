@@ -5,7 +5,7 @@ import { defineFunction } from '@aws-amplify/backend';
 //
 // It is one function rather than several because every route reads the same
 // DynamoDB table and the same two credentials, and because Lambda's free tier
-// is counted in requests and GB-seconds — splitting the routes across four
+// is counted in requests and GB-seconds - splitting the routes across four
 // functions would not make any of that smaller, but it would make four cold
 // starts, four log groups and four sets of permissions to keep in step.
 //

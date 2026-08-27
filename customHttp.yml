@@ -1,12 +1,21 @@
-# AWS Amplify Hosting — custom headers for tokenhud.com.
+# AWS Amplify Hosting - custom headers for tokenhud.com.
 #
 # The page is fully self-hosted (fonts included), so the CSP refuses every
 # external origin except the AWS endpoints the portal itself talks to:
 # Cognito for sign-in, and the API (behind CloudFront) for machine data.
 # *.amazonaws.com covers most AWS endpoints; *.amazoncognito.com is needed
 # for the Cognito hosted-UI OAuth domain; *.on.aws covers Lambda function
-# URLs (the API). No wss: — AppSync was removed; the portal polls over
+# URLs (the API). No wss: - AppSync was removed; the portal polls over
 # plain HTTPS.
+#
+# api.tokenhud.com is listed on its own because it is not an AWS hostname and
+# so no wildcard above reaches it. That is the whole difference TOKENHUD_API_DOMAIN
+# makes in amplify/backend.ts: with it set, `custom.apiUrl` stops being an
+# *.on.aws function URL and becomes this name - so the day the custom domain is
+# turned on, every call the portal makes would be refused by the browser before
+# it left the page, and the console would blame the CSP rather than the deploy
+# that changed the hostname. A domain that is not in use costs nothing here;
+# discovering this at cutover costs an outage.
 customHeaders:
   - pattern: '**'
     headers:
@@ -19,7 +28,7 @@ customHeaders:
       - key: Referrer-Policy
         value: strict-origin-when-cross-origin
       - key: Content-Security-Policy
-        value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://*.amazonaws.com https://*.amazoncognito.com https://*.on.aws; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'"
+        value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.tokenhud.com https://*.amazonaws.com https://*.amazoncognito.com https://*.on.aws; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'"
   - pattern: 'fonts/*.woff2'
     headers:
       - key: Cache-Control

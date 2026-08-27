@@ -26,7 +26,7 @@ const backend = defineBackend({ auth, api });
 /* ── billing tags ───────────────────────────────────────────────────── */
 
 // Applied to every resource in every stack so Cost Explorer can filter and
-// group by project. Tags propagate to all child constructs — DynamoDB, Lambda,
+// group by project. Tags propagate to all child constructs - DynamoDB, Lambda,
 // CloudFront, Cognito, CloudWatch log groups, everything.
 const projectTags: Record<string, string> = {
   project: 'tokenhud',
@@ -46,7 +46,7 @@ tagStack(backend.api.stack);
 // api.tokenhud.com is created only when all three are set, which is what keeps
 // `ampx sandbox` cheap and fast: a personal backend gets the raw function URL
 // and no CloudFront distribution at all. Set these as environment variables on
-// the Amplify Hosting branch, not here — an open-source checkout should not
+// the Amplify Hosting branch, not here - an open-source checkout should not
 // carry one account's hosted zone.
 //
 //   TOKENHUD_API_DOMAIN   api.tokenhud.com
@@ -54,7 +54,7 @@ tagStack(backend.api.stack);
 //   TOKENHUD_ZONE_ID      the Route 53 hosted zone id for that name
 //
 // The certificate is created in whatever region this backend deploys to, and
-// CloudFront only accepts certificates from us-east-1 — so a branch that sets
+// CloudFront only accepts certificates from us-east-1 - so a branch that sets
 // these must deploy to us-east-1.
 const apiDomain = process.env.TOKENHUD_API_DOMAIN ?? '';
 const zoneName = process.env.TOKENHUD_ZONE_NAME ?? '';
@@ -70,24 +70,30 @@ const origins = [
   ...(process.env.TOKENHUD_SITE_URL
     ? [process.env.TOKENHUD_SITE_URL.replace(/\/+$/, '')]
     : ['https://tokenhud.com', 'https://www.tokenhud.com', 'https://platform.tokenhud.com']),
-  'http://localhost:5173',
+  // The portal's dev server, which is 5174 and not Vite's 5173 default -
+  // scripts/_lib.sh pins PORTAL_PORT and site/playwright.config.js starts it
+  // with --strictPort, so it is 5174 or nothing. This list having said 5173
+  // meant every local browser call to a deployed API was refused by CORS, and
+  // refused in the browser rather than here, which is why it read as the
+  // portal being broken rather than as a missing origin.
+  'http://localhost:5174',
 ];
 
 /* ── the table ──────────────────────────────────────────────────────── */
 
-// One table, two string keys, no secondary indexes — see store.ts for the
+// One table, two string keys, no secondary indexes - see store.ts for the
 // layout and for why the lookups are items rather than indexes.
 //
 // Provisioned, not on-demand. That is the single decision that makes this
 // deployment free: DynamoDB's free tier is 25 write and 25 read capacity units
 // per region per month, perpetually, and it applies to provisioned throughput
-// only — on-demand billing cannot touch it. A machine reporting every 30
+// only - on-demand billing cannot touch it. A machine reporting every 30
 // seconds costs about 1.2 WCU sustained, so 12 provisioned units carry roughly
 // ten machines with burst headroom, and the ceiling before any of this costs
 // money is 25.
 //
 // Going past the provisioned rate throttles rather than bills, and the handler
-// answers a throttle with 503 — which makes the agent buffer the reading and
+// answers a throttle with 503 - which makes the agent buffer the reading and
 // retry, which is what it already does when the server is away. Raising the
 // numbers below is a one-line change; each unit past 25 is about $0.47/month.
 const data = backend.createStack('tokenhud-data');
@@ -129,13 +135,13 @@ backend.api.addEnvironment('ALLOWED_ORIGINS', origins.join(','));
 
 // A cap on how much a runaway can cost. Ten concurrent executions is roughly
 // eighty times the steady-state concurrency of ten machines heartbeating, so
-// it never binds in normal use — and it means a loop, a bad deploy or somebody
+// it never binds in normal use - and it means a loop, a bad deploy or somebody
 // hammering the endpoint has a ceiling rather than a bill.
 backend.api.resources.cfnResources.cfnFunction.reservedConcurrentExecutions = 10;
 
 /* ── the front door ─────────────────────────────────────────────────── */
 
-// The agent is not a browser and holds no AWS credentials — it authenticates
+// The agent is not a browser and holds no AWS credentials - it authenticates
 // with its per-machine key inside the request, so the URL itself is open.
 // Every route behind it checks its own credential: an enrollment token, a poll
 // secret, a machine key, or a verified Cognito ID token.
@@ -143,7 +149,7 @@ backend.api.resources.cfnResources.cfnFunction.reservedConcurrentExecutions = 10
 // Deliberately not IAM auth with CloudFront origin access control. OAC signs
 // the request to the function, and Lambda will not accept an unsigned payload,
 // so every client posting a body would have to compute a SHA-256 of it and
-// send it in x-amz-content-sha256 — including agents already installed, which
+// send it in x-amz-content-sha256 - including agents already installed, which
 // would all break at once. It would buy nothing except protection from someone
 // invoking the function URL directly, and reserved concurrency above already
 // bounds what that can cost.
@@ -171,7 +177,7 @@ if (wantsDomain) {
   // The public board is the same answer for everybody and is already
   // recomputed at most once every five minutes, so letting the edge hold it
   // for sixty seconds turns a burst of readers into one invocation. Nothing
-  // is in the cache key — no query strings, no headers, no cookies — because
+  // is in the cache key - no query strings, no headers, no cookies - because
   // the route takes no arguments: it returns entries, and the page ranks them
   // in the browser. So it is one cached object, not one per reader and not one
   // per metric somebody clicked.
@@ -179,6 +185,24 @@ if (wantsDomain) {
     defaultTtl: Duration.seconds(60),
     minTtl: Duration.seconds(0),
     maxTtl: Duration.seconds(300),
+    queryStringBehavior: CacheQueryStringBehavior.none(),
+    headerBehavior: CacheHeaderBehavior.none(),
+    cookieBehavior: CacheCookieBehavior.none(),
+    enableAcceptEncodingGzip: true,
+    enableAcceptEncodingBrotli: true,
+  });
+
+  // The star count is a third party's number about a public repository, so it
+  // is the same answer for everybody and nobody is hurt by it being a few
+  // minutes old. Ten minutes matches the window the handler uses to decide
+  // whether to ask GitHub again, so the two tiers expire together rather than
+  // the edge holding something the origin has already replaced. The hour
+  // ceiling is what a GitHub outage falls back to: the handler keeps serving
+  // the last count it had, and the edge stops asking it so often.
+  const starsCache = new CachePolicy(edge, 'StarsCache', {
+    defaultTtl: Duration.seconds(600),
+    minTtl: Duration.seconds(0),
+    maxTtl: Duration.seconds(3600),
     queryStringBehavior: CacheQueryStringBehavior.none(),
     headerBehavior: CacheHeaderBehavior.none(),
     cookieBehavior: CacheCookieBehavior.none(),
@@ -197,7 +221,7 @@ if (wantsDomain) {
   };
 
   const distribution = new Distribution(edge, 'Api', {
-    comment: `TokenHUD API — ${apiDomain}`,
+    comment: `TokenHUD API - ${apiDomain}`,
     domainNames: [apiDomain],
     certificate,
     // North America and Europe. The cheapest class, and the readings are
@@ -218,13 +242,25 @@ if (wantsDomain) {
         cachedMethods: CachedMethods.CACHE_GET_HEAD_OPTIONS,
         cachePolicy: boardCache,
       },
+      // Without an entry here the route falls to the default behaviour, which
+      // is CACHING_DISABLED - so every reader of every page carrying the badge
+      // would reach the function, and the function would reach GitHub's sixty
+      // requests an hour. The `cache-control` the handler sets would be
+      // returned and ignored, which is the kind of caching bug that looks like
+      // it is working.
+      '/api/v1/stars': {
+        ...behavior,
+        allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+        cachedMethods: CachedMethods.CACHE_GET_HEAD_OPTIONS,
+        cachePolicy: starsCache,
+      },
     },
   });
 
   const target = RecordTarget.fromAlias(new CloudFrontTarget(distribution));
   new ARecord(edge, 'ApiA', { zone, recordName: apiDomain, target });
   // AAAA as well as A, because a caller on an IPv6-only network that finds no
-  // AAAA record does not fall back — it fails.
+  // AAAA record does not fall back - it fails.
   new AaaaRecord(edge, 'ApiAAAA', { zone, recordName: apiDomain, target });
 
   apiUrl = `https://${apiDomain}`;
@@ -232,7 +268,7 @@ if (wantsDomain) {
 
 // Lands in amplify_outputs.json as custom.apiUrl. The portal reads it for
 // every call, and builds the `tokenhud-agent enroll "<url>#<token>"` command
-// from it — so this one value is what points an agent at the cloud.
+// from it - so this one value is what points an agent at the cloud.
 backend.addOutput({
   custom: {
     apiUrl,
