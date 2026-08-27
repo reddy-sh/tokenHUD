@@ -34,7 +34,7 @@ if command -v shasum >/dev/null 2>&1; then
 elif command -v sha256sum >/dev/null 2>&1; then
   SHA() { sha256sum "$1" | cut -d' ' -f1; }
 else
-  echo "Neither shasum nor sha256sum found — refusing to install unverified binaries."
+  echo "Neither shasum nor sha256sum found - refusing to install unverified binaries."
   exit 1
 fi
 
@@ -65,7 +65,7 @@ for BINARY in tokenhud-agent tokenhud-server; do
   WANT="$(cut -d' ' -f1 <"${TMP}/${BINARY}.sha256")"
   GOT="$(SHA "${TMP}/${BINARY}")"
   if [ -z "$WANT" ] || [ "$WANT" != "$GOT" ]; then
-    echo "  CHECKSUM MISMATCH for ${ASSET} — refusing to install."
+    echo "  CHECKSUM MISMATCH for ${ASSET} - refusing to install."
     echo "    expected: ${WANT:-<empty>}"
     echo "    got:      ${GOT}"
     exit 1
@@ -85,25 +85,25 @@ done
 
 echo "Both installed to ${INSTALL_DIR}/"
 echo ""
-echo "Two ways on from here — pick one."
+echo "Two ways on from here - pick one."
 echo ""
 echo "Cloud (the board is at tokenhud.com):"
 echo "  Sign in, then Machines → Add machine, and run the enroll command it"
 echo "  shows you:"
 echo "    tokenhud-agent enroll \"<ingest-url>#<token>\""
 echo "  It lists what it will read and asks first, waits for the machine to be"
-echo "  approved, then starts reporting in that same command — the board fills"
+echo "  approved, then starts reporting in that same command - the board fills"
 echo "  in from the first reading. Nothing else to configure:"
 echo "  ~/.tokenhud/machine.json holds the server and this machine's own key."
 echo "  To keep it running across logins, install the launchd or systemd unit"
-echo "  — see agent/INSTALL.md."
+echo "  - see agent/INSTALL.md."
 echo ""
 echo "Self-host (your own server, no account):"
 echo "  tokenhud-server --new-key        # prints an ingest key"
 echo "  export TOKENHUD_KEY=<key>"
 echo "  tokenhud-server &                # the API, on http://127.0.0.1:8787"
 echo "  tokenhud-agent                   # starts sending readings"
-echo "  The server is API-only — no dashboard ships in it, and the portal reads"
+echo "  The server is API-only - no dashboard ships in it, and the portal reads"
 echo "  the cloud rather than your server. Read it directly:"
 echo "    curl http://127.0.0.1:8787/api/v1/overview"
 

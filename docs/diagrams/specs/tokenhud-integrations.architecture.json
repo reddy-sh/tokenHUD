@@ -203,7 +203,7 @@
   "boundaries": [
     {
       "kind": "region",
-      "label": "your machine — every integration is read locally",
+      "label": "your machine - every integration is read locally",
       "wraps": [
         "claude_dirs",
         "codex_dirs",
@@ -290,7 +290,7 @@
     {
       "from": "devin_probe",
       "to": "devin_cloud",
-      "label": "never called — metrics stay local",
+      "label": "never called - metrics stay local",
       "variant": "security"
     }
   ],
@@ -300,7 +300,7 @@
       "title": "Two Fully Read",
       "items": [
         "Claude Code: sessions, tokens, spend and the plan's real usage windows, priced end-to-end",
-        "Codex CLI: sessions, tokens and rate limits counted exactly — shown unpriced rather than priced with an invented rate card"
+        "Codex CLI: sessions, tokens and rate limits counted exactly - shown unpriced rather than priced with an invented rate card"
       ]
     },
     {
@@ -309,7 +309,7 @@
       "items": [
         "detected and hasData are separate facts the board refuses to conflate",
         "Windsurf is the live example: ~/.windsurf exists and holds zero bytes of usage",
-        "Cursor, Gemini CLI, Copilot, Windsurf, Antigravity, Aider are listed as installed — never as an empty board that looks broken"
+        "Cursor, Gemini CLI, Copilot, Windsurf, Antigravity, Aider are listed as installed - never as an empty board that looks broken"
       ]
     },
     {
@@ -317,7 +317,7 @@
       "title": "Devin: Activity, Not Usage",
       "items": [
         "Local session databases carry no cost and almost no token data, so reporting spend would mean inventing it",
-        "The probe counts .db files and reads timestamps — it never opens one, and no SQLite engine ships in the agent",
+        "The probe counts .db files and reads timestamps - it never opens one, and no SQLite engine ships in the agent",
         "Real accounting lives in Devin's cloud API behind a per-user key; calling it would break \"nothing leaves your machine\""
       ]
     }

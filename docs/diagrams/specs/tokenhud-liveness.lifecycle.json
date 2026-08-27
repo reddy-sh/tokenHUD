@@ -18,7 +18,7 @@
           "stale",
           "down"
         ],
-        "note": "Up, stale and down describe the agent checking in — not whether the machine is on."
+        "note": "Up, stale and down describe the agent checking in - not whether the machine is on."
       },
       {
         "id": "recovery",
@@ -39,7 +39,7 @@
           "ended_tight",
           "ended_wide"
         ],
-        "note": "Running in one reading and gone from the next means ended — with both timestamps kept."
+        "note": "Running in one reading and gone from the next means ended - with both timestamps kept."
       }
     ]
   },
@@ -81,7 +81,7 @@
       "id": "stale",
       "type": "waiting",
       "label": "Stale",
-      "sublabel": "silent for 2–15 min",
+      "sublabel": "silent for 2-15 min",
       "lane": "main",
       "col": 2,
       "step": "03"
@@ -170,7 +170,7 @@
       "dot": "cyan",
       "title": "About the Agent, Not the Machine",
       "items": [
-        "Up means the agent checked in within 2 minutes; stale runs to 15; down is after — a distinction the board keeps deliberately",
+        "Up means the agent checked in within 2 minutes; stale runs to 15; down is after - a distinction the board keeps deliberately",
         "The board schedules reads from intervalSeconds carried in every snapshot, not from a guessed poll rate"
       ]
     },
@@ -178,7 +178,7 @@
       "dot": "amber",
       "title": "Endings Are Diffs",
       "items": [
-        "Nobody watches a dashboard at every instant — the question is what finished",
+        "Nobody watches a dashboard at every instant - the question is what finished",
         "Anything running in one reading and gone from the next is recorded with both timestamps",
         "A 30-second cadence yields a tight window; a laptop that slept yields an honest range, never a precise guess"
       ]
@@ -188,7 +188,7 @@
       "title": "Honest Absences",
       "items": [
         "Endings can only exist from the moment the server starts watching, and the panel says so",
-        "Down is recoverable by construction — the next check-in flips the host back to up",
+        "Down is recoverable by construction - the next check-in flips the host back to up",
         "\"The disk collector is down\" and \"the host is down\" stay different facts"
       ]
     }

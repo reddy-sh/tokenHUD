@@ -1,6 +1,6 @@
 # Build release binaries on tag push and attach them to a GitHub Release.
 # Targets: macOS arm64, macOS x86_64, Linux x86_64, Linux arm64.
-# All free via GitHub Actions — no external services.
+# All free via GitHub Actions - no external services.
 name: Release
 
 on:

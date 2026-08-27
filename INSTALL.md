@@ -11,11 +11,11 @@ until you say yes.** That is the first command below on every platform.
 |---|---|---|
 | **macOS** (Apple Silicon and Intel) | yes, tested | below |
 | **Linux** (x86_64 and arm64) | yes | below |
-| **Windows** | **not yet** — see [why](#windows) | — |
+| **Windows** | **not yet** - see [why](#windows) | - |
 
 ---
 
-## Cloud portal — the two-command path
+## Cloud portal - the two-command path
 
 No server to run. Install the agent:
 
@@ -33,34 +33,34 @@ tokenhud-agent enroll "<ingest-url>#<token>"
 
 The link is one-shot and expires in 15 minutes. Enrolling shows the read
 manifest and waits for your yes, writes the machine's own key to
-`~/.tokenhud/machine.json` (mode 600) — no environment variables, no `.env` —
+`~/.tokenhud/machine.json` (mode 600) - no environment variables, no `.env` -
 and then keeps going: it falls through into the reporting loop rather than
 exiting, so the first reading goes out at once and the board fills in from it.
 Ctrl-C stops it.
 
 That run lasts as long as the terminal does. To keep it reporting across
-logins, install the unit — [launchd](#keep-it-running-across-logins) on macOS,
+logins, install the unit - [launchd](#keep-it-running-across-logins) on macOS,
 [systemd](#keep-it-running--systemd) on Linux. A cloud-enrolled agent needs no
 environment at all: delete the `TOKENHUD_SERVER` and `TOKENHUD_KEY` entries
 from the plist, leaving the path to the binary as its only REPLACE-ME, or
-leave those two lines out of `~/.config/tokenhud/env` — `machine.json` already
+leave those two lines out of `~/.config/tokenhud/env` - `machine.json` already
 carries the ingest URL and this machine's key. The systemd unit reads that env
 file unconditionally, so the file still has to exist; empty is fine.
 
-Readings go to the ingest URL printed in the link — an AWS Lambda Function
-URL, not `tokenhud.com` — which is the host to allow if egress from that
+Readings go to the ingest URL printed in the link - an AWS Lambda Function
+URL, not `tokenhud.com` - which is the host to allow if egress from that
 machine is filtered. Revoking the machine in the portal shuts that one door;
 nothing else rotates.
 
 Nothing leaves the machine until you run that enroll command, and when you do,
-metrics leave — content never does. The rest of this page is the self-host
+metrics leave - content never does. The rest of this page is the self-host
 path: the same agent, the same protocol, your own server, no account anywhere.
 
 ---
 
 ## macOS
 
-### Quickest — from source
+### Quickest - from source
 
 Needs `cargo` ([rustup.rs](https://rustup.rs)); the build takes about thirty seconds.
 
@@ -75,8 +75,8 @@ portal dev server. It builds what it needs, generates an ingest key, writes it
 to `.env` with mode 600, and the agent shows you the read manifest and asks
 before anything is sent.
 
-A self-host server is **API-only** — `GET /` is a JSON 404, no dashboard ships
-in the binary — so you read the board through `/api/v1/*` on `127.0.0.1:8787`:
+A self-host server is **API-only** - `GET /` is a JSON 404, no dashboard ships
+in the binary - so you read the board through `/api/v1/*` on `127.0.0.1:8787`:
 
 ```bash
 ./scripts/status.sh                                   # what is up, and what the server holds
@@ -90,21 +90,21 @@ subscribes to that account's machines. It has no server-URL or key field, so it
 never reads `127.0.0.1:8787` and cannot be pointed at it.
 
 You never create the key by hand when using the start scripts. On a loopback install it
-is ceremony rather than security — both processes are yours, on your machine,
+is ceremony rather than security - both processes are yours, on your machine,
 started by the same script. It still exists because it stops mattering only
 while you stay on loopback; see [sharing a board](#linux--sharing-one-board-across-machines).
 
 ### The ingest key
 
 The key authenticates the agent → server direction (writes). **API reads are
-open by default** — no key is needed to read the board's data. The machines
+open by default** - no key is needed to read the board's data. The machines
 list is the exception: pairing codes and the fleet inventory travel only to a
 caller that presents the key, whatever the read setting is.
 
 | How you started | Where the key lives |
 |---|---|
 | `./scripts/start-server.sh` | Auto-generated, written to `.env` in the repo root (mode 600) |
-| `scripts/install.sh` (curl install) | Not written — installs binaries only; generate with `tokenhud-server --new-key`, or use `./install.sh` which writes `~/.tokenhud/env` |
+| `scripts/install.sh` (curl install) | Not written - installs binaries only; generate with `tokenhud-server --new-key`, or use `./install.sh` which writes `~/.tokenhud/env` |
 | Manual / standalone binaries | Generate with `tokenhud-server --new-key` |
 
 **Manual setup** (when not using the start scripts):
@@ -128,8 +128,8 @@ export TOKENHUD_PROTECT_READS=1
 ./agent/target/release/tokenhud-agent --what-i-read
 ```
 
-Prints every path, resolved against *your* machine — real file counts and sizes
-— with what is taken from each, what is only checked for existence, the
+Prints every path, resolved against *your* machine - real file counts and sizes
+- with what is taken from each, what is only checked for existence, the
 exhaustive list of what is written, and what is refused with the reason. It
 reads nothing while doing it.
 
@@ -149,14 +149,14 @@ Stop it with `launchctl bootout gui/$(id -u)/com.tokenhud.agent`.
 
 The two REPLACE-ME values are the path to the binary and `TOKENHUD_KEY`. A
 cloud-enrolled machine has one: set the path, and delete the `TOKENHUD_SERVER`
-and `TOKENHUD_KEY` entries — `~/.tokenhud/machine.json` supplies both, and an
+and `TOKENHUD_KEY` entries - `~/.tokenhud/machine.json` supplies both, and an
 env value would override half an enrollment.
 
 A **LaunchAgent, not a LaunchDaemon**, on purpose: it runs as you, in your login
 session, and can read your home directory. A daemon runs as root before you log
-in — more privilege than this needs, and the wrong user to read `~/.claude` as.
+in - more privilege than this needs, and the wrong user to read `~/.claude` as.
 
-The **server** has its own LaunchAgent — without it, the API dies at logout
+The **server** has its own LaunchAgent - without it, the API dies at logout
 while the agents keep spooling at it:
 
 ```bash
@@ -190,11 +190,11 @@ cd tokenhud
 ./scripts/start-all.sh
 ```
 
-Then read it the same way — `./scripts/status.sh`, or `/api/v1/*` on
+Then read it the same way - `./scripts/status.sh`, or `/api/v1/*` on
 `127.0.0.1:8787`. The server ships no HTML, and the portal on
 `localhost:5174` reads a cloud account rather than this server.
 
-### Keep it running — systemd
+### Keep it running - systemd
 
 ```bash
 mkdir -p ~/.config/systemd/user ~/.config/tokenhud
@@ -208,8 +208,8 @@ journalctl --user -u tokenhud-agent -f
 ```
 
 That `printf` writes the shared-key configuration. A cloud-enrolled machine
-needs neither variable — `~/.tokenhud/machine.json` carries the ingest URL and
-its own key — but the unit's `EnvironmentFile=` is not optional, so create
+needs neither variable - `~/.tokenhud/machine.json` carries the ingest URL and
+its own key - but the unit's `EnvironmentFile=` is not optional, so create
 `~/.config/tokenhud/env` anyway: empty, or holding only `TOKENHUD_INTERVAL=30`.
 
 On the machine that runs the board, install the **server unit** too, and let
@@ -223,7 +223,7 @@ sudo loginctl enable-linger $USER
 ```
 
 A **user service**, for the same reason as the LaunchAgent. Run it as root and
-it reads root's home directory, finds nothing, and reports an idle machine —
+it reads root's home directory, finds nothing, and reports an idle machine -
 worse than not running, because it looks like data.
 
 On a box where nobody stays logged in:
@@ -240,13 +240,13 @@ consent stops rather than looping. Give it consent once:
 ~/.local/bin/tokenhud-agent --accept
 ```
 
-### Linux — sharing one board across machines
+### Linux - sharing one board across machines
 
 This is the case the ingest key exists for: **one server, several machines
 reporting to it.** A laptop, a desktop and two build boxes on one board.
 
 The [cloud portal](#cloud-portal--the-two-command-path) is the hosted version
-of exactly this flow — Add machine, one-shot link, per-machine key — with the
+of exactly this flow - Add machine, one-shot link, per-machine key - with the
 approval step absorbed by sign-in: the owner minted the link seconds earlier,
 so nothing is left to decide. A self-host server speaks the same enrollment
 protocol with no UI in front of it. Minting and approving are two API calls,
@@ -255,13 +255,13 @@ made with the board key.
 **On the machine running the board:**
 
 ```bash
-# bind beyond loopback — deliberately
+# bind beyond loopback - deliberately
 TOKENHUD_BIND=0.0.0.0 ./scripts/stop-server.sh
 TOKENHUD_BIND=0.0.0.0 ./scripts/start-server.sh
 KEY="$(grep '^TOKENHUD_KEY=' .env | cut -d= -f2)"   # the board key
 ```
 
-**For every other machine — enroll it (recommended).** Mint a link. This is
+**For every other machine - enroll it (recommended).** Mint a link. This is
 the one write that creates a credential, so it always needs the key, whatever
 `TOKENHUD_PROTECT_READS` says:
 
@@ -277,7 +277,7 @@ tokenhud-agent enroll "http://board.local:8787#<token>"
 ```
 
 It shows the read manifest, asks, claims the link, prints its pairing code and
-waits. The claim is now **pending** on the board — read it *with* the key: the
+waits. The claim is now **pending** on the board - read it *with* the key: the
 machines list carries pairing codes and the fleet inventory, so it is not part
 of the open-reads default.
 
@@ -290,7 +290,7 @@ for m in json.load(sys.stdin).get("machines", []):
 
 Each pending row carries the pairing code, the AI assistants that machine runs
 and its consent-manifest digest. Check the code against the one the terminal
-printed, then decide that `installId` — `approve`, `deny` or `revoke`:
+printed, then decide that `installId` - `approve`, `deny` or `revoke`:
 
 ```bash
 curl -s -X POST http://board.local:8787/api/v1/machines/decide \
@@ -300,11 +300,11 @@ curl -s -X POST http://board.local:8787/api/v1/machines/decide \
 
 The waiting agent's next poll collects **its own key**, writes it to
 `~/.tokenhud/machine.json` (mode 600) and starts reporting in that same
-process — no environment variables, then or later. Revoking shuts *that* door
+process - no environment variables, then or later. Revoking shuts *that* door
 without touching any other machine. Links are one-shot and expire in 15
 minutes; a revoked machine needs a fresh one to rejoin.
 
-Two machines with the same hostname stay two rows — enrollment tells them
+Two machines with the same hostname stay two rows - enrollment tells them
 apart by a random per-install id, not by name.
 
 **Or the shared-key way (still works):**
@@ -317,25 +317,25 @@ export TOKENHUD_KEY=<the key from the board>
 ./scripts/start-agent.sh                         # builds the agent if needed
 ```
 
-With the shared key, the board shows each machine as its own host — but if two
+With the shared key, the board shows each machine as its own host - but if two
 of them share a hostname, set `TOKENHUD_HOST` on one, or enroll them instead.
 
 > **Read this before binding to anything but loopback.** The key is a bearer
 > secret in a plain HTTP header. On a LAN that is adequate against accident and
 > **useless against anyone listening.** Anyone who can reach the port and has
 > the key can write readings to your board; anyone who can reach the port can
-> *read* it, because reads are unauthenticated by default — so that a `curl`, a
+> *read* it, because reads are unauthenticated by default - so that a `curl`, a
 > script or `./scripts/status.sh` needs no credential to ask how things are.
 >
 > Two things to do if this leaves your own machine:
-> - put TLS in front of it — a reverse proxy is the easy answer
+> - put TLS in front of it - a reverse proxy is the easy answer
 > - set `TOKENHUD_PROTECT_READS=1` so `GET` needs the key too
 >
 > Treat `TOKENHUD_KEY` as a real credential: it is mode 600 in `.env` for a
 > reason, and pasting it into a shell puts it in your history.
 
 Per-device keys and revocation are what `tokenhud-agent enroll` gives you.
-TLS by default is still yours to add — a reverse proxy is the easy answer.
+TLS by default is still yours to add - a reverse proxy is the easy answer.
 
 ---
 
@@ -348,7 +348,7 @@ Windows.
 
 What would make it work, in order:
 
-1. A process lister behind a trait — `ps` on Unix, `CreateToolhelp32Snapshot` or
+1. A process lister behind a trait - `ps` on Unix, `CreateToolhelp32Snapshot` or
    WMI on Windows
 2. Replace the five `libc` calls with `std` equivalents or `#[cfg]` branches
    (hostname, load average, process liveness, randomness)
@@ -382,25 +382,25 @@ modified, and nothing else on your machine was touched.
 
 ## Troubleshooting
 
-**`No key — the server will refuse this agent`** — the agent found neither an
+**`No key - the server will refuse this agent`** - the agent found neither an
 enrollment nor a key. Enroll the machine, or run `./scripts/start-server.sh`,
 which generates a key into `.env` for the agent on the same machine to read.
 
-**The agent starts and immediately stops** — it has not been given consent, and
+**The agent starts and immediately stops** - it has not been given consent, and
 whatever started it had no terminal to ask on. Run
 `tokenhud-agent --what-i-read`, then `tokenhud-agent --accept`.
 
-**The board says "Indexing transcripts — 40% of 1.1GB read"** — the first run
+**The board says "Indexing transcripts - 40% of 1.1GB read"** - the first run
 indexes everything you already have, within a per-cycle byte budget. It catches
 up on its own and only happens once.
 
-**No usage data, but the agent says `sent`** — your Claude Code config is not at
+**No usage data, but the agent says `sent`** - your Claude Code config is not at
 `~/.claude`. Set `CLAUDE_CONFIG_DIR`.
 
-**Two machines showing as one host** — they share a hostname. Set
+**Two machines showing as one host** - they share a hostname. Set
 `TOKENHUD_HOST` on one.
 
-**Numbers look wrong** — check the agent against your own machine before
+**Numbers look wrong** - check the agent against your own machine before
 anything else:
 
 ```bash
@@ -408,7 +408,7 @@ cargo test --manifest-path agent/Cargo.toml -- --nocapture
 ```
 
 Eleven of those run the real collectors against your real files, and a check
-whose source is missing skips and says why — which is often the answer.
+whose source is missing skips and says why - which is often the answer.
 
 ---
 

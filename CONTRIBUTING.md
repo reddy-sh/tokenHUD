@@ -7,7 +7,7 @@ and the opinions save everyone time.
 
 **Open an issue first for anything non-trivial.** A rejected pull request is a
 worse outcome for you than a five-minute conversation, and some things will be
-rejected on principle no matter how well they are written — see below.
+rejected on principle no matter how well they are written - see below.
 
 ## The constraints that are not up for negotiation
 
@@ -16,18 +16,18 @@ however good it is otherwise.
 
 1. **Metrics leave, content never does.** No collector may read prompt text,
    completion text, source code, or tool-call arguments into a payload. Not
-   behind a flag, not filtered afterwards — never collected. If your feature
+   behind a flag, not filtered afterwards - never collected. If your feature
    needs content, it belongs in a different product.
 
    The same rule has a second edge on the sharing path. What a public board may
    carry is decided in one file, `server/src/share.rs`, by **naming the fields
-   that go out** — never by deleting private ones from a reading. A field you
+   that go out** - never by deleting private ones from a reading. A field you
    add to the agent does not appear on a shared board until somebody lists it
    there deliberately, and that is the property to preserve. See
    [docs/sharing.md](docs/sharing.md).
 2. **Dependencies are a test.** `cargo tree --depth 1` is printed in CI so a new
    one has to be noticed in review, and every path a collector opens is declared
-   in `agent/src/manifest.rs` — the build fails otherwise.
+   in `agent/src/manifest.rs` - the build fails otherwise.
    Someone should be able to clone this onto a machine they have not prepared
    and run it with the `python3` that shipped with the OS.
 3. **The dashboard is one self-contained file.** `web/index.html` has no CDN
@@ -59,7 +59,7 @@ cp .env.example .env
 
 The tests must pass before you open a pull request. They run the real
 collectors against your real machine, a real SQLite file in a temp directory,
-and a real server on a throwaway port — it mocks nothing, so a pass means it
+and a real server on a throwaway port - it mocks nothing, so a pass means it
 genuinely works here.
 
 Checks that need `~/.claude` skip cleanly on a machine without it, so CI and a
@@ -71,7 +71,7 @@ Match the file you are editing. Two things this codebase does deliberately:
 
 - **Comments explain why, not what.** If a line needs a comment saying what it
   does, rename something instead. The comments worth writing are the ones that
-  stop the next person "fixing" a deliberate decision — there are several, and
+  stop the next person "fixing" a deliberate decision - there are several, and
   they say so.
 - **Names are for readers.** `following` rather than `live` when three other
   things in the file already mean "live".
@@ -80,7 +80,7 @@ Match the file you are editing. Two things this codebase does deliberately:
 
 Conventional commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`). One
 logical change per pull request. Say what you measured, if you changed anything
-that claims to be faster — this project has a habit of putting numbers in the
+that claims to be faster - this project has a habit of putting numbers in the
 README and they need to stay true.
 
 ## Licence

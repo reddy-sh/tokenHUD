@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
-<title>TokenHUD — Live Token Usage &amp; Cost for Claude Code</title>
+<title>TokenHUD - Live Token Usage &amp; Cost for Claude Code</title>
 <meta name="description" content="See what your AI coding agents run and cost, live on your own machine. Token metering, spend and plan limits for Claude Code and Codex CLI. Free, local-first, zero dependencies.">
 
 <link rel="canonical" href="https://tokenhud.com/">
@@ -15,7 +15,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="TokenHUD">
 <meta property="og:url" content="https://tokenhud.com/">
-<meta property="og:title" content="TokenHUD — a heads-up display for the AI agents on your machine">
+<meta property="og:title" content="TokenHUD - a heads-up display for the AI agents on your machine">
 <meta property="og:description" content="Live token spend, session metering and plan limits for Claude Code and Codex CLI. Metrics leave, content never does.">
 <meta property="og:image" content="https://tokenhud.com/og.png">
 <meta property="og:image:width" content="1200">
@@ -24,7 +24,7 @@
 <meta property="og:locale" content="en_US">
 
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="TokenHUD — a heads-up display for the AI agents on your machine">
+<meta name="twitter:title" content="TokenHUD - a heads-up display for the AI agents on your machine">
 <meta name="twitter:description" content="Live token spend, session metering and plan limits for Claude Code and Codex CLI. Metrics leave, content never does.">
 <meta name="twitter:image" content="https://tokenhud.com/og.png">
 <meta name="twitter:image:alt" content="The TokenHUD dashboard showing token spend and plan usage.">
@@ -46,7 +46,7 @@
       "@id": "https://tokenhud.com/#app",
       "name": "TokenHUD",
       "alternateName": "Token HUD",
-      "description": "A heads-up display for the AI coding agents running on your machine. Live token metering, estimated spend, and plan-limit windows for Claude Code and Codex CLI — running entirely on your own computer.",
+      "description": "A heads-up display for the AI coding agents running on your machine. Live token metering, estimated spend, and plan-limit windows for Claude Code and Codex CLI - running entirely on your own computer.",
       "applicationCategory": "DeveloperApplication",
       "applicationSubCategory": "Developer Monitoring Tool",
       "operatingSystem": "macOS, Linux",
@@ -68,7 +68,7 @@
           "@type": "Offer",
           "name": "Team",
           "priceCurrency": "USD",
-          "description": "Per seat. Cross-machine rollups, shared budgets, retained history, chargeback reports, and alerts to Slack and email. Planned — not yet available.",
+          "description": "Per seat. Cross-machine rollups, shared budgets, retained history, chargeback reports, and alerts to Slack and email. Planned - not yet available.",
           "availability": "https://schema.org/PreOrder"
         }
       ],
@@ -113,7 +113,7 @@
       "name": "Does TokenHUD see my prompts or my code?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "No. Prompt text, completion text, source code and tool-call arguments are never read into the payload at all — not filtered out afterwards. The transcript parser reads only the numeric usage fields from assistant records. There is no code path that collects content, so no configuration mistake can expose it."
+        "text": "No. Prompt text, completion text, source code and tool-call arguments are never read into the payload at all - not filtered out afterwards. The transcript parser reads only the numeric usage fields from assistant records. There is no code path that collects content, so no configuration mistake can expose it."
       }
     },
     {
@@ -145,7 +145,7 @@
       "name": "Is TokenHUD free?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes, free forever for one developer on one machine, with unlimited metering and no sampling. A paid per-seat team tier adds cross-machine rollups, shared budgets, retained history and chargeback reports. The free tier is not degraded to drive upgrades — the upgrade trigger is a second person needing the same numbers."
+        "text": "Yes, free forever for one developer on one machine, with unlimited metering and no sampling. A paid per-seat team tier adds cross-machine rollups, shared budgets, retained history and chargeback reports. The free tier is not degraded to drive upgrades - the upgrade trigger is a second person needing the same numbers."
       }
     },
     {
@@ -161,7 +161,7 @@
 </script>
 
 <style>
-/* Hallmark · genre: modern-minimal · macrostructure: Workbench · theme: Cobalt · nav: N13 · footer: Ft5 — tokens in tokens.css */
+/* Hallmark · genre: modern-minimal · macrostructure: Workbench · theme: Cobalt · nav: N13 · footer: Ft5 - tokens in tokens.css */
 
 *, *::before, *::after { box-sizing: border-box; }
 html, body { overflow-x: clip; }
@@ -206,12 +206,12 @@ p { margin: 0; }
 }
 .skip:focus-visible { top: var(--space-md); }
 
-/* ── Reveal — the page's one scroll motion, one-shot ─────────────────── */
+/* ── Reveal - the page's one scroll motion, one-shot ─────────────────── */
 .reveal { opacity: 0; transform: translateY(10px);
   transition: opacity 0.6s var(--ease-out), transform 0.6s var(--ease-out); }
 .reveal.is-in { opacity: 1; transform: none; }
 
-/* ── Nav — N13: hairline bar, search pill right of brand ─────────────── */
+/* ── Nav - N13: hairline bar, search pill right of brand ─────────────── */
 .nav {
   position: sticky; top: 0; z-index: var(--z-sticky);
   background: var(--color-nav-wash);
@@ -304,7 +304,7 @@ p { margin: 0; }
 .cmdk__foot kbd { font-family: var(--font-mono); }
 .cmdk__empty { padding: var(--space-md); color: var(--color-neutral); font-size: var(--text-sm); }
 
-/* ── Hero — H2 split 7/5, title left, terminal right ─────────────────── */
+/* ── Hero - H2 split 7/5, title left, terminal right ─────────────────── */
 .hero { padding-block: var(--space-2xl) var(--space-3xl); }
 .hero__grid { display: grid; grid-template-columns: 7fr 5fr; gap: var(--space-2xl); align-items: center; }
 .hero__lede { margin-top: var(--space-lg); font-size: var(--text-md); line-height: 1.65; max-width: 34rem; }
@@ -319,7 +319,7 @@ p { margin: 0; }
 .hero__note { margin-top: var(--space-lg); font-size: var(--text-sm); color: var(--color-neutral); max-width: 34rem; }
 .hero__note code { font-family: var(--font-mono); font-size: 0.8125rem; }
 
-/* Code cards — typographic frame: label rule above, no fake window chrome */
+/* Code cards - typographic frame: label rule above, no fake window chrome */
 .code-card {
   background: var(--color-graphite); border: var(--rule-hair) solid var(--color-band-rule);
   border-radius: var(--radius-card); box-shadow: var(--shadow-whisper);
@@ -342,7 +342,7 @@ p { margin: 0; }
 .caret { display: inline-block; width: 1ch; background: var(--color-accent-bright); animation: blink 1s steps(2) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 
-/* ── Stat strip — T4, 4-up, real numbers ─────────────────────────────── */
+/* ── Stat strip - T4, 4-up, real numbers ─────────────────────────────── */
 .stats { border-block: var(--rule-hair) solid var(--color-rule); }
 .stats__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .stats__grid > div { padding: var(--space-lg) var(--space-md); }
@@ -355,7 +355,7 @@ p { margin: 0; }
 .head-hang { padding-block: var(--space-3xl) var(--space-xl); max-width: 40rem; }
 .head-hang p { margin-top: var(--space-md); color: var(--color-neutral); font-size: var(--text-md); }
 
-/* ── Board — F5 annotated screenshot, margin labels ──────────────────── */
+/* ── Board - F5 annotated screenshot, margin labels ──────────────────── */
 .board__grid { display: grid; grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); gap: var(--space-xl); align-items: start; }
 .board__fig { margin: 0; }
 .board__fig img { border: var(--rule-hair) solid var(--color-rule-2); border-radius: var(--radius-card); }
@@ -366,7 +366,7 @@ p { margin: 0; }
 .board__legend > div { border-inline-start: 2px solid var(--color-rule); padding-inline-start: var(--space-md); }
 .board__legend > div:first-child { border-inline-start-color: var(--color-accent); }
 
-/* ── Dark band — the page's one dark beat ────────────────────────────── */
+/* ── Dark band - the page's one dark beat ────────────────────────────── */
 .band { background: var(--color-band); color: var(--color-band-ink); }
 .band h2 { color: var(--color-band-ink); }
 .band .head-hang p { color: var(--color-band-muted); }
@@ -377,7 +377,7 @@ p { margin: 0; }
 .band__prose code { font-family: var(--font-mono); font-size: 0.85em; color: var(--color-accent-bright); }
 .band .code-card { background: var(--color-graphite-2); }
 
-/* ── Boundary — what leaves vs what can't ────────────────────────────── */
+/* ── Boundary - what leaves vs what can't ────────────────────────────── */
 .boundary__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-xl); }
 .boundary__col { border-top: 2px solid var(--color-ink); padding-top: var(--space-md); }
 .boundary__col--never { border-top-color: var(--color-accent); }
@@ -406,7 +406,7 @@ p { margin: 0; }
 .integrations__detected p { font-size: var(--text-sm); color: var(--color-neutral); max-width: 46rem; }
 .integrations__detected p code { font-family: var(--font-mono); font-size: 0.85em; }
 
-/* ── Compare — F3 tabular spec sheet ─────────────────────────────────── */
+/* ── Compare - F3 tabular spec sheet ─────────────────────────────────── */
 .compare__scroller { overflow-x: auto; border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-card); }
 .compare table { border-collapse: collapse; width: 100%; min-width: 56rem; font-size: var(--text-sm); }
 .compare th, .compare td { text-align: start; vertical-align: top; padding: var(--space-sm) var(--space-md); border-bottom: var(--rule-hair) solid var(--color-rule); }
@@ -447,7 +447,7 @@ p { margin: 0; }
 .price-card__price span { font-family: var(--font-body); font-size: var(--text-sm); font-weight: 400; color: var(--color-neutral); letter-spacing: 0; }
 .price-card ul { list-style: none; margin: var(--space-lg) 0 0; padding: 0; display: grid; gap: var(--space-xs); }
 .price-card li { font-size: var(--text-sm); color: var(--color-muted); padding-inline-start: var(--space-md); position: relative; }
-.price-card li::before { content: "—"; position: absolute; inset-inline-start: 0; color: var(--color-rule-2); }
+.price-card li::before { content: "-"; position: absolute; inset-inline-start: 0; color: var(--color-rule-2); }
 .price-card__foot { margin-top: var(--space-lg); font-size: var(--text-sm); color: var(--color-neutral); }
 .pricing__promise { margin-top: var(--space-xl); max-width: 46rem; font-size: var(--text-base); color: var(--color-muted); }
 .pricing__promise strong { color: var(--color-ink); font-weight: 600; }
@@ -471,7 +471,7 @@ p { margin: 0; }
 .body-link { color: var(--color-accent); text-decoration: none; border-bottom: 1px solid var(--color-rule-2); padding-bottom: 1px; }
 .body-link:hover { border-bottom-color: var(--color-accent); }
 
-/* Measure discipline — prose reads at 45–75ch */
+/* Measure discipline - prose reads at 45-75ch */
 .faq__list details p, .compare__notes p, .boundary__claim p + p,
 .pricing__promise, .integrations__detected p, .int-card p { max-width: 65ch; }
 
@@ -486,7 +486,7 @@ p { margin: 0; }
 .copy-btn:hover { color: var(--color-band-ink); }
 .copy-btn[data-state="copied"] { color: var(--color-accent-bright); }
 
-/* ── Footer — Ft5 statement ──────────────────────────────────────────── */
+/* ── Footer - Ft5 statement ──────────────────────────────────────────── */
 .foot-stmt { padding-block: var(--space-3xl) var(--space-xl); display: grid; gap: var(--space-xl); }
 .foot-stmt__line { font-family: var(--font-display); font-weight: 600;
   font-size: clamp(1.75rem, 4.5vw, 3rem); line-height: 1.08; letter-spacing: -0.025em;
@@ -588,7 +588,7 @@ p { margin: 0; }
     <div class="hero__grid">
       <div>
         <h1>Every token, every agent, live on 127.0.0.1.</h1>
-        <p class="hero__lede">A single developer now runs several coding agents at once — and flies
+        <p class="hero__lede">A single developer now runs several coding agents at once - and flies
           all of it blind. TokenHUD is the instrument panel: it reads what
           <strong>Claude Code</strong> and <strong>Codex&nbsp;CLI</strong> have already written to
           disk, prices it, and shows what is running, what it costs, and when to step in.
@@ -597,8 +597,8 @@ p { margin: 0; }
           <a class="btn btn--primary" href="https://github.com/reddy-sh/tokenhud">Clone and run</a>
           <a class="link-arrow" href="#manifest">See every file it reads ↓</a>
         </div>
-        <p class="hero__note">macOS and Linux today. Windows is not supported yet — it will not
-          compile rather than misbehave — but Claude Code inside WSL2 works unchanged.</p>
+        <p class="hero__note">macOS and Linux today. Windows is not supported yet - it will not
+          compile rather than misbehave - but Claude Code inside WSL2 works unchanged.</p>
       </div>
       <div class="code-card" aria-label="Install commands">
         <div class="code-card__label"><span>get started</span><span>~30 s build</span></div>
@@ -610,17 +610,17 @@ p { margin: 0; }
     </div>
   </section>
 
-  <!-- ── Stat strip — measured, not marketed ──────────────────────────── -->
+  <!-- ── Stat strip - measured, not marketed ──────────────────────────── -->
   <section class="stats" aria-label="Measured numbers">
     <div class="wrap stats__grid tnum">
-      <div><b>~4 MB</b><span>two small binaries — nothing else to install</span></div>
-      <div><b>0.06 s</b><span>per reading — you will not feel it running</span></div>
+      <div><b>~4 MB</b><span>two small binaries - nothing else to install</span></div>
+      <div><b>0.06 s</b><span>per reading - you will not feel it running</span></div>
       <div><b>0</b><span>requests leaving your machine</span></div>
       <div><b>MIT</b><span>open source, all of it</span></div>
     </div>
   </section>
 
-  <!-- ── The board — Workbench tour ───────────────────────────────────── -->
+  <!-- ── The board - Workbench tour ───────────────────────────────────── -->
   <section id="board" class="wrap">
     <header class="head-hang reveal">
       <h2>A board you leave open.</h2>
@@ -630,7 +630,7 @@ p { margin: 0; }
     <div class="board__grid">
       <figure class="board__fig">
         <img src="board.png" alt="The TokenHUD board: plan usage windows with reset countdowns, recently finished agents, daily activity and tokens by model" width="1440" height="900" fetchpriority="low">
-        <figcaption>Synthetic data — the project names and figures are generated, not a real machine’s.</figcaption>
+        <figcaption>Synthetic data - the project names and figures are generated, not a real machine’s.</figcaption>
       </figure>
       <div class="board__legend">
         <div>
@@ -640,19 +640,19 @@ p { margin: 0; }
         </div>
         <div>
           <h3>What finished while you were away</h3>
-          <p>Sit back down and see what ended — with an honest time range, never a
+          <p>Sit back down and see what ended - with an honest time range, never a
             precise time on a guess.</p>
         </div>
         <div>
           <h3>Spend, by session, model and day</h3>
           <p>Priced at API list rates and labelled an estimate everywhere a dollar
-            appears — a yardstick, not a bill.</p>
+            appears - a yardstick, not a bill.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ── Dark band — the manifest ─────────────────────────────────────── -->
+  <!-- ── Dark band - the manifest ─────────────────────────────────────── -->
   <section id="manifest" class="band">
     <div class="wrap">
       <header class="head-hang reveal">
@@ -671,7 +671,7 @@ p { margin: 0; }
   <span class="c">└ never oauthAccount · never projects</span>
 
 ~/.codex/sessions/**
-  <span class="c">token_count events — the last record per file</span>
+  <span class="c">token_count events - the last record per file</span>
 
 <span class="k">NEVER READ</span>
   <span class="c">prompt text · session titles   opt-in, off by default</span>
@@ -679,11 +679,11 @@ p { margin: 0; }
                                  outside the paths above</span></pre>
         </div>
         <div class="band__prose">
-          <p>Resolved against <strong>your</strong> machine — real files, real sizes, not a
+          <p>Resolved against <strong>your</strong> machine - real files, real sizes, not a
             description. Nothing is read at all until you agree.</p>
           <p>And a release that reads one more file has to ask you again. Tests in the
             repository hold that list to the code that does the reading.</p>
-          <p class="muted"><a class="band-link" href="https://github.com/reddy-sh/tokenhud#it-tells-you-every-file-it-will-open-before-it-opens-one">How that works, in detail — on GitHub ↗</a></p>
+          <p class="muted"><a class="band-link" href="https://github.com/reddy-sh/tokenhud#it-tells-you-every-file-it-will-open-before-it-opens-one">How that works, in detail - on GitHub ↗</a></p>
         </div>
       </div>
     </div>
@@ -694,13 +694,13 @@ p { margin: 0; }
     <header class="head-hang reveal">
       <h2>Metrics leave. Content never does.</h2>
       <p>The right-hand column is not filtered out before sending. It is never read into the
-        payload in the first place — there is no code path that collects it.</p>
+        payload in the first place - there is no code path that collects it.</p>
     </header>
     <div class="boundary__grid">
       <div class="boundary__col">
         <h3>Read and reported</h3>
         <ul>
-          <li>Token counts — in, out, cached</li>
+          <li>Token counts - in, out, cached</li>
           <li>Model identifiers</li>
           <li>Computed cost, labelled an estimate</li>
           <li>Session start, stop, duration</li>
@@ -734,7 +734,7 @@ p { margin: 0; }
       <div class="integrations__read">
         <div class="int-card">
           <div class="int-card__head"><h3>Claude Code</h3><span class="tag tag--read">read by the board</span></div>
-          <p>Sessions, tokens, spend and your plan’s real usage windows — everything the
+          <p>Sessions, tokens, spend and your plan’s real usage windows - everything the
             board shows, with no configuration.</p>
         </div>
         <div class="int-card">
@@ -749,7 +749,7 @@ p { margin: 0; }
           <li>Cursor</li><li>Gemini CLI</li><li>GitHub Copilot</li><li>Windsurf</li><li>Antigravity</li><li>Aider</li><li>Devin</li>
         </ul>
         <p style="margin-top: var(--space-md);">Installed tools are listed and marked plainly
-          when nothing reads them yet — never shown as an empty board that looks broken.
+          when nothing reads them yet - never shown as an empty board that looks broken.
           Want yours next? <a class="body-link" href="https://github.com/reddy-sh/tokenhud/issues">Open an issue.</a></p>
       </div>
     </div>
@@ -759,7 +759,7 @@ p { margin: 0; }
   <section id="compare" class="wrap">
     <header class="head-hang reveal">
       <h2>Where it sits among its neighbours.</h2>
-      <p>Every tool here is good at its job. The honest differences are shape, not quality —
+      <p>Every tool here is good at its job. The honest differences are shape, not quality -
         checked against each project’s own documentation on 23&nbsp;August&nbsp;2026.</p>
     </header>
     <div class="">
@@ -779,7 +779,7 @@ p { margin: 0; }
             <tr class="row-us">
               <th scope="row">TokenHUD</th>
               <td>Live local web board, pushed over SSE</td>
-              <td>Reads files your agents already wrote — nothing in the request path</td>
+              <td>Reads files your agents already wrote - nothing in the request path</td>
               <td>Nothing. The rate card ships in the binary; it runs with the network off</td>
               <td>Claude Code + Codex CLI read; six more detected</td>
               <td>MIT, free</td>
@@ -789,7 +789,7 @@ p { margin: 0; }
               <td>Terminal reports, live 5-hour blocks, statusline</td>
               <td>Reads local agent files; zero-install via npx</td>
               <td>Fetches model pricing at runtime unless run with --offline</td>
-              <td>16 sources — Claude Code, Codex, Copilot CLI, Gemini CLI and more</td>
+              <td>16 sources - Claude Code, Codex, Copilot CLI, Gemini CLI and more</td>
               <td>MIT, free</td>
             </tr>
             <tr>
@@ -820,7 +820,7 @@ p { margin: 0; }
               <th scope="row">LiteLLM · Helicone · Langfuse</th>
               <td>Cloud or self-hosted observability platforms</td>
               <td>Your API traffic routes through a proxy, or an SDK sends traces</td>
-              <td>Prompts and completions — logging them is the product</td>
+              <td>Prompts and completions - logging them is the product</td>
               <td>Any API traffic; cannot see subscription-plan usage</td>
               <td>Open core, free tiers; paid cloud plans</td>
             </tr>
@@ -831,10 +831,10 @@ p { margin: 0; }
         <p><strong>Where the others win, plainly:</strong> ccusage covers sixteen agent sources to
           TokenHUD’s two and installs with one npx command. CodexBar puts glanceable quota meters
           in the menu bar for far more providers. Claude Code Usage Monitor predicts when your
-          window runs out — TokenHUD shows the window; it does not forecast it. The observability
+          window runs out - TokenHUD shows the window; it does not forecast it. The observability
           platforms trace whole production applications, which is a different job.</p>
         <p><strong>What none of them holds together:</strong> a live board rather than a report,
-          on loopback, with nothing in the request path and nothing leaving the machine — not
+          on loopback, with nothing in the request path and nothing leaving the machine - not
           even a pricing lookup. Spotted an error in this table? Open an issue and it will be
           corrected.</p>
       </div>
@@ -849,7 +849,7 @@ p { margin: 0; }
     </header>
     <div class="oss__grid">
       <div class="oss__prose">
-        <p>Everything this page claims, you can read for yourself — the agent, the server
+        <p>Everything this page claims, you can read for yourself - the agent, the server
           and the dashboard are one repository, and the README carries the deep story:
           architecture, measurements and the honesty rules the project holds itself to.</p>
       </div>
@@ -866,13 +866,13 @@ p { margin: 0; }
   <section id="pricing" class="wrap">
     <header class="head-hang reveal">
       <h2>Free where it runs alone.</h2>
-      <p>A free user costs nothing to serve, because nothing is served — it all happens on
+      <p>A free user costs nothing to serve, because nothing is served - it all happens on
         your machine.</p>
     </header>
     <div class="pricing__grid">
       <div class="price-card">
         <div class="price-card__meta"><h3>Solo</h3><span class="tag tag--read">available now</span></div>
-        <p class="price-card__price tnum">$0 <span>free forever — one developer, one machine</span></p>
+        <p class="price-card__price tnum">$0 <span>free forever - one developer, one machine</span></p>
         <ul>
           <li>Unlimited metering, no sampling</li>
           <li>Full local history in SQLite you own</li>
@@ -883,7 +883,7 @@ p { margin: 0; }
         <p class="price-card__foot">No account, no key ceremony, no upsell banners on the board.</p>
       </div>
       <div class="price-card price-card--planned">
-        <div class="price-card__meta"><h3>Team</h3><span class="tag tag--soon">planned — not built yet</span></div>
+        <div class="price-card__meta"><h3>Team</h3><span class="tag tag--soon">planned - not built yet</span></div>
         <p class="price-card__price">Per seat <span>price not set</span></p>
         <ul>
           <li>Cross-machine rollups</li>
@@ -898,8 +898,8 @@ p { margin: 0; }
       </div>
     </div>
     <p class="pricing__promise"><strong>The free tier will not be degraded to drive
-      upgrades.</strong> The upgrade trigger is other people — the moment a second developer
-      needs to see the same numbers — not an artificial ceiling on the first one.</p>
+      upgrades.</strong> The upgrade trigger is other people - the moment a second developer
+      needs to see the same numbers - not an artificial ceiling on the first one.</p>
   </section>
 
   <!-- ── FAQ ──────────────────────────────────────────────────────────── -->
@@ -911,7 +911,7 @@ p { margin: 0; }
       <details>
         <summary>Does TokenHUD see my prompts or my code?</summary>
         <p>No. Prompt text, completion text, source code and tool-call arguments are never read
-          into the payload at all — not filtered out afterwards. The transcript parser reads only
+          into the payload at all - not filtered out afterwards. The transcript parser reads only
           the numeric usage fields from assistant records. There is no code path that collects
           content, so no configuration mistake can expose it.</p>
       </details>
@@ -937,7 +937,7 @@ p { margin: 0; }
         <summary>Is TokenHUD free?</summary>
         <p>Yes, free forever for one developer on one machine, with unlimited metering and no
           sampling. A paid per-seat team tier adds cross-machine rollups, shared budgets, retained
-          history and chargeback reports. The free tier is not degraded to drive upgrades — the
+          history and chargeback reports. The free tier is not degraded to drive upgrades - the
           upgrade trigger is a second person needing the same numbers.</p>
       </details>
       <details>
@@ -972,7 +972,7 @@ p { margin: 0; }
 
 </main>
 
-<!-- ── Footer — Ft5 statement ──────────────────────────────────────────── -->
+<!-- ── Footer - Ft5 statement ──────────────────────────────────────────── -->
 <footer class="foot-stmt wrap">
   <p class="foot-stmt__line">Metrics leave. <b>Content never does.</b></p>
   <div class="foot-stmt__meta">
@@ -998,7 +998,7 @@ p { margin: 0; }
   window.addEventListener("scroll", onScroll, { passive: true });
   onScroll();
 
-  /* Reveal — one orchestrated entrance on load, then the page just is there */
+  /* Reveal - one orchestrated entrance on load, then the page just is there */
   var revealed = document.querySelectorAll(".reveal");
   var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   revealed.forEach(function (el, i) {
@@ -1006,7 +1006,7 @@ p { margin: 0; }
     setTimeout(function () { el.classList.add("is-in"); }, 80 + i * 50);
   });
 
-  /* Hero type-in — the last line types once, then the caret keeps blinking */
+  /* Hero type-in - the last line types once, then the caret keeps blinking */
   var line = document.getElementById("typeline");
   if (line && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     var target = line.firstElementChild;

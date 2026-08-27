@@ -2,8 +2,8 @@
 
 The self-host server answers everything below. Four of the routes are the
 **wire protocol** rather than one server's implementation: the server in this
-repository and the cloud ingest Lambda answer them identically — same header,
-same status codes, same JSON keys — so an agent cannot tell which one it is
+repository and the cloud ingest Lambda answer them identically - same header,
+same status codes, same JSON keys - so an agent cannot tell which one it is
 talking to.
 
 Base URL in every example is `http://127.0.0.1:8787`, the default bind.
@@ -49,13 +49,13 @@ Every route here requires the key.
 |---|---|
 | `POST /api/v1/enroll/new` | Mint a one-shot enrollment link. Returns `{token, code, expiresAt, ttlSeconds}` |
 | `POST /api/v1/machines/decide` | `{installId, action}` where action is `approve`, `deny` or `revoke` |
-| `POST /api/v1/machines/rename` | `{machineId, label}` — the name the board files a machine under |
-| `POST /api/v1/machines/remove` | `{host}` — forget a machine and its readings |
+| `POST /api/v1/machines/rename` | `{machineId, label}` - the name the board files a machine under |
+| `POST /api/v1/machines/remove` | `{host}` - forget a machine and its readings |
 | `POST /api/v1/stream-token` | Trade the key for a single-use 60-second stream token |
 | `POST /api/v1/install-token` | Trade the key for a single-use 5-minute install token |
 | `GET /api/v1/install-script?server=…&t=…` | A shell script that installs and enrolls an agent |
 | `GET /api/v1/upgrade-script?server=…&t=…` | A shell script that upgrades an installed agent in place |
-| `GET /api/v1/portal-key` | The admin key. **Loopback binds only** — refuses if `TOKENHUD_BIND` is anything else |
+| `GET /api/v1/portal-key` | The admin key. **Loopback binds only** - refuses if `TOKENHUD_BIND` is anything else |
 
 The two script routes accept either the key in a header or a single-use install
 token as `?t=`, because a command somebody copies out of the board must not
@@ -69,8 +69,8 @@ Open by default so tooling needs no secret in a browser. Set
 | Route | What it answers |
 |---|---|
 | `GET /api/v1/overview` | Latest reading per host, agent liveness, recent endings, store counts. The `machines` list travels only to a caller holding the key |
-| `GET /api/v1/history?host=…&limit=…` | One host's recent snapshots, reconstructed from the difference chain. `limit` clamped 1–1000 |
-| `GET /api/v1/endings?host=…&hours=…&limit=…` | Agents that stopped recently. `limit` clamped 1–500 (default 100), `hours` 1–720 (default 24) |
+| `GET /api/v1/history?host=…&limit=…` | One host's recent snapshots, reconstructed from the difference chain. `limit` clamped 1-1000 |
+| `GET /api/v1/endings?host=…&hours=…&limit=…` | Agents that stopped recently. `limit` clamped 1-500 (default 100), `hours` 1-720 (default 24) |
 | `GET /api/v1/stream` | Server-sent events: one `reading` event per ingest, carrying the whole overview |
 
 `/api/v1/stream` takes `?st=<token>` from `/api/v1/stream-token`, because
@@ -87,7 +87,7 @@ Three routes need the key. The fourth needs nothing, which is the point of it.
 | `GET /api/v1/share` | Every share this fleet has minted, plus `apiUrl` and `reachable`. Key required |
 | `POST /api/v1/share` | `{title, identities}` mints one; adding `slug` edits that one. Key required |
 | `POST /api/v1/share/revoke` | `{slug}`. Key required |
-| `GET /api/v1/public/board?s=<slug>` | The shared leaderboard. **No key** — the slug is the credential |
+| `GET /api/v1/public/board?s=<slug>` | The shared leaderboard. **No key** - the slug is the credential |
 
 `identities` is `alias` or `host`. A title is trimmed and capped at 80
 characters, because it is printed on a public page.
@@ -148,7 +148,7 @@ one connection.
 `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Cache-Control:
 no-store`.
 
-**CORS** is allowed — a board is a different origin from the API it reads — but
+**CORS** is allowed - a board is a different origin from the API it reads - but
 only on the routes a browser legitimately calls: the reads, the stream and its
 token, the key-gated fleet actions, and the public board. Ingest and the
 enrollment routes are agent-facing and carry no CORS headers at all.

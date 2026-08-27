@@ -41,7 +41,7 @@
   </noscript>
   <style>
     /* ==========================================================
-       THEME VARIABLES — switch by toggling [data-theme] on <html>
+       THEME VARIABLES - switch by toggling [data-theme] on <html>
        ========================================================== */
     :root,
     [data-theme="dark"] {
@@ -128,7 +128,7 @@
     }
 
     /* ==========================================================
-       SIGNAL FLOW — an opt-in, motion-forward visual preset.
+       SIGNAL FLOW - an opt-in, motion-forward visual preset.
        The variables also target a standalone exported SVG, whose
        root carries data-preset and data-theme directly.
        ========================================================== */
@@ -196,7 +196,7 @@
     }
 
     /* ==========================================================
-       BLUEPRINT — a review-first drafting preset for deployment,
+       BLUEPRINT - a review-first drafting preset for deployment,
        infrastructure, and technical design documentation. It keeps
        the same semantic palette and geometry while trading glow for
        precise grid contrast, squared materials, and drafting marks.
@@ -272,7 +272,7 @@
     }
 
     /* ==========================================================
-       EDITORIAL — a warm, publication-minded preset for design
+       EDITORIAL - a warm, publication-minded preset for design
        reviews, launch notes, and documentation. The diagram keeps
        the same semantic palette and exact geometry, but trades
        software chrome for paper, ink, ruled structure, and one
@@ -2730,7 +2730,7 @@
     html[data-preset="blueprint"] .guided-view-chapter,
     html[data-preset="blueprint"] .guided-view-chapter-index { border-radius: 0.12rem !important; }
 
-    /* Story Shelf — keep every authored chapter and the Play action visible,
+    /* Story Shelf - keep every authored chapter and the Play action visible,
        but do not spend a second row on unavailable director controls before
        the reader enters a chapter. Existing data-active-view state expands
        the full guided surface without a new toggle or stored preference. */
@@ -2792,7 +2792,7 @@
 
     /* Preserve the one-screen guarantee on ordinary laptop displays. The
        high-screen expansion above must not trade a fuller canvas for page
-       scrolling at 900–1080px heights. */
+       scrolling at 900-1080px heights. */
     @media (min-width: 768px) and (max-height: 1100px) {
       .header { margin-bottom: 1rem; }
       .diagram-container { padding: 0.875rem; }
@@ -2868,7 +2868,7 @@
     .card li { margin-bottom: 0.375rem; }
 
     /* ==========================================================
-       Print stylesheet — hide interactive controls, force light,
+       Print stylesheet - hide interactive controls, force light,
        drop the grid so the diagram doesn't waste ink, use landscape
        so wide diagrams fit, pack summary cards into 2 columns to
        avoid an orphan card on a trailing page.
@@ -2876,8 +2876,8 @@
     @page { size: landscape; margin: 1.5cm; }
 
     @media print {
-      /* Force the FULL light palette — including component fills/strokes and
-         lane/arrow colors — so printing from dark theme doesn't put neon
+      /* Force the FULL light palette - including component fills/strokes and
+         lane/arrow colors - so printing from dark theme doesn't put neon
          strokes and translucent dark fills on white paper. */
       :root, [data-theme="dark"], [data-theme="light"] {
         --bg: #ffffff;
@@ -3453,7 +3453,7 @@
       font-size: 0.55rem;
     }
 
-    /* Toast — brief feedback for actions like "copied" */
+    /* Toast - brief feedback for actions like "copied" */
     .archify-toast {
       position: fixed;
       top: 1rem;
@@ -3841,7 +3841,7 @@
     }
 
     /* ==========================================================
-       SVG SEMANTIC CLASSES — use these instead of inline fill/stroke
+       SVG SEMANTIC CLASSES - use these instead of inline fill/stroke
        ========================================================== */
     .c-grid       { stroke: var(--grid); fill: none; }
     .c-mask       { fill: var(--mask); stroke: none; }
@@ -4840,7 +4840,7 @@
       </div>
     </div>
 
-    <script id="archify-guided-views-data" type="application/json">[{"id":"what-is-read","label":"What is read","focus":["transcripts","usage_cache","processes","manifest","collectors"],"note":"Every source is declared up front; consent is recorded against a digest of the list."},{"id":"the-wire","label":"What crosses the wire","focus":["agent_loop","ingest","store"],"note":"A keyed POST carries counts and metadata only — never prompt or completion text."},{"id":"reading-to-board","label":"From reading to board","focus":["store","overview","dashboard"],"note":"Consecutive readings are diffed into endings; the whole overview is pushed over SSE."}]</script>
+    <script id="archify-guided-views-data" type="application/json">[{"id":"what-is-read","label":"What is read","focus":["transcripts","usage_cache","processes","manifest","collectors"],"note":"Every source is declared up front; consent is recorded against a digest of the list."},{"id":"the-wire","label":"What crosses the wire","focus":["agent_loop","ingest","store"],"note":"A keyed POST carries counts and metadata only - never prompt or completion text."},{"id":"reading-to-board","label":"From reading to board","focus":["store","overview","dashboard"],"note":"Consecutive readings are diffed into endings; the whole overview is pushed over SSE."}]</script>
 
     <div class="guided-views no-print" id="guided-views" hidden aria-label="Guided diagram views">
       <button id="guided-view-prev" type="button" aria-label="Previous guided view" title="Previous guided view ([)">&#8592;</button>
@@ -4910,7 +4910,7 @@
 
         <!-- Boundaries (behind everything) -->
         <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="0" x="30" y="90" width="1715" height="502" rx="12" class="c-region" stroke-width="1"/>
-        <text x="38" y="108" class="t-cloud" font-size="9" font-weight="600">your machine · 127.0.0.1 — nothing leaves</text>
+        <text x="38" y="108" class="t-cloud" font-size="9" font-weight="600">your machine · 127.0.0.1 - nothing leaves</text>
 
         <rect data-graph-role="structural-frame" data-composition-frame-kind="security-group" data-composition-frame-id="1" x="370" y="90" width="480" height="252" rx="8" class="c-security-group" stroke-width="1"/>
         <text x="378" y="108" class="t-security" font-size="9" font-weight="600">tokenhud-agent · per host</text>
@@ -4930,8 +4930,8 @@
         <path data-edge-from="overview" data-edge-to="dashboard" data-edge-label="SSE · whole state, gzipped" data-edge-key="8" data-composition-points="1425,541;1575,541" d="M 1425 541 L 1575 541" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
 
         <!-- Components -->
-        <g id="node-transcripts" data-node-id="transcripts" data-node-label="~/.claude/projects" tabindex="0" role="button" aria-label="Focus ~/.claude/projects, per-session JSONL, your machine · 127.0.0.1 — nothing leaves" aria-pressed="false" data-node-kind="external" data-node-sublabel="per-session JSONL" data-node-context="your machine · 127.0.0.1 — nothing leaves">
-          <title>~/.claude/projects · per-session JSONL · your machine · 127.0.0.1 — nothing leaves</title>
+        <g id="node-transcripts" data-node-id="transcripts" data-node-label="~/.claude/projects" tabindex="0" role="button" aria-label="Focus ~/.claude/projects, per-session JSONL, your machine · 127.0.0.1 - nothing leaves" aria-pressed="false" data-node-kind="external" data-node-sublabel="per-session JSONL" data-node-context="your machine · 127.0.0.1 - nothing leaves">
+          <title>~/.claude/projects · per-session JSONL · your machine · 127.0.0.1 - nothing leaves</title>
           <rect x="60" y="130" width="150" height="62" rx="6" class="c-mask"/>
           <rect x="60" y="130" width="150" height="62" rx="6" class="c-external" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(66 136) scale(0.6875)">
@@ -4942,8 +4942,8 @@
         <text data-detail="context" x="135" y="175" class="t-muted" font-size="9" text-anchor="middle">per-session JSONL</text>
         </g>
 
-        <g id="node-usage_cache" data-node-id="usage_cache" data-node-label="~/.claude.json" tabindex="0" role="button" aria-label="Focus ~/.claude.json, usage windows cache, your machine · 127.0.0.1 — nothing leaves" aria-pressed="false" data-node-kind="external" data-node-sublabel="usage windows cache" data-node-context="your machine · 127.0.0.1 — nothing leaves">
-          <title>~/.claude.json · usage windows cache · your machine · 127.0.0.1 — nothing leaves</title>
+        <g id="node-usage_cache" data-node-id="usage_cache" data-node-label="~/.claude.json" tabindex="0" role="button" aria-label="Focus ~/.claude.json, usage windows cache, your machine · 127.0.0.1 - nothing leaves" aria-pressed="false" data-node-kind="external" data-node-sublabel="usage windows cache" data-node-context="your machine · 127.0.0.1 - nothing leaves">
+          <title>~/.claude.json · usage windows cache · your machine · 127.0.0.1 - nothing leaves</title>
           <rect x="60" y="260" width="150" height="62" rx="6" class="c-mask"/>
           <rect x="60" y="260" width="150" height="62" rx="6" class="c-external" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(66 266) scale(0.6875)">
@@ -4954,8 +4954,8 @@
         <text data-detail="context" x="135" y="305" class="t-muted" font-size="9" text-anchor="middle">usage windows cache</text>
         </g>
 
-        <g id="node-processes" data-node-id="processes" data-node-label="Host processes" tabindex="0" role="button" aria-label="Focus Host processes, ps · liveness, your machine · 127.0.0.1 — nothing leaves" aria-pressed="false" data-node-kind="external" data-node-sublabel="ps · liveness" data-node-context="your machine · 127.0.0.1 — nothing leaves">
-          <title>Host processes · ps · liveness · your machine · 127.0.0.1 — nothing leaves</title>
+        <g id="node-processes" data-node-id="processes" data-node-label="Host processes" tabindex="0" role="button" aria-label="Focus Host processes, ps · liveness, your machine · 127.0.0.1 - nothing leaves" aria-pressed="false" data-node-kind="external" data-node-sublabel="ps · liveness" data-node-context="your machine · 127.0.0.1 - nothing leaves">
+          <title>Host processes · ps · liveness · your machine · 127.0.0.1 - nothing leaves</title>
           <rect x="60" y="390" width="150" height="62" rx="6" class="c-mask"/>
           <rect x="60" y="390" width="150" height="62" rx="6" class="c-external" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(66 396) scale(0.6875)">
@@ -4966,8 +4966,8 @@
         <text data-detail="context" x="135" y="435" class="t-muted" font-size="9" text-anchor="middle">ps · liveness</text>
         </g>
 
-        <g id="node-manifest" data-node-id="manifest" data-node-label="Read manifest" tabindex="0" role="button" aria-label="Focus Read manifest, --what-i-read · consent, your machine · 127.0.0.1 — nothing leaves › tokenhud-agent · per host" aria-pressed="false" data-node-kind="security" data-node-sublabel="--what-i-read · consent" data-node-context="your machine · 127.0.0.1 — nothing leaves › tokenhud-agent · per host">
-          <title>Read manifest · --what-i-read · consent · your machine · 127.0.0.1 — nothing leaves › tokenhud-agent · per host</title>
+        <g id="node-manifest" data-node-id="manifest" data-node-label="Read manifest" tabindex="0" role="button" aria-label="Focus Read manifest, --what-i-read · consent, your machine · 127.0.0.1 - nothing leaves › tokenhud-agent · per host" aria-pressed="false" data-node-kind="security" data-node-sublabel="--what-i-read · consent" data-node-context="your machine · 127.0.0.1 - nothing leaves › tokenhud-agent · per host">
+          <title>Read manifest · --what-i-read · consent · your machine · 127.0.0.1 - nothing leaves › tokenhud-agent · per host</title>
           <rect x="400" y="120" width="150" height="62" rx="6" class="c-mask"/>
           <rect x="400" y="120" width="150" height="62" rx="6" class="c-security" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(406 126) scale(0.6875)">
@@ -4978,8 +4978,8 @@
         <text data-detail="context" x="475" y="165" class="t-muted" font-size="9" text-anchor="middle">--what-i-read · consent</text>
         </g>
 
-        <g id="node-collectors" data-node-id="collectors" data-node-label="Collectors" tabindex="0" role="button" aria-label="Focus Collectors, one function per source, your machine · 127.0.0.1 — nothing leaves › tokenhud-agent · per host" aria-pressed="false" data-node-kind="backend" data-node-sublabel="one function per source" data-node-context="your machine · 127.0.0.1 — nothing leaves › tokenhud-agent · per host">
-          <title>Collectors · one function per source · your machine · 127.0.0.1 — nothing leaves › tokenhud-agent · per host</title>
+        <g id="node-collectors" data-node-id="collectors" data-node-label="Collectors" tabindex="0" role="button" aria-label="Focus Collectors, one function per source, your machine · 127.0.0.1 - nothing leaves › tokenhud-agent · per host" aria-pressed="false" data-node-kind="backend" data-node-sublabel="one function per source" data-node-context="your machine · 127.0.0.1 - nothing leaves › tokenhud-agent · per host">
+          <title>Collectors · one function per source · your machine · 127.0.0.1 - nothing leaves › tokenhud-agent · per host</title>
           <rect x="400" y="260" width="150" height="62" rx="6" class="c-mask"/>
           <rect x="400" y="260" width="150" height="62" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(406 266) scale(0.6875)">
@@ -4989,8 +4989,8 @@
         <text data-detail="context" x="475" y="305" class="t-muted" font-size="9" text-anchor="middle">one function per source</text>
         </g>
 
-        <g id="node-agent_loop" data-node-id="agent_loop" data-node-label="tokenhud-agent" tabindex="0" role="button" aria-label="Focus tokenhud-agent, collect → POST · disk buffer, your machine · 127.0.0.1 — nothing leaves › tokenhud-agent · per host" aria-pressed="false" data-node-kind="backend" data-node-sublabel="collect → POST · disk buffer" data-node-context="your machine · 127.0.0.1 — nothing leaves › tokenhud-agent · per host">
-          <title>tokenhud-agent · collect → POST · disk buffer · your machine · 127.0.0.1 — nothing leaves › tokenhud-agent · per host</title>
+        <g id="node-agent_loop" data-node-id="agent_loop" data-node-label="tokenhud-agent" tabindex="0" role="button" aria-label="Focus tokenhud-agent, collect → POST · disk buffer, your machine · 127.0.0.1 - nothing leaves › tokenhud-agent · per host" aria-pressed="false" data-node-kind="backend" data-node-sublabel="collect → POST · disk buffer" data-node-context="your machine · 127.0.0.1 - nothing leaves › tokenhud-agent · per host">
+          <title>tokenhud-agent · collect → POST · disk buffer · your machine · 127.0.0.1 - nothing leaves › tokenhud-agent · per host</title>
           <rect x="660" y="260" width="160" height="62" rx="6" class="c-mask"/>
           <rect x="660" y="260" width="160" height="62" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(666 266) scale(0.6875)">
@@ -5000,8 +5000,8 @@
         <text data-detail="context" x="740" y="305" class="t-muted" font-size="9" text-anchor="middle">collect → POST · disk buffer</text>
         </g>
 
-        <g id="node-ingest" data-node-id="ingest" data-node-label="Ingest gate" tabindex="0" role="button" aria-label="Focus Ingest gate, X-TokenHUD-Key · hmac, your machine · 127.0.0.1 — nothing leaves › tokenhud-server" aria-pressed="false" data-node-kind="security" data-node-sublabel="X-TokenHUD-Key · hmac" data-node-context="your machine · 127.0.0.1 — nothing leaves › tokenhud-server">
-          <title>Ingest gate · X-TokenHUD-Key · hmac · your machine · 127.0.0.1 — nothing leaves › tokenhud-server</title>
+        <g id="node-ingest" data-node-id="ingest" data-node-label="Ingest gate" tabindex="0" role="button" aria-label="Focus Ingest gate, X-TokenHUD-Key · hmac, your machine · 127.0.0.1 - nothing leaves › tokenhud-server" aria-pressed="false" data-node-kind="security" data-node-sublabel="X-TokenHUD-Key · hmac" data-node-context="your machine · 127.0.0.1 - nothing leaves › tokenhud-server">
+          <title>Ingest gate · X-TokenHUD-Key · hmac · your machine · 127.0.0.1 - nothing leaves › tokenhud-server</title>
           <rect x="665" y="510" width="150" height="62" rx="6" class="c-mask"/>
           <rect x="665" y="510" width="150" height="62" rx="6" class="c-security" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(671 516) scale(0.6875)">
@@ -5012,8 +5012,8 @@
         <text data-detail="context" x="740" y="555" class="t-muted" font-size="9" text-anchor="middle">X-TokenHUD-Key · hmac</text>
         </g>
 
-        <g id="node-store" data-node-id="store" data-node-label="SQLite" tabindex="0" role="button" aria-label="Focus SQLite, hosts · snapshots · endings, your machine · 127.0.0.1 — nothing leaves › tokenhud-server" aria-pressed="false" data-node-kind="database" data-node-sublabel="hosts · snapshots · endings" data-node-context="your machine · 127.0.0.1 — nothing leaves › tokenhud-server">
-          <title>SQLite · hosts · snapshots · endings · your machine · 127.0.0.1 — nothing leaves › tokenhud-server</title>
+        <g id="node-store" data-node-id="store" data-node-label="SQLite" tabindex="0" role="button" aria-label="Focus SQLite, hosts · snapshots · endings, your machine · 127.0.0.1 - nothing leaves › tokenhud-server" aria-pressed="false" data-node-kind="database" data-node-sublabel="hosts · snapshots · endings" data-node-context="your machine · 127.0.0.1 - nothing leaves › tokenhud-server">
+          <title>SQLite · hosts · snapshots · endings · your machine · 127.0.0.1 - nothing leaves › tokenhud-server</title>
           <rect x="965" y="510" width="160" height="62" rx="6" class="c-mask"/>
           <rect x="965" y="510" width="160" height="62" rx="6" class="c-database" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(971 516) scale(0.6875)">
@@ -5024,8 +5024,8 @@
         <text data-detail="context" x="1045" y="555" class="t-muted" font-size="9" text-anchor="middle">hosts · snapshots · endings</text>
         </g>
 
-        <g id="node-overview" data-node-id="overview" data-node-label="Board builder" tabindex="0" role="button" aria-label="Focus Board builder, built once · SSE stream, your machine · 127.0.0.1 — nothing leaves › tokenhud-server" aria-pressed="false" data-node-kind="backend" data-node-sublabel="built once · SSE stream" data-node-context="your machine · 127.0.0.1 — nothing leaves › tokenhud-server">
-          <title>Board builder · built once · SSE stream · your machine · 127.0.0.1 — nothing leaves › tokenhud-server</title>
+        <g id="node-overview" data-node-id="overview" data-node-label="Board builder" tabindex="0" role="button" aria-label="Focus Board builder, built once · SSE stream, your machine · 127.0.0.1 - nothing leaves › tokenhud-server" aria-pressed="false" data-node-kind="backend" data-node-sublabel="built once · SSE stream" data-node-context="your machine · 127.0.0.1 - nothing leaves › tokenhud-server">
+          <title>Board builder · built once · SSE stream · your machine · 127.0.0.1 - nothing leaves › tokenhud-server</title>
           <rect x="1275" y="510" width="150" height="62" rx="6" class="c-mask"/>
           <rect x="1275" y="510" width="150" height="62" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(1281 516) scale(0.6875)">
@@ -5035,8 +5035,8 @@
         <text data-detail="context" x="1350" y="555" class="t-muted" font-size="9" text-anchor="middle">built once · SSE stream</text>
         </g>
 
-        <g id="node-dashboard" data-node-id="dashboard" data-node-label="Dashboard" tabindex="0" role="button" aria-label="Focus Dashboard, one file · no build step, your machine · 127.0.0.1 — nothing leaves" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="one file · no build step" data-node-context="your machine · 127.0.0.1 — nothing leaves">
-          <title>Dashboard · one file · no build step · your machine · 127.0.0.1 — nothing leaves</title>
+        <g id="node-dashboard" data-node-id="dashboard" data-node-label="Dashboard" tabindex="0" role="button" aria-label="Focus Dashboard, one file · no build step, your machine · 127.0.0.1 - nothing leaves" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="one file · no build step" data-node-context="your machine · 127.0.0.1 - nothing leaves">
+          <title>Dashboard · one file · no build step · your machine · 127.0.0.1 - nothing leaves</title>
           <rect x="1575" y="510" width="140" height="62" rx="6" class="c-mask"/>
           <rect x="1575" y="510" width="140" height="62" rx="6" class="c-frontend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(1581 516) scale(0.6875)">
@@ -5300,7 +5300,7 @@
           <h3>Privacy Boundary</h3>
         </div>
         <ul>
-          <li>&bull; Prompt and completion text are never read into the payload — no code path collects them</li>
+          <li>&bull; Prompt and completion text are never read into the payload - no code path collects them</li>
           <li>&bull; Consent is recorded against a SHA-256 digest of the read manifest; a release that reads more asks again</li>
           <li>&bull; Three tests hold the manifest to the code: undeclared paths fail the build</li>
         </ul>
@@ -5314,7 +5314,7 @@
         <ul>
           <li>&bull; Every SSE event carries the whole overview, so a missed event never leaves a reader behind</li>
           <li>&bull; Polling stays as the fallback when EventSource is absent or the stream errors</li>
-          <li>&bull; Freshness is bounded by TOKENHUD_INTERVAL — how often the agent looks</li>
+          <li>&bull; Freshness is bounded by TOKENHUD_INTERVAL - how often the agent looks</li>
         </ul>
       </div>
 
@@ -5358,7 +5358,7 @@
     }
 
     /* ============================================================
-       Visual style try-on — one topology, four bundled presets.
+       Visual style try-on - one topology, four bundled presets.
        The reader's choice is intentionally session-only: it updates the
        live page and canonical SVG together, but never rewrites the source,
        URL, or a later diagram's authored default.
@@ -5469,7 +5469,7 @@
     })();
 
     /* ============================================================
-       Theme toggle — persists to localStorage, respects system pref
+       Theme toggle - persists to localStorage, respects system pref
        ============================================================ */
 
     Archify.theme = (function () {
@@ -5534,7 +5534,7 @@
     })();
 
     /* ============================================================
-       Export — Share Card / PNG / JPEG / WebP / SVG / WebM and clipboard
+       Export - Share Card / PNG / JPEG / WebP / SVG / WebM and clipboard
 
        Raster exports are always rendered at 4x source resolution for
        maximum sharpness. The trick: we set the serialized SVG's
@@ -5572,12 +5572,12 @@
        * Serialize the main SVG into a standalone document.
        *
        * Two modes:
-       * - Default (opts.autoTheme=false) — locks the serialized SVG to the
+       * - Default (opts.autoTheme=false) - locks the serialized SVG to the
        *   viewer's current theme. Used by the raster pipeline
        *   (PNG/JPEG/WebP/clipboard) because canvas rasterization needs
        *   deterministic colors; a raster cannot react to
        *   prefers-color-scheme after encoding.
-       * - autoTheme=true — emits BOTH dark and light variable sets plus a
+       * - autoTheme=true - emits BOTH dark and light variable sets plus a
        *   `@media (prefers-color-scheme)` rule so the resulting SVG
        *   self-themes when embedded in GitHub READMEs or other hosts that
        *   expose a color scheme. Used for "Download SVG".
@@ -5943,7 +5943,7 @@
           : null;
         // Scale width/height so the browser rasterizes the vectors at target
         // resolution directly. viewBox stays unchanged so coordinates don't
-        // shift. This is the key to sharp rasters — do NOT scale later via
+        // shift. This is the key to sharp rasters - do NOT scale later via
         // canvas upscaling.
         clone.setAttribute('width', vb.width * scale);
         clone.setAttribute('height', vb.height * scale);
@@ -6122,7 +6122,7 @@
         // Serialize at a safe scale (RASTER_SCALE=4 by default, reduced if the
         // resulting canvas would exceed MAX_CANVAS_PIXELS). The SVG itself is
         // rasterized at target resolution natively; drawImage draws at natural
-        // size — no upsampling blur.
+        // size - no upsampling blur.
         var svg = document.querySelector('.diagram-container svg');
         var vb = svg.viewBox.baseVal;
         var scale = pickSafeScale(vb.width, vb.height);
@@ -6142,7 +6142,7 @@
                 ctx.fillStyle = currentBg();
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
               }
-              // Draw at natural size — SVG was already rasterized at target res.
+              // Draw at natural size - SVG was already rasterized at target res.
               ctx.drawImage(img, 0, 0);
               URL.revokeObjectURL(svgUrl);
               var mime = format === 'jpeg' ? 'image/jpeg' :
@@ -6953,7 +6953,7 @@
     })();
 
     /* ============================================================
-       Motion Governor — one reader switch and one motion budget. Ambient
+       Motion Governor - one reader switch and one motion budget. Ambient
        trace yields to the strongest semantic owner; Still also parks bounded
        viewer signals without discarding their static meaning.
        ============================================================ */
@@ -7288,7 +7288,7 @@
     Archify.sourceEvidence.installBeacons();
 
     /* ============================================================
-       Explore — stable-ID neighborhood focus + dependency-free pan/zoom.
+       Explore - stable-ID neighborhood focus + dependency-free pan/zoom.
        Renderer IDs become deep-linkable semantic hooks without turning the
        standalone artifact into a canvas editor.
        ============================================================ */
@@ -7642,7 +7642,7 @@
           name.textContent = source.label || source.path.split('/').pop() || source.path;
           var location = document.createElement('code');
           location.textContent = source.line
-            ? 'L' + source.line + (source.endLine && source.endLine !== source.line ? '–' + source.endLine : '') + ' ↗'
+            ? 'L' + source.line + (source.endLine && source.endLine !== source.line ? '-' + source.endLine : '') + ' ↗'
             : 'Open ↗';
           var sourcePath = document.createElement('small');
           sourcePath.textContent = source.path;
@@ -8651,7 +8651,7 @@
     })();
 
     /* ============================================================
-       Intent Trace — temporary one-hop topology before durable focus.
+       Intent Trace - temporary one-hop topology before durable focus.
        Fine-pointer hover and keyboard focus share the same stable-ID preview;
        touch continues directly to the existing click-to-focus contract.
        ============================================================ */
@@ -9165,7 +9165,7 @@
           button.setAttribute('aria-pressed', 'false');
           button.setAttribute('tabindex', index === 0 ? '0' : '-1');
           button.setAttribute('aria-label', 'Open chapter ' + (index + 1) + ' of ' + views.length + ': ' + view.label + ', ' + view.focus.length + ' stops');
-          button.title = view.label + ' — ' + (view.note || view.focus.length + ' selected nodes');
+          button.title = view.label + ' - ' + (view.note || view.focus.length + ' selected nodes');
           var position = document.createElement('span');
           position.className = 'guided-view-chapter-index';
           position.setAttribute('aria-hidden', 'true');
@@ -9209,7 +9209,7 @@
             deltaLabel.hidden = true;
             button.removeAttribute('data-chapter-delta');
             button.setAttribute('aria-label', 'Current chapter ' + (index + 1) + ' of ' + views.length + ': ' + views[index].label + ', ' + views[index].focus.length + ' stops');
-            button.title = views[index].label + ' — current chapter, ' + views[index].focus.length + ' stops';
+            button.title = views[index].label + ' - current chapter, ' + views[index].focus.length + ' stops';
           } else {
             var delta = chapterDelta(activeIndex >= 0 ? views[activeIndex] : null, views[index]);
             var compact = '=' + delta.stay.length + ' +' + delta.enter.length + ' \u2212' + delta.leave.length;
@@ -9221,7 +9221,7 @@
             deltaLabel.querySelector('[data-delta-kind="leave"]').textContent = '\u2212' + delta.leave.length;
             button.setAttribute('data-chapter-delta', compact);
             button.setAttribute('aria-label', 'Open chapter ' + (index + 1) + ' of ' + views.length + ': ' + views[index].label + '. Chapter focus delta: ' + expanded);
-            button.title = views[index].label + ' — ' + compact + ' chapter focus';
+            button.title = views[index].label + ' - ' + compact + ' chapter focus';
           }
           if (current) button.setAttribute('aria-current', 'step');
           else button.removeAttribute('aria-current');
@@ -10507,7 +10507,7 @@
     })();
 
     /* ============================================================
-       Adaptive Reader Shell — one diagram across laptop and monitor.
+       Adaptive Reader Shell - one diagram across laptop and monitor.
        The canonical SVG and viewBox never change. On ordinary desktop pages,
        wide diagrams receive only enough outer width to use the available
        height without pushing summary cards below the viewport. Mobile,
@@ -11144,7 +11144,7 @@
     })();
 
     /* ============================================================
-       Semantic Radar — simplified semantic bounds + live viewport.
+       Semantic Radar - simplified semantic bounds + live viewport.
        The radar is built at runtime so the checked artifact still contains
        one canonical SVG block, and export serialization remains untouched.
        ============================================================ */
@@ -11424,7 +11424,7 @@
     })();
 
     /* ============================================================
-       Presentation Stage — a shareable, viewport-filling live view.
+       Presentation Stage - a shareable, viewport-filling live view.
        It changes only HTML layout and URL state; SVG semantics and export
        serialization remain untouched. Escape first clears an active guided
        view/focus, then exits the stage.
@@ -11498,7 +11498,7 @@
     })();
 
     /* ============================================================
-       Node Finder — stable-ID search over the existing semantic SVG.
+       Node Finder - stable-ID search over the existing semantic SVG.
        Search never changes the IR or SVG geometry: selecting a result resets
        the viewport, releases a guided view, and delegates to semantic focus.
        ============================================================ */
@@ -11758,7 +11758,7 @@
     })();
 
     /* ============================================================
-       Route Probe — shortest directed path over compiled semantics.
+       Route Probe - shortest directed path over compiled semantics.
        The graph is read from renderer-owned stable IDs and relationship
        endpoints. BFS order follows authored DOM edge order, so equal-length
        choices are deterministic without adding weights or a graph runtime.
@@ -12771,7 +12771,7 @@
     })();
 
     /* ============================================================
-       Semantic Lens — a counted, viewer-only legend over data-node-kind.
+       Semantic Lens - a counted, viewer-only legend over data-node-kind.
        One selected kind reveals every authored relationship touching it.
        Two selected kinds compare only direct cross-kind relationships while
        preserving the full diagram as a dimmed spatial reference.
@@ -13437,7 +13437,7 @@
     })();
 
     /* ============================================================
-       Diagram Guide — a factual command deck over existing interactions.
+       Diagram Guide - a factual command deck over existing interactions.
        Counts come from compiled semantics; actions delegate to Finder, Route
        Probe, Semantic Radar, Semantic Lens, Story Trail, Presentation, theme, export, and
        camera without adding a second command implementation or SVG state.

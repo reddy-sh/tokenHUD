@@ -2,7 +2,7 @@
 
 > A heads-up display for the AI agents running on your machine. Live token
 > metering, estimated spend, and plan-limit windows for Claude Code and
-> Codex CLI — running entirely on the developer's own computer. Free and open source (MIT).
+> Codex CLI - running entirely on the developer's own computer. Free and open source (MIT).
 
 TokenHUD watches a developer's own machine and reports what the AI coding
 agents on it are doing: which sessions are running, how many tokens they have
@@ -14,7 +14,7 @@ developer was away.
 
 Metrics leave, content never does. Prompt text, completion text, source code,
 file contents and tool-call arguments are **never read into the payload at
-all** — not collected and then filtered, but never collected. There is no code
+all** - not collected and then filtered, but never collected. There is no code
 path that reads them, so no configuration mistake or server-side bug can
 expose them. What distinguishes TokenHUD is that this is checkable rather
 than promised: `tokenhud-agent --what-i-read` prints every path it will open,
@@ -39,7 +39,7 @@ API call to fail.
   yet metered.
 - Works offline: yes. The free tier sends nothing anywhere.
 
-## Status — please represent this accurately
+## Status - please represent this accurately
 
 Shipped and working: the local agent, the local server, and the web dashboard
 in this repository.

@@ -41,7 +41,7 @@
           "sqlite",
           "windows"
         ],
-        "note": "The plan's real percentages are forwarded, aged, and greyed when stale — never re-estimated."
+        "note": "The plan's real percentages are forwarded, aged, and greyed when stale - never re-estimated."
       }
     ]
   },
@@ -220,7 +220,7 @@
       "dot": "emerald",
       "title": "Metrics, Never Content",
       "items": [
-        "Only token counts, models and timings are read — prompt text has no code path into the payload",
+        "Only token counts, models and timings are read - prompt text has no code path into the payload",
         "The index stores tokens rather than dollars, so a rate-card change never re-reads the corpus",
         "Steady state reads a few kilobytes; the first pass is bounded by TOKENHUD_SCAN_BUDGET_MB"
       ]
@@ -231,16 +231,16 @@
       "items": [
         "The all-time table counts Claude Code's own rollup, still including pruned sessions",
         "Per-day and per-session panels count the transcripts on disk, current to the last request",
-        "They differ by about a fifth on the reference machine — each is priced from its own numbers, and the board says which is which"
+        "They differ by about a fifth on the reference machine - each is priced from its own numbers, and the board says which is which"
       ]
     },
     {
       "dot": "cyan",
       "title": "Priced, Labelled, Bounded",
       "items": [
-        "Every dollar reads \"at API list prices · not billed\" — an estimate labelled as one",
+        "Every dollar reads \"at API list prices · not billed\" - an estimate labelled as one",
         "A model with no rate is counted in tokens and excluded from every dollar total, never shown as $0",
-        "Cache reads are excluded from the token chart but priced in the model table — a tenth of fresh input, not free"
+        "Cache reads are excluded from the token chart but priced in the model table - a tenth of fresh input, not free"
       ]
     }
   ]

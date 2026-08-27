@@ -17,7 +17,7 @@
         "id": "server-away",
         "label": "The server is away",
         "focus": ["agent", "buffer", "http"],
-        "note": "Readings buffer on disk and replay on reconnect — nothing is lost."
+        "note": "Readings buffer on disk and replay on reconnect - nothing is lost."
       },
       {
         "id": "poll-fallback",
@@ -46,7 +46,7 @@
     { "from": "http", "to": "agent", "y": 264, "label": "200 OK", "variant": "return" },
     { "from": "store", "to": "board", "y": 306, "label": "diff vs previous → endings", "variant": "emphasis" },
     { "from": "board", "to": "dash", "y": 348, "label": "SSE event · whole overview, gzipped", "variant": "emphasis" },
-    { "from": "agent", "to": "buffer", "y": 420, "label": "no server — buffer the reading", "variant": "dashed" },
+    { "from": "agent", "to": "buffer", "y": 420, "label": "no server - buffer the reading", "variant": "dashed" },
     { "from": "buffer", "to": "agent", "y": 462, "label": "backlog on reconnect", "variant": "return" },
     { "from": "agent", "to": "http", "y": 504, "label": "POST buffered readings", "variant": "default" },
     { "from": "dash", "to": "http", "y": 594, "label": "GET /api/v1/overview · poll fallback", "variant": "dashed", "note": "fires only when EventSource is absent or the stream errors" },
@@ -64,7 +64,7 @@
   ],
   "cards": [
     { "dot": "rose", "title": "One Key, One Direction", "items": ["Writes require X-TokenHUD-Key, compared with a constant-time digest", "Reads are open by default; TOKENHUD_PROTECT_READS=1 closes them", "On loopback the key is ceremony; beyond loopback it is a real credential behind TLS"] },
-    { "dot": "cyan", "title": "Whole State Every Event", "items": ["Each SSE event carries the entire overview — a missed event never causes drift", "gzip with a sync flush keeps the stream as cheap as the polls it replaced", "A reconnect is a resync, not a gap to reconcile"] },
-    { "dot": "emerald", "title": "Nothing Lost Offline", "items": ["Readings buffer on disk while the server is away and replay in order", "The board schedules from intervalSeconds carried in every snapshot", "Freshness is bounded by TOKENHUD_INTERVAL — how often the agent looks"] }
+    { "dot": "cyan", "title": "Whole State Every Event", "items": ["Each SSE event carries the entire overview - a missed event never causes drift", "gzip with a sync flush keeps the stream as cheap as the polls it replaced", "A reconnect is a resync, not a gap to reconcile"] },
+    { "dot": "emerald", "title": "Nothing Lost Offline", "items": ["Readings buffer on disk while the server is away and replay in order", "The board schedules from intervalSeconds carried in every snapshot", "Freshness is bounded by TOKENHUD_INTERVAL - how often the agent looks"] }
   ]
 }

@@ -26,12 +26,12 @@ site/playwright-report/
 !site/*.png
 !site/public/*.png
 
-# Amplify backend — per-branch outputs and generated code are deploy products
+# Amplify backend - per-branch outputs and generated code are deploy products
 node_modules/
 amplify_outputs.json
 .amplify/
 .npm/
 
-# Rust build output — a few hundred MB of it
+# Rust build output - a few hundred MB of it
 agent/target/
 server/target/

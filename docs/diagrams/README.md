@@ -1,6 +1,6 @@
 # Diagrams
 
-Eight interactive, self-contained HTML diagrams of this repository — open any
+Eight interactive, self-contained HTML diagrams of this repository - open any
 of them in a browser; no server, no build step, no external reference. Each has
 light/dark themes, pan/zoom, search, guided views, and PNG/SVG export built in.
 

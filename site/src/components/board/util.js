@@ -29,9 +29,9 @@ export const shortModel = m => String(m).replace(/^claude-/, '').replace(/-\d{8}
 export const dayLabel = d => { const p = String(d).split('-'); return p.length === 3 ? `${p[2]}/${p[1]}` : d }
 
 export function ago(iso) {
-  if (!iso) return '—'
+  if (!iso) return '-'
   const s = (Date.now() - new Date(iso).getTime()) / 1000
-  if (!isFinite(s)) return '—'
+  if (!isFinite(s)) return '-'
   if (s < 60) return 'just now'
   if (s < 3600) return Math.floor(s / 60) + 'm ago'
   if (s < 86400) return Math.floor(s / 3600) + 'h ago'
@@ -46,7 +46,7 @@ export function until(iso) {
 
 /* Coarse on purpose. Nobody schedules their afternoon on the seconds column. */
 export function dur(secs) {
-  if (secs == null) return '—'
+  if (secs == null) return '-'
   if (secs <= 0) return 'now'
   const d = Math.floor(secs / 86400), h = Math.floor(secs % 86400 / 3600), m = Math.floor(secs % 3600 / 60)
   if (d) return `${d}d ${h}h`
@@ -92,7 +92,7 @@ export function niceMax(v) {
 /* ── palette (the site is dark-only, so these are constants) ────────── */
 
 export const SERIES = [
-  'oklch(74% 0.18 55)',   /* amber — the site accent */
+  'oklch(74% 0.18 55)',   /* amber - the site accent */
   'oklch(70% 0.14 230)',  /* blue */
   'oklch(74% 0.16 145)',  /* green */
   'oklch(68% 0.20 18)',   /* red-pink */

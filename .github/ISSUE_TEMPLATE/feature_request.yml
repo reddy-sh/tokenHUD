@@ -7,7 +7,7 @@ body:
       value: |
         Before writing: please check the **Never** column in the README's scope
         table. Some things will be declined on principle no matter how well
-        argued — prompt or completion text leaving the host, collecting source
+        argued - prompt or completion text leaving the host, collecting source
         code, sitting in the request path as a proxy, production application
         tracing, and output quality scoring. Those are the product's boundary,
         not a backlog.

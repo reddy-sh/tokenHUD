@@ -1,4 +1,4 @@
-# Run the API server on a Linux box — the machine that holds the board's
+# Run the API server on a Linux box - the machine that holds the board's
 # database and takes every agent's readings.
 #
 # Install as a USER service, same as the agent:
@@ -12,7 +12,7 @@
 #   systemctl --user status tokenhud-server
 #   journalctl --user -u tokenhud-server -f
 #
-# The server must outlive your login session — an agent that keeps reporting
+# The server must outlive your login session - an agent that keeps reporting
 # to a board that died at logout is the fleet's most confusing failure. So:
 #
 #   sudo loginctl enable-linger $USER

@@ -16,7 +16,7 @@
         "id": "the-wire",
         "label": "What crosses the wire",
         "focus": ["agent_loop", "ingest", "store"],
-        "note": "A keyed POST carries counts and metadata only — never prompt or completion text."
+        "note": "A keyed POST carries counts and metadata only - never prompt or completion text."
       },
       {
         "id": "reading-to-board",
@@ -39,7 +39,7 @@
     { "id": "dashboard", "type": "frontend", "label": "Dashboard", "sublabel": "one file · no build step", "pos": [1575, 510], "size": [140, 62] }
   ],
   "boundaries": [
-    { "kind": "region", "label": "your machine · 127.0.0.1 — nothing leaves", "wraps": ["transcripts", "usage_cache", "processes", "manifest", "collectors", "agent_loop", "ingest", "store", "overview", "dashboard"] },
+    { "kind": "region", "label": "your machine · 127.0.0.1 - nothing leaves", "wraps": ["transcripts", "usage_cache", "processes", "manifest", "collectors", "agent_loop", "ingest", "store", "overview", "dashboard"] },
     { "kind": "security-group", "label": "tokenhud-agent · per host", "wraps": ["collectors", "manifest", "agent_loop"] },
     { "kind": "security-group", "label": "tokenhud-server", "wraps": ["ingest", "store", "overview"] }
   ],
@@ -55,8 +55,8 @@
     { "from": "overview", "to": "dashboard", "label": "SSE · whole state, gzipped", "variant": "emphasis" }
   ],
   "cards": [
-    { "dot": "rose", "title": "Privacy Boundary", "items": ["Prompt and completion text are never read into the payload — no code path collects them", "Consent is recorded against a SHA-256 digest of the read manifest; a release that reads more asks again", "Three tests hold the manifest to the code: undeclared paths fail the build"] },
-    { "dot": "cyan", "title": "Push, Not Poll", "items": ["Every SSE event carries the whole overview, so a missed event never leaves a reader behind", "Polling stays as the fallback when EventSource is absent or the stream errors", "Freshness is bounded by TOKENHUD_INTERVAL — how often the agent looks"] },
+    { "dot": "rose", "title": "Privacy Boundary", "items": ["Prompt and completion text are never read into the payload - no code path collects them", "Consent is recorded against a SHA-256 digest of the read manifest; a release that reads more asks again", "Three tests hold the manifest to the code: undeclared paths fail the build"] },
+    { "dot": "cyan", "title": "Push, Not Poll", "items": ["Every SSE event carries the whole overview, so a missed event never leaves a reader behind", "Polling stays as the fallback when EventSource is absent or the stream errors", "Freshness is bounded by TOKENHUD_INTERVAL - how often the agent looks"] },
     { "dot": "amber", "title": "Honest Numbers", "items": ["Dollar figures are estimated at API list prices and labelled so on every panel", "A model with no rate is reported unpriced, never $0", "Endings derived across a sleep are shown as a time range, not a guessed instant"] }
   ]
 }

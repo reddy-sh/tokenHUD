@@ -1,4 +1,4 @@
-# Run the agent on a Linux box — a build server, a CI runner, anything with
+# Run the agent on a Linux box - a build server, a CI runner, anything with
 # agents on it that you want on the board.
 #
 # Install as a USER service, not a system one:
@@ -14,7 +14,7 @@
 #
 # A user service because the agent reads ~/.claude, which belongs to you. Run
 # it as root and it reads root's home, finds nothing, and reports an idle
-# machine — which is worse than not running at all, because it looks like data.
+# machine - which is worse than not running at all, because it looks like data.
 #
 # If nobody stays logged in on that box:
 #   sudo loginctl enable-linger $USER

@@ -138,7 +138,7 @@
   "boundaries": [
     {
       "kind": "region",
-      "label": "GitHub — free Actions, no external services",
+      "label": "GitHub - free Actions, no external services",
       "wraps": [
         "actions",
         "package",
@@ -197,9 +197,9 @@
       "dot": "emerald",
       "title": "Nothing To Install Beside Them",
       "items": [
-        "Two static binaries, about 4 MB together — no interpreter, no package manager",
+        "Two static binaries, about 4 MB together - no interpreter, no package manager",
         "install.sh detects OS and architecture from uname: macOS and Linux, x86_64 and arm64",
-        "An unsupported OS exits with a message rather than misbehaving — Windows means WSL2 today"
+        "An unsupported OS exits with a message rather than misbehaving - Windows means WSL2 today"
       ]
     },
     {
@@ -216,7 +216,7 @@
       "title": "CI Treats the Dependency List as a Test",
       "items": [
         "Every push runs fmt, clippy -D warnings, and tests with --nocapture so machine-dependent skips stay visible",
-        "cargo tree --depth 1 is printed in each job — a new dependency must be noticed in review, not discovered later"
+        "cargo tree --depth 1 is printed in each job - a new dependency must be noticed in review, not discovered later"
       ]
     }
   ]

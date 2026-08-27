@@ -1,4 +1,4 @@
-# AWS Amplify Hosting — full-stack deploy of the portal.
+# AWS Amplify Hosting - full-stack deploy of the portal.
 #
 # The backend phase deploys amplify/ (Cognito auth, the Machine table, the
 # ingest function and its public URL) and writes amplify_outputs.json at the

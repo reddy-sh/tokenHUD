@@ -1,14 +1,14 @@
 /* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 */
 /* Hallmark · genre: modern-minimal · macrostructure: Marquee Hero · theme: custom-warm
  * axes: paper=light-warm · display=grotesk-sans · accent=warm-coral (~22°)
- * fonts: Space Grotesk (display) + Inter (body) + JetBrains Mono (code) — self-hosted
+ * fonts: Space Grotesk (display) + Inter (body) + JetBrains Mono (code) - self-hosted
  * tone: technical-warm · audience: developers running AI coding agents · use: clone and run
  * nav: N5 (floating pill, content-sized, blur backdrop) · footer: Ft4 (dense typographic)
- * contrast: pass (40–41) · slop: pass (42–45) · honest: pass (46) · chrome: pass (47)
- * tokens: pass (48) · responsive: pass (49–53) · mobile: pass (34, 49, 50–57)
+ * contrast: pass (40-41) · slop: pass (42-45) · honest: pass (46) · chrome: pass (47)
+ * tokens: pass (48) · responsive: pass (49-53) · mobile: pass (34, 49, 50-57)
  */
 
-/* ── Fonts — self-hosted, same origin, nothing external ─────────────── */
+/* ── Fonts - self-hosted, same origin, nothing external ─────────────── */
 @font-face {
   font-family: "Space Grotesk";
   font-style: normal;
@@ -74,7 +74,7 @@
 }
 
 :root {
-  /* Paper + ink — warm cream tint, warm charcoal. Never #fff/#000. */
+  /* Paper + ink - warm cream tint, warm charcoal. Never #fff/#000. */
   --color-paper: oklch(97.5% 0.006 75);
   --color-paper-2: oklch(95% 0.008 72);
   --color-paper-3: oklch(92% 0.010 70);
@@ -92,7 +92,7 @@
   --color-accent-wash: oklch(93% 0.028 28);
   --color-focus: oklch(60% 0.17 22);
 
-  /* The one dark beat — graphite band + code cards. Warm undertone. */
+  /* The one dark beat - graphite band + code cards. Warm undertone. */
   --color-graphite: oklch(21% 0.010 50);
   --color-graphite-2: oklch(25.5% 0.010 50);
   --color-band: oklch(19% 0.010 50);
@@ -101,18 +101,18 @@
   --color-band-rule: oklch(32% 0.010 55);
   --color-accent-bright: oklch(72% 0.14 22); /* coral on dark */
 
-  /* Alpha variants — overlays and the one whisper shadow */
+  /* Alpha variants - overlays and the one whisper shadow */
   --color-nav-wash: oklch(97.5% 0.006 75 / 0.82);
   --color-veil: oklch(22% 0.014 45 / 0.32);
   --shadow-whisper: 0 1px 3px oklch(22% 0.014 45 / 0.06);
   --shadow-pill: 0 2px 12px oklch(22% 0.014 45 / 0.08);
 
-  /* Type — 2+1: Space Grotesk display · Inter body · JetBrains Mono code */
+  /* Type - 2+1: Space Grotesk display · Inter body · JetBrains Mono code */
   --font-display: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
   --font-body: "Inter", -apple-system, "Segoe UI", Arial, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
-  /* Scale — major third from 16px */
+  /* Scale - major third from 16px */
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
@@ -123,7 +123,7 @@
   --text-display-s: clamp(1.9375rem, 2.4vw + 1rem, 2.75rem);
   --text-display: clamp(2.75rem, 4.8vw + 0.5rem, 4.5rem);
 
-  /* Space — 4pt scale */
+  /* Space - 4pt scale */
   --space-2xs: 0.25rem;
   --space-xs: 0.5rem;
   --space-sm: 0.75rem;
@@ -150,7 +150,7 @@
   --page-gutter: clamp(1rem, 4vw, 2rem);
   --page-max: 72rem;
 
-  /* Z — named, never freestyled */
+  /* Z - named, never freestyled */
   --z-base: 1;
   --z-raised: 10;
   --z-sticky: 200;

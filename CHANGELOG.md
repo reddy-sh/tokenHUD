@@ -8,15 +8,15 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) onc
 ### Added
 - **The dashboard has a root navigation, and the Leaderboard is a section of
   it.** One rail was doing two jobs: switching machines and switching what you
-  were looking at, which is why the leaderboard — a view about the fleet, not
-  about a machine — ended up filed behind a machine picker that does not apply
+  were looking at, which is why the leaderboard - a view about the fleet, not
+  about a machine - ended up filed behind a machine picker that does not apply
   to it. There are now two rails. The root one, behind the topbar hamburger,
   carries **Token Monitoring**, **Leaderboard** and **Settings**; the second
   exists only inside Token Monitoring and carries the machines, the assistant
   and the board's own sections. They collapse independently on purpose: on a
   narrow screen the machine list is the first thing you give up and the product
   switch is the last, and both states persist, as does the section you were in.
-  Opening Leaderboard opens the leaderboard and nothing else — no machine rail,
+  Opening Leaderboard opens the leaderboard and nothing else - no machine rail,
   no board underneath it.
   **Settings** is new and is not a stub: connection (server, whether the admin
   key is held in this browser, disconnect), appearance (theme, and a switch per
@@ -34,36 +34,36 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) onc
   The measures were chosen so one calculation serves three readers. Whoever
   runs the board wants to know where the spend went; whoever runs the platform
   wants concentration and reach; whoever builds the models wants adoption and
-  migration. Hence **reach** beside tokens — depth and breadth are different
-  findings and one column hides which you are looking at — **momentum in share
+  migration. Hence **reach** beside tokens - depth and breadth are different
+  findings and one column hides which you are looking at - **momentum in share
   points** rather than percentage change, because 2% to 4% of a fleet is two
-  points and "+100%" would be true and useless — **cache rate**, because a
+  points and "+100%" would be true and useless - **cache rate**, because a
   workload that reads 99.7% of its context from cache is a different economic
-  animal from one that rebuilds it every turn — and **$/M output**, the whole
+  animal from one that rebuilds it every turn - and **$/M output**, the whole
   bill over the output tokens it produced, which is the realised price of a
   million useful tokens and a number no rate card can give you.
   Codex reports a day's tokens without saying which model spent them, so that
   share is stacked as **unattributed** rather than folded into a model that did
   not earn it.
   **Export aggregates** on the Models page writes a `tokenhud.fleet-demand/1`
-  JSON report — totals, per-model share and reach and cache rates and realised
+  JSON report - totals, per-model share and reach and cache rates and realised
   cost, seven-day momentum, ninety days of daily model split, the hour curve. No
   machine identities and no per-machine rows: a model-demand report is about
   models. A test reads the downloaded bytes and asserts none of the fixture's
   machine names, project names or paths appear in them.
   Two boundaries, stated because they are decisions: nothing is uploaded
-  anywhere — aggregates leave only when a person exports them or publishes a
-  link — and the **hour-of-day curve is withheld below three machines**, because
+  anywhere - aggregates leave only when a person exports them or publishes a
+  link - and the **hour-of-day curve is withheld below three machines**, because
   summed over a team it is a demand curve and over one machine it is somebody's
   sleep schedule. `HOURS_MIN_MACHINES` in `share.rs` is that rule, and
   `the_hours_curve_is_withheld_until_it_is_a_sum_of_people` is the test that
   holds it in place.
   The whitelist grew by exactly two fields to carry this: which models each
   day's tokens went to, and what is running now as `{tool, kind, headless,
-  uptime}` — never a command line, never a pid.
+  uptime}` - never a command line, never a pid.
 - **A leaderboard on the dashboard, and a link that makes it public.** Every
   panel on the board answered "how much did *this machine* do". None answered
-  "compared to what", which is the question that actually changes behaviour —
+  "compared to what", which is the question that actually changes behaviour -
   the reason anyone looks at a LeetCode ranking is to find out where they stand.
   `site/src/lib/leaderboard.js` ranks every reporting machine by tokens,
   estimated value, sessions, tool calls or active days, over today / 7 days /
@@ -75,8 +75,8 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) onc
   unranked rather than tied for last: three machines that did nothing today are
   not joint third.
 - **Shared boards: `POST /api/v1/share` mints a slug, `GET /api/v1/public/board`
-  serves it to anyone.** The slug is the whole credential — 96 bits of the same
-  randomness the ingest key uses — and the public route answers with no key even
+  serves it to anyone.** The slug is the whole credential - 96 bits of the same
+  randomness the ingest key uses - and the public route answers with no key even
   when `TOKENHUD_PROTECT_READS=1`, because closing the private API to anonymous
   readers is a different decision from publishing a link on purpose. A revoked
   slug and an invented one answer identically, so the endpoint cannot be used to
@@ -94,7 +94,7 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) onc
   otherwise each machine wears a pseudonym hashed from the slug **and** the
   host, so two shared boards of one fleet cannot be lined up against each other
   to work out who is who. `tests/share.rs` asserts this against the bytes an
-  anonymous stranger actually receives, not against the whitelist function — a
+  anonymous stranger actually receives, not against the whitelist function - a
   unit test on the filter can pass while the route around it leaks.
   The Share dialog shows the same guarantee twice: as two columns of prose, and
   as a live preview fetched from the real public link with no key attached. A
@@ -107,20 +107,20 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) onc
 - **GitHub Copilot CLI is read, not just detected.** Copilot's two halves store
   differently, and only one is readable: the **CLI** writes an append-only event
   log per session to `~/.copilot/session-state/<id>/events.jsonl` whose
-  `session.shutdown` records carry the full breakdown — input, output, cache
+  `session.shutdown` records carry the full breakdown - input, output, cache
   read, cache write and reasoning tokens per model, plus premium requests and
   AI units (on this machine: 494,703 tokens and 0.99 premium requests across six
   requests). The **VS Code extension** keeps only `sessions` and `turns` tables
   of conversation and no usage at all, so it is not claimed to be read.
   The trap worth naming: these metrics are **per segment and must be summed**,
   the exact opposite of Codex's cumulative `total_token_usage`. A resumed
-  session writes one shutdown record per stop, and taking the last — the habit
-  the Codex collector correctly enforces — would silently divide a session's
+  session writes one shutdown record per stop, and taking the last - the habit
+  the Codex collector correctly enforces - would silently divide a session's
   usage by the number of times it was resumed. Prompt text and tool arguments
   are never parsed: conversation records are skipped by type, and a tool call
   contributes its name alone.
 - **Every integration is on the board, and the quiet ones say what to do.**
-  A tile with no numbers used to be a dead end — it answered "what can I see?"
+  A tile with no numbers used to be a dead end - it answered "what can I see?"
   and left "why can't I see Gemini, and what do I do about it?" hanging.
   `agent/src/integrations.rs` now catalogues twenty-six tools, resolves each
   against the machine into one of six states, and carries the steps that move it
@@ -130,7 +130,7 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) onc
   has no usage API at all); **Windsurf** exposes credits and never tokens, and
   only to a team service key; **Amazon Q Developer** publishes no token metric
   in any of its 43 reported metrics, which the tile states outright rather than
-  implying a number exists. Web products — Replit, v0, Bolt, Lovable — are listed
+  implying a number exists. Web products - Replit, v0, Bolt, Lovable - are listed
   with no steps, because inventing an enablement path for them would waste an
   afternoon. Each entry is marked `verified` (opened on a real machine) or
   `documented` (from the tool's own docs), because a wrong setup step costs a
@@ -138,53 +138,53 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) onc
   The catalogue probes for existence only; every path it touches is declared in
   the manifest under PROBED, which is why the consent digest changes and the
   agent asks again rather than inheriting an older yes.
-- **Sign in, add a machine, watch the board — the portal is live.**
+- **Sign in, add a machine, watch the board - the portal is live.**
   [tokenhud.com](https://tokenhud.com) now signs you in (AWS Amplify, Cognito
   email and password) and registers machines: **Machines → Add machine** mints
   a one-shot enrollment link (15-minute expiry, single use) and shows two
-  commands — the curl install and `tokenhud-agent enroll "<ingest-url>#<token>"`.
+  commands - the curl install and `tokenhud-agent enroll "<ingest-url>#<token>"`.
   The agent speaks one protocol either way: it enrolls against the cloud ingest
-  endpoint — a Lambda Function URL running a function that reproduces the
+  endpoint - a Lambda Function URL running a function that reproduces the
   server's exact wire protocol, status codes, JSON keys and pairing-code
-  derivation — precisely as it would against a local server. Enrolling no longer
+  derivation - precisely as it would against a local server. Enrolling no longer
   exits: an approved machine falls straight through into the reporting loop, so
   one command both registers the machine and starts it heartbeating
   `POST /api/v1/ingest` every `TOKENHUD_INTERVAL` seconds (default 30) with its
   own per-machine key. Those heartbeats go to that ingest Function URL, not to
-  tokenhud.com — which is the address to allow if egress is filtered. Nothing
+  tokenhud.com - which is the address to allow if egress is filtered. Nothing
   else needs configuring, because `~/.tokenhud/machine.json` carries both the
   server URL and that machine's key; keeping it running across logins is the
   launchd or systemd unit in `agent/dist/`.
-  Machines are auto-approved — the signed-in owner minted the link seconds
-  earlier — with the pairing code still shown on both ends for eye-matching;
+  Machines are auto-approved - the signed-in owner minted the link seconds
+  earlier - with the pairing code still shown on both ends for eye-matching;
   the board updates the moment a heartbeat is written (AppSync subscriptions),
   and revoking a machine in the portal shuts that one door. The privacy line
   has not moved: nothing leaves a machine until you enroll it, metrics leave
   and content never does, and the cloud stores the same snapshot the local
   server did.
 - **Devin is read, not just detected.** Devin ships two products and they store
-  differently: the **Devin CLI** persists real per-session usage —
-  `total_credit_cost` and `total_acu_cost`, plus model and mode — in
+  differently: the **Devin CLI** persists real per-session usage -
+  `total_credit_cost` and `total_acu_cost`, plus model and mode - in
   `~/.local/share/devin/cli/sessions.db`, and the board now surfaces it (on this
   machine: 25,600 credits, 24,800 of them on `claude-opus-4-6-thinking`). It is
   read through `sqlite3`, read-only, with a column-scoped query that never names
   the `prompt_history` / `message_nodes` / `tool_call_state` tables or the
-  `title` / `cogs_json` columns — the conversation is never opened. Credits are
+  `title` / `cogs_json` columns - the conversation is never opened. Credits are
   shown as credits; no credit→dollar rate is invented. **Devin Desktop** adds
   session activity only (it records no usage locally). Devin's MCP servers
   (`~/.config/devin/mcp_config.json`) and custom subagents (`~/.config/devin/agents/`)
-  are traced by name — `env`/`headers` secrets and agent bodies never read.
+  are traced by name - `env`/`headers` secrets and agent bodies never read.
 - **An honest line on cloud-only tools.** Cursor, Devin Desktop, Windsurf,
   Gemini CLI, Copilot, Antigravity and Aider are detected but keep usage in their
   cloud; the board says so plainly rather than inventing a local number. Real
-  figures for those need their own APIs — an opt-in network path, not a file.
+  figures for those need their own APIs - an opt-in network path, not a file.
 - **Fixed: the assistant picker did not pick anything.** Choosing Codex CLI
-  redrew Claude Code's panels, unchanged, under a Codex label — same sessions,
+  redrew Claude Code's panels, unchanged, under a Codex label - same sessions,
   same models, same usage windows, all of them read from `~/.claude`. The board
   collected Codex data and then never read it: `web/index.html` contained no
   reference to `codex` at all. Panels now declare which assistant they belong
   to (`data-tool`), the picker hides the ones that do not, and Codex has its own
-  board — tiles, plan windows, sessions, tokens by model, and the approval and
+  board - tiles, plan windows, sessions, tokens by model, and the approval and
   sandbox policy each session actually ran under, taken from `turn_context` in
   the rollouts rather than from the config file's default. Where those two
   disagree, the panel says so.
@@ -199,27 +199,27 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) onc
 - **Codex is monitored, not just detected.** The process scanner matched
   `/claude` and nothing else, so a running Codex was invisible and the `tool`
   column the server already keeps on every ending was never filled. Both are
-  matched now, on the binary rather than the word — `~/.codex` appears in half
+  matched now, on the binary rather than the word - `~/.codex` appears in half
   the command lines on a machine that runs Codex and none of them is a running
   Codex. "Running now" and "Recently finished" follow the picker; Codex also
   gets tokens per day and a projects list built from each rollout's own `cwd`,
   since it has no projects directory to read one from.
 - **Governance panels: what an assistant may reach, beside what it did reach.**
   Every other panel answers "what did it spend". These answer "what can it
-  touch" — MCP servers with their transport, credentials and call counts;
+  touch" - MCP servers with their transport, credentials and call counts;
   permission rules by scope; what runs on a hook; plugins, skills and subagents
   with how often each was actually invoked. Configured and used are separate
   columns and never merged: a server mounted six months ago and never called is
   a row only the pair can state, and a call count cannot tell you a server is
-  mounted at all. Servers called but absent from any settings file — the ones a
-  plugin or a project `.mcp.json` brought in — are listed as such rather than
+  mounted at all. Servers called but absent from any settings file - the ones a
+  plugin or a project `.mcp.json` brought in - are listed as such rather than
   quietly dropped.
 - **Tool calls are counted by name.** The transcript index learns a call's tool
   name (`transcripts.json` version 5, so the corpus is re-read once), which is
   what makes "this MCP server has been called 1,386 times" a measurement rather
   than an inference. `subagent_type` and `skill` are taken too, because they
   name a configured capability. Nothing else from a tool's input is read: not
-  the command, not the path, not the prompt — asserted by a test that dumps the
+  the command, not the path, not the prompt - asserted by a test that dumps the
   index and greps it.
 - **An MCP server's credentials are named and never read.** `env` and `headers`
   are read for their KEYS, so the board can say a server is handed
@@ -231,10 +231,10 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) onc
   again.** That is the mechanism working: eight new sources are declared in
   `agent/src/manifest.rs`, `--what-i-read` prints them resolved against your
   machine, and an earlier yes does not cover a release that reads something new.
-- **The agent is now a Rust binary** (`agent/`) — the same readings from the
+- **The agent is now a Rust binary** (`agent/`) - the same readings from the
   same files in the same payload, as one 1.94 MB binary with no interpreter to
   install. On this machine: **6.5 MB resident against the Python agent's
-  24.4 MB**, a warm cycle of 50 ms against 130–200 ms, and a cold scan of a
+  24.4 MB**, a warm cycle of 50 ms against 130-200 ms, and a cold scan of a
   1.1 GB corpus that peaks at 95 MB rather than 590 MB.
 - **The Python agent has been removed.** It served as the oracle first: a
   conformance harness ran both against a frozen copy of real transcripts and
@@ -244,19 +244,19 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) onc
   seams the Python suite never had to cover; the harness itself went with the
   thing it compared against. `~/.tokenhud/transcripts.json` is unchanged, so an
   existing install carries over with no re-scan.
-- **The server is now a Rust binary** (`server/`) — same endpoints, same
+- **The server is now a Rust binary** (`server/`) - same endpoints, same
   database, same wire format, 2.05 MB with SQLite compiled in. Against the
   Python server it replaced: **ingest 2,488 → 5,402 req/s** at 16 concurrent,
   idle RSS **29.5 → 7.7 MB**, and at 1,000 concurrent event-stream watchers the
   Python server refused 390 where this one serves all of them.
 - **The Python server has been removed.** It was the oracle first: a
   conformance harness drove both servers through the same sequence of state
-  changes and diffed every answer — 24
-  checks, zero differing leaves — then its ten checks moved into
+  changes and diffed every answer - 24
+  checks, zero differing leaves - then its ten checks moved into
   `server/tests/` and it went, along with the harness that needed it.
 - **Fixed: floats did not survive being stored and read back.** `serde_json`'s
-  default parser is not correctly rounded — it writes `1.1400000000000001` and
-  reads back the `f64` that prints as `1.14` — where Python's `json` uses
+  default parser is not correctly rounded - it writes `1.1400000000000001` and
+  reads back the `f64` that prints as `1.14` - where Python's `json` uses
   `strtod` and does not. `float_roundtrip` is now on in both binaries. Found by
   porting a check, and unfindable by the conformance harness, which compared two
   implementations against each other rather than either against its own input.
@@ -273,30 +273,30 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) onc
   order that matters, and `status.sh` says what is up, where, and what the store
   is holding. Tests are `cargo test` in `agent/` and in `server/`, and
   `npx playwright test` in `site/`.
-- **`agent/INSTALL.md`** — installation, four routes, with launchd and systemd
+- **`agent/INSTALL.md`** - installation, four routes, with launchd and systemd
   units in `agent/dist/`. Every command in it was run on the machine it was
-  written on, and the parts that were not — Linux, cross-compilation — say so
+  written on, and the parts that were not - Linux, cross-compilation - say so
   instead of implying otherwise.
-- **Usage windows** — your plan's real five-hour and seven-day limits, read from
+- **Usage windows** - your plan's real five-hour and seven-day limits, read from
   Claude Code's own cache. Real percentages and reset instants, with the cache's
   age on the card's face; past an hour the percentages grey out and the
   countdowns stay live, because a reset instant is absolute and does not rot.
-- **Recently finished** — agents that were running at one reading and gone by the
+- **Recently finished** - agents that were running at one reading and gone by the
   next, derived server-side by diffing consecutive snapshots. Carries both
   timestamps so an ending is reported as a range when the gap was large.
-- **Estimated value** — per session, model and day, priced at API list rates and
+- **Estimated value** - per session, model and day, priced at API list rates and
   labelled as an estimate everywhere it appears. Unpriced models report as
   *unpriced*, never as `$0`.
-- **Server-sent events** — the board is pushed to rather than polled; polling
+- **Server-sent events** - the board is pushed to rather than polled; polling
   remains the fallback.
-- **A navigation rail** — docked above 1240px, an overlay below, with the nav rows
+- **A navigation rail** - docked above 1240px, an overlay below, with the nav rows
   doubling as an at-a-glance digest.
 - **Print stylesheet and Save as PDF**, with no PDF library.
-- **`docs/ARCHITECTURE.md`** — what runs today with the measurements behind it,
+- **`docs/ARCHITECTURE.md`** - what runs today with the measurements behind it,
   the difference format, the account/device/agent identity model that
   multi-machine needs, and the Python-vs-Node question settled on those numbers
   rather than around them.
-- Inline SVG favicon and bundled fonts — the board fetches no third-party
+- Inline SVG favicon and bundled fonts - the board fetches no third-party
   asset. The origins it does reach are Cognito and AppSync: signing in, and
   reading your own machines.
 
@@ -308,15 +308,15 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) onc
   update depth exceeded". Two causes, both now closed: inline fallbacks
   (`m.governance || {}`) that made "absent" a *new* value on every render and so
   broke every memo downstream of them, and an unmemoised reshaping of the
-  overview in `SelfHost`. A reading missing any one subtree — an older agent, a
-  collector that found nothing — was enough to trigger it.
+  overview in `SelfHost`. A reading missing any one subtree - an older agent, a
+  collector that found nothing - was enough to trigger it.
 
 
 ### Changed
 - **The server is now the self-host API only.** It keeps history in SQLite and
   answers `/api/v1/*` as before; it no longer serves HTML, and `GET /` is a
   JSON 404. The board lives in the portal, and the portal reads the cloud
-  account you sign in to — `./scripts/start-portal.sh` runs that same portal on
+  account you sign in to - `./scripts/start-portal.sh` runs that same portal on
   localhost against that same cloud, so it does not read a server on
   `127.0.0.1:8787` either. Self-hosting therefore has no UI: enrolling a machine
   is `POST /api/v1/enroll/new` to mint a one-shot link and
@@ -329,7 +329,7 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) onc
   0.05 GB. Reading history replays the chain; round-tripping is asserted
   byte-for-byte by `history_round_trips_through_the_chain` in
   `server/tests/store.rs`. Rows written before this are read as they are
-  and age out with retention — nothing is rewritten.
+  and age out with retention - nothing is rewritten.
 - **The overview is built once per reading, not once per reader.** It was
   re-read from SQLite, re-parsed and re-serialised for every poll and for every
   open event stream, so fan-out cost grew with the audience.
@@ -341,12 +341,12 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) onc
   `~/.tokenhud`, and the ingest header from `X-AIMC-Key` to `X-TokenHUD-Key`.
 - Per-panel dirty checking: an unchanged reading now costs **0.2 ms** to render
   instead of 13.6 ms rebuilding 1993 DOM nodes.
-- HTTP/1.1 with keep-alive, and gzip on responses — 69.3 KB to 14.0 KB on the wire.
+- HTTP/1.1 with keep-alive, and gzip on responses - 69.3 KB to 14.0 KB on the wire.
 
 ### Removed
 - **The embedded web dashboard** (`web/index.html`) and, with it, the server's
   static-file fallback and `TOKENHUD_WEB`. The board is the portal now.
-- **The portal's "Open Dashboard" overlay** — the server-URL-plus-API-key way
+- **The portal's "Open Dashboard" overlay** - the server-URL-plus-API-key way
   in. Signing in and enrolling a machine replaced it.
 
 ### Fixed
@@ -354,7 +354,7 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) onc
   browser opens six connections to an origin by itself. Every connection past
   the backlog was refused by the kernel, so nothing appeared in any log.
   Measured with a thousand simultaneous watchers: 512 refused before, 317 after
-  — the rest of that ceiling is thread-per-reader, and is in
+  - the rest of that ceiling is thread-per-reader, and is in
   `docs/ARCHITECTURE.md` §5 rather than pretended away here.
 - **Retention could orphan a difference chain.** Pruning at the cutoff exactly
   would delete a keyframe that surviving rows still needed; the cut is now taken

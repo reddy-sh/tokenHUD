@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "Portal Delivery — tokenhud.com",
+    "title": "Portal Delivery - tokenhud.com",
     "quality_profile": "showcase",
     "viewBox": [
       1740,
@@ -144,7 +144,7 @@
   "boundaries": [
     {
       "kind": "security-group",
-      "label": "developer machine — local loop",
+      "label": "developer machine - local loop",
       "wraps": [
         "src",
         "lint",
@@ -174,7 +174,7 @@
     {
       "from": "e2e",
       "to": "src",
-      "label": "red — fix",
+      "label": "red - fix",
       "variant": "dashed",
       "fromSide": "top",
       "toSide": "top"
@@ -210,7 +210,7 @@
       "dot": "emerald",
       "title": "Zero-Build Hosting",
       "items": [
-        "amplify.yml runs no build commands — Amplify publishes the site/ directory exactly as committed",
+        "amplify.yml runs no build commands - Amplify publishes the site/ directory exactly as committed",
         "The CSP refuses every external origin, the same property the local dashboard holds",
         "Fonts are self-hosted woff2, cached immutable for a year"
       ]
@@ -220,7 +220,7 @@
       "title": "Checks Before Push",
       "items": [
         "oxlint and the Playwright smoke + dashboard specs run in the local loop",
-        "A .gitignore exception (!site/*.png) keeps og.png and board.png in the publish — without it Amplify would silently lose them"
+        "A .gitignore exception (!site/*.png) keeps og.png and board.png in the publish - without it Amplify would silently lose them"
       ]
     },
     {
@@ -229,7 +229,7 @@
       "items": [
         "site/ has moved to React 19 + Vite 8, but the empty build phase still ships the raw directory",
         "Before the React portal ships, amplify.yml needs vite build and a dist/ artifact directory",
-        "Until then, what Amplify serves is whatever site/ holds at the commit — not the Vite output"
+        "Until then, what Amplify serves is whatever site/ holds at the commit - not the Vite output"
       ]
     }
   ]

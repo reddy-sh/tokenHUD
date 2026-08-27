@@ -42,7 +42,7 @@ key.
 
 | Variable | Default | What it does |
 |---|---|---|
-| `TOKENHUD_BIND` | `127.0.0.1` | Interface to bind. Anything else exposes the server — read the note below |
+| `TOKENHUD_BIND` | `127.0.0.1` | Interface to bind. Anything else exposes the server - read the note below |
 | `TOKENHUD_PORT` | `8787` | Port to listen on |
 | `TOKENHUD_DB` | `./data/tokenhud.db` | The SQLite file. Created with its parent directory |
 | `TOKENHUD_RETENTION_DAYS` | `30` | How long snapshots are kept. Pruned hourly, and once at startup |
@@ -65,7 +65,7 @@ adequate against accident and useless against anyone listening.
 
 If this server ever leaves your machine:
 
-- put TLS in front of it — a reverse proxy is the easy answer
+- put TLS in front of it - a reverse proxy is the easy answer
 - treat `TOKENHUD_KEY` as a real credential
 - set `TOKENHUD_PUBLIC_URL` so shared links name an address that resolves
 - know that `GET /api/v1/portal-key` refuses to answer on a non-loopback bind,

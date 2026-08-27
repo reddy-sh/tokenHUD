@@ -1,4 +1,4 @@
-//! Storage — SQLite, because the alternative is worse.
+//! Storage - SQLite, because the alternative is worse.
 //!
 //! A metrics store wants three things: append fast, read the latest per host
 //! fast, and expire old rows without a maintenance job. SQLite in WAL mode does
@@ -7,10 +7,10 @@
 //!
 //! The tables:
 //!
-//!   hosts      one row per machine, overwritten — "what is true now"
-//!   snapshots  append-only history — "what was true then"
-//!   endings    derived — "what stopped, and when nobody was looking"
-//!   shares     one row per public leaderboard link — "who may look, as what"
+//!   hosts      one row per machine, overwritten - "what is true now"
+//!   snapshots  append-only history - "what was true then"
+//!   endings    derived - "what stopped, and when nobody was looking"
+//!   shares     one row per public leaderboard link - "who may look, as what"
 //!
 //! `endings` is the one that is not just storage. A snapshot says which agents
 //! were running at an instant; nobody watches a dashboard at every instant. The
@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS endings (
 -- One row per enrollment link. The token itself never lands here: only its
 -- hash, so the database is not a second place the secret lives. `install_id`
 -- is NULL until a machine claims the link, and the row is deleted the moment
--- the machine key is delivered — a link is a one-shot thing.
+-- the machine key is delivered - a link is a one-shot thing.
 CREATE TABLE IF NOT EXISTS enroll_tokens (
   token_hash TEXT PRIMARY KEY,
   code       TEXT NOT NULL,
@@ -119,7 +119,7 @@ CREATE TABLE IF NOT EXISTS machines (
 
 -- One row per share link. A share is a public, read-only view of the
 -- leaderboard: a URL anyone may open, holding token counts, model names and
--- daily activity — and nothing that says what the work was about. What may
+-- daily activity - and nothing that says what the work was about. What may
 -- leave is decided in one place, `share.rs`, by naming the fields that go
 -- rather than the fields that stay.
 --
@@ -322,7 +322,7 @@ pub struct Store {
     db: Mutex<Connection>,
     /// The tail of each host's difference chain: the row a new difference would
     /// be taken against, and how long the chain already is. Empty at startup,
-    /// which is why the first reading after a restart is a keyframe — the
+    /// which is why the first reading after a restart is a keyframe - the
     /// cheapest possible way to be certain a chain is never guessed at.
     chain: Mutex<std::collections::HashMap<String, (i64, i64)>>,
 }
@@ -416,8 +416,8 @@ impl Store {
         }
         // `collectedAt` is caller-supplied and it is what retention compares
         // against, so a reading stamped 9999-01-01 is stored verbatim and never
-        // prunes. The past is left alone — an agent that spooled through a week
-        // offline legitimately replays old readings — but the future is clamped
+        // prunes. The past is left alone - an agent that spooled through a week
+        // offline legitimately replays old readings - but the future is clamped
         // to now, with an hour of slack for a clock that is merely wrong.
         let at = match snapshot.get("collectedAt").and_then(|v| v.as_str()) {
             Some(s) => {
@@ -443,7 +443,7 @@ impl Store {
 
         // Only a reading NEWER than the one on file can tell us something
         // stopped. The agent spools when the server is away and replays on
-        // reconnect, so an older snapshot arriving is normal — and diffing it
+        // reconnect, so an older snapshot arriving is normal - and diffing it
         // would report every currently-running agent as ended.
         if let Some((last_seen, prev_obj)) = &prev {
             if last_seen.as_str() < at.as_str() {
@@ -623,8 +623,8 @@ impl Store {
     /// A difference is meaningless without the rows it is a difference against,
     /// so the cut is not taken at the cutoff exactly: for each host it is taken
     /// at the last keyframe at or before the cutoff, and rows from there on are
-    /// kept even if some are older. That over-keeps at most one chain — under an
-    /// hour — which is the right way to be wrong about a retention boundary.
+    /// kept even if some are older. That over-keeps at most one chain - under an
+    /// hour - which is the right way to be wrong about a retention boundary.
     pub fn prune(&self) -> rusqlite::Result<usize> {
         let cutoff = iso(Utc::now() - chrono::Duration::days(self.retention_days));
         let db = self.db.lock().unwrap();
@@ -785,7 +785,7 @@ impl Store {
     // approves that row on the board; the machine's next status poll delivers
     // its own key, exactly once, and the token row is deleted. From then on the
     // machine authenticates with its key alone, and revoking it removes one
-    // machine — never the fleet.
+    // machine - never the fleet.
 
     /// How long a minted link is claimable, and how long an unapproved claim
     /// may sit before the whole attempt expires.
@@ -800,7 +800,7 @@ impl Store {
         let db = self.db.lock().unwrap();
         // An UNCLAIMED link dies at its TTL. A claimed one must outlive it:
         // approval can legitimately land after the link's own window, and the
-        // agent is still polling — deleting its token then would strand an
+        // agent is still polling - deleting its token then would strand an
         // approved machine keyless. Claimed tokens die at delivery, at denial,
         // or after a day, whichever comes first.
         db.execute(
@@ -814,7 +814,7 @@ impl Store {
         // Pending rows whose token is gone: a first-time attempt is a dead
         // card and is dropped; a machine that had been decided before (it
         // re-claimed a link and stalled) falls back to revoked rather than
-        // being erased — its label is what the history tables file data under.
+        // being erased - its label is what the history tables file data under.
         db.execute(
             "DELETE FROM machines WHERE status='pending' AND decided_at IS NULL \
              AND install_id NOT IN \
@@ -875,7 +875,7 @@ impl Store {
             }
         }
         // An approved machine holding a working key must not be dragged back
-        // to pending by a claim — that would revoke it without a decision.
+        // to pending by a claim - that would revoke it without a decision.
         // Whoever wants to re-enroll it revokes it on the board first.
         let approved: bool = db
             .query_row(
@@ -887,7 +887,7 @@ impl Store {
             .unwrap_or(false);
         if approved {
             return Ok(Err(
-                "this machine is already enrolled — revoke it on the board first",
+                "this machine is already enrolled - revoke it on the board first",
             ));
         }
         // A denial is terminal for THIS link: the machine may not re-claim its
@@ -902,12 +902,12 @@ impl Store {
                 )
                 .unwrap_or(false);
             if denied {
-                return Ok(Err("denied on this board — ask for a fresh link"));
+                return Ok(Err("denied on this board - ask for a fresh link"));
             }
         }
 
         // The label is what every other table files this machine under, and
-        // the namespace is shared with legacy shared-key hosts — so a name is
+        // the namespace is shared with legacy shared-key hosts - so a name is
         // taken if EITHER table knows it. Collisions get a suffix of the
         // install id, lengthened until unique, so two identically named
         // laptops stay two rows and an enrolling machine can never write over
@@ -976,7 +976,7 @@ impl Store {
     }
 
     /// One status poll. When the machine is approved and no key has been
-    /// delivered yet, the caller's candidate key is committed and returned —
+    /// delivered yet, the caller's candidate key is committed and returned -
     /// and never again: the token row is deleted in the same transaction-shaped
     /// moment, so a second poll (or a stolen link replayed later) gets nothing.
     ///
@@ -1035,7 +1035,7 @@ impl Store {
     }
 
     /// Approve, deny, or revoke one machine. Revoking clears the key hash, so
-    /// a revoked laptop cannot come back without a fresh link — re-approval is
+    /// a revoked laptop cannot come back without a fresh link - re-approval is
     /// re-enrollment, not a toggle. Deny and revoke also burn the enrollment
     /// token, so a denied machine cannot use the same link to reappear as
     /// pending and ask again.
@@ -1072,7 +1072,7 @@ impl Store {
     }
 
     /// Every machine that has ever enrolled, for the board. The pairing code
-    /// travels only while the decision is still open — once decided it is
+    /// travels only while the decision is still open - once decided it is
     /// nobody's business, and before that it is exactly the thing the person
     /// approving is asked to compare.
     pub fn machines(&self) -> Vec<Value> {
@@ -1112,7 +1112,7 @@ impl Store {
     // computed from live data at request time, so revoking one really does
     // stop it: there is no rendered copy anywhere to keep serving.
 
-    /// Mint a share. The slug is the credential — unguessable, and the only
+    /// Mint a share. The slug is the credential - unguessable, and the only
     /// thing standing between a public URL and this fleet's numbers.
     pub fn share_create(&self, slug: &str, title: &str, identities: &str) -> rusqlite::Result<()> {
         let db = self.db.lock().unwrap();
@@ -1124,7 +1124,7 @@ impl Store {
     }
 
     /// Change a live share's title or identity mode. Returns false for a slug
-    /// that does not exist or has been revoked — a revoked share is finished,
+    /// that does not exist or has been revoked - a revoked share is finished,
     /// not paused.
     pub fn share_update(
         &self,
@@ -1164,7 +1164,7 @@ impl Store {
         .ok()
     }
 
-    /// Every share this fleet has ever minted, newest first — revoked ones
+    /// Every share this fleet has ever minted, newest first - revoked ones
     /// included, because "this link used to be public" is something the person
     /// running the board should be able to see.
     pub fn share_list(&self) -> Vec<Value> {
@@ -1202,7 +1202,7 @@ impl Store {
         Ok(n == 1)
     }
 
-    /// Count a public read. Best-effort on purpose — a failed counter must
+    /// Count a public read. Best-effort on purpose - a failed counter must
     /// never be the reason a shared board does not render.
     pub fn share_viewed(&self, slug: &str) {
         let db = self.db.lock().unwrap();

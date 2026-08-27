@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        **Not for security issues.** Report those privately — see [SECURITY.md](../blob/main/SECURITY.md).
+        **Not for security issues.** Report those privately - see [SECURITY.md](../blob/main/SECURITY.md).
 
         Please do not paste prompt text, project paths or branch names into this
         issue. TokenHUD goes to some trouble not to collect those; the issue
