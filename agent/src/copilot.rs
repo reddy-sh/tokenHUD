@@ -1,4 +1,4 @@
-//! GitHub Copilot CLI — the third tool that keeps real token counts on disk.
+//! GitHub Copilot CLI - the third tool that keeps real token counts on disk.
 //!
 //! Copilot has two halves and only one of them is readable here. The **VS Code
 //! extension** stores `session-store.db` with `sessions` and `turns` tables that
@@ -17,7 +17,7 @@
 //! data.totalPremiumRequests
 //! ```
 //!
-//! **These are per-segment and MUST be summed — the opposite of Codex.** A
+//! **These are per-segment and MUST be summed - the opposite of Codex.** A
 //! session that is resumed writes another `session.shutdown` when it stops
 //! again, and each one reports only the segment it closed. The session read on
 //! the machine this was written against has three shutdowns of two requests
@@ -31,7 +31,7 @@
 //!
 //! What is deliberately not here: dollars, and anything anyone typed.
 //! `user.message` and `assistant.message` records carry the conversation and are
-//! skipped by type — never parsed. A `tool.execution_start` contributes its
+//! skipped by type - never parsed. A `tool.execution_start` contributes its
 //! `toolName` and never its `arguments`, which hold the path or command, exactly
 //! as the Claude and Codex collectors do it. Copilot bills in *premium requests*
 //! and AI units rather than dollars; both are reported in their own units,
@@ -41,7 +41,8 @@
 use crate::transcripts::home;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
 /// `~/.copilot`, or wherever `COPILOT_HOME` moves it.
@@ -90,7 +91,7 @@ impl Tokens {
 /// What Copilot charges in, kept in its own units.
 #[derive(Serialize, Deserialize, Default, Clone, Debug)]
 pub struct Spend {
-    /// Premium requests — the unit a Copilot plan's quota is denominated in.
+    /// Premium requests - the unit a Copilot plan's quota is denominated in.
     #[serde(rename = "premiumRequests")]
     pub premium_requests: f64,
     /// AI units, from `totalNanoAiu` × 1e-9.
@@ -106,7 +107,7 @@ pub struct Session {
     pub project: Option<String>,
     pub first: Option<String>,
     pub last: Option<String>,
-    /// `assistant.turn_start` events — one per turn the agent took.
+    /// `assistant.turn_start` events - one per turn the agent took.
     pub turns: i64,
     /// How many times this session was stopped and resumed. A session with more
     /// than one segment is exactly the case that makes summing load-bearing.
@@ -126,9 +127,43 @@ fn as_f(v: Option<&Value>) -> f64 {
 /// What one session directory yields: the session, and its calls by tool name.
 type Read = (Session, BTreeMap<String, i64>);
 
+/// Parsed sessions, keyed by the (size, mtime) of the events file they came
+/// from. In the process rather than on disk: see the note in `codex.rs`.
+type Stamp = (u64, Option<std::time::SystemTime>);
+static SEEN: std::sync::Mutex<Option<HashMap<PathBuf, (Stamp, Read)>>> =
+    std::sync::Mutex::new(None);
+
+/// `read_session`, but an events file whose size and mtime are unchanged since
+/// the last reading is not re-read.
+fn read_session_cached(dir: &Path) -> Option<Read> {
+    let events = dir.join("events.jsonl");
+    let stamp = match std::fs::metadata(&events) {
+        Ok(m) => (m.len(), m.modified().ok()),
+        Err(_) => (0, None),
+    };
+    if let Ok(g) = SEEN.lock() {
+        if let Some(map) = g.as_ref() {
+            if let Some((seen, hit)) = map.get(dir) {
+                if *seen == stamp {
+                    return Some(hit.clone());
+                }
+            }
+        }
+    }
+    let parsed = read_session(dir)?;
+    if let Ok(mut g) = SEEN.lock() {
+        g.get_or_insert_with(HashMap::new)
+            .insert(dir.to_path_buf(), (stamp, parsed.clone()));
+    }
+    Some(parsed)
+}
+
 fn read_session(dir: &Path) -> Option<Read> {
     let events = dir.join("events.jsonl");
-    let text = std::fs::read_to_string(&events).ok()?;
+    // Streamed for the same reason as codex.rs: the peak should be a property
+    // of the longest record, not of the session store.
+    let file = std::fs::File::open(&events).ok()?;
+    let reader = BufReader::with_capacity(256 * 1024, file);
     let mut s = Session {
         id: dir.file_name()?.to_string_lossy().into_owned(),
         model: None,
@@ -143,7 +178,15 @@ fn read_session(dir: &Path) -> Option<Read> {
     let mut by_model: BTreeMap<String, Tokens> = BTreeMap::new();
     let mut tools: BTreeMap<String, i64> = BTreeMap::new();
 
-    for line in text.lines() {
+    let mut reader = reader;
+    let mut buf = String::new();
+    loop {
+        buf.clear();
+        match reader.read_line(&mut buf) {
+            Ok(0) | Err(_) => break,
+            Ok(_) => {}
+        }
+        let line = buf.trim_end();
         let Ok(r) = serde_json::from_str::<Value>(line) else {
             continue;
         };
@@ -153,8 +196,8 @@ fn read_session(dir: &Path) -> Option<Read> {
             .map(str::to_string);
         let d = r.get("data").cloned().unwrap_or(Value::Null);
 
-        // Matched by type, so the conversation records — `user.message`,
-        // `assistant.message`, `system.message` — fall through untouched.
+        // Matched by type, so the conversation records - `user.message`,
+        // `assistant.message`, `system.message` - fall through untouched.
         match r.get("type").and_then(|v| v.as_str()) {
             Some("session.start") => {
                 if let Some(id) = d.get("sessionId").and_then(|v| v.as_str()) {
@@ -177,8 +220,8 @@ fn read_session(dir: &Path) -> Option<Read> {
                 }
             }
             Some("assistant.turn_start") => s.turns += 1,
-            // The NAME is taken. `arguments` — which holds the path, the
-            // command, the patch — is never looked at.
+            // The NAME is taken. `arguments` - which holds the path, the
+            // command, the patch - is never looked at.
             Some("tool.execution_start") => {
                 let name = d
                     .get("toolName")
@@ -246,8 +289,8 @@ fn tool_view(tools: &BTreeMap<String, i64>) -> Value {
         "total": tools.values().sum::<i64>(),
         "distinct": tools.len(),
         "byTool": rows.into_iter().take(40).collect::<Vec<_>>(),
-        "note": "Counted from the session events by tool name. Call arguments — the path, \
-                 the command — are never read.",
+        "note": "Counted from the session events by tool name. Call arguments - the path, \
+                 the command - are never read.",
     })
 }
 
@@ -362,12 +405,12 @@ fn collect_in(base: &Path) -> Value {
     let root = base.join("session-state");
     if !root.is_dir() {
         // ~/.copilot without session-state is the IDE extension's half, which
-        // records no usage — a different answer from "no Copilot here", and the
+        // records no usage - a different answer from "no Copilot here", and the
         // dashboard's setup card depends on telling them apart.
         if base.is_dir() {
             return json!({
                 "available": false,
-                "reason": "Copilot is installed, but the CLI has not run here — only the \
+                "reason": "Copilot is installed, but the CLI has not run here - only the \
                            IDE extension, which records no usage locally",
             });
         }
@@ -389,7 +432,7 @@ fn collect_in(base: &Path) -> Value {
     let mut sessions: Vec<Session> = Vec::new();
     let mut tools: BTreeMap<String, i64> = BTreeMap::new();
     for d in &dirs {
-        if let Some((s, t)) = read_session(d) {
+        if let Some((s, t)) = read_session_cached(d) {
             for (name, n) in t {
                 *tools.entry(name).or_insert(0) += n;
             }
@@ -433,8 +476,11 @@ fn collect_in(base: &Path) -> Value {
         // are reported in those units; pricing.rs is an Anthropic rate card and
         // a dollar figure here would be invented rather than measured.
         "priced": false,
+        // Copilot meters in its own unit. Reported as that unit, not converted
+        // to dollars at a rate this build does not have.
+        "costBasis": crate::pricing::BASIS_CREDITS,
         "pricedNote": "Copilot meters premium requests and AI units, and both are reported as \
-                       themselves — this build has no rate card that converts either to dollars.",
+                       themselves - this build has no rate card that converts either to dollars.",
         "note": "Read from the CLI's own session events. The VS Code extension keeps no usage \
                  on disk; its numbers live behind GitHub's org billing and metrics APIs.",
     })
@@ -507,7 +553,7 @@ mod tests {
         for forbidden in ["passwd", "secret-prompt", "secret-answer"] {
             assert!(
                 !payload.contains(forbidden),
-                "{forbidden} reached the payload — arguments and message content must not"
+                "{forbidden} reached the payload - arguments and message content must not"
             );
         }
         let _ = std::fs::remove_dir_all(&dir);

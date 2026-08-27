@@ -1,8 +1,8 @@
-//! Collectors — everything the agent knows how to look at on one machine.
+//! Collectors - everything the agent knows how to look at on one machine.
 //!
 //! Each collector returns plain JSON and never fails upward. A host with a broken or
 //! missing source reports the rest of itself rather than disappearing from the
-//! board — the difference between "the disk collector is down" and "the host is
+//! board - the difference between "the disk collector is down" and "the host is
 //! down", which a monitoring tool that cannot tell apart is worse than none.
 
 use crate::pricing;
@@ -24,8 +24,8 @@ fn read_json(path: &Path) -> Option<Value> {
 
 /// Python's `datetime.isoformat()`, exactly: microseconds are printed to six
 /// places when there are any and omitted entirely when there are none. chrono
-/// has no mode that does both — `Micros` always writes `.000000` and `AutoSi`
-/// drops to three digits on a round millisecond — and either one puts a
+/// has no mode that does both - `Micros` always writes `.000000` and `AutoSi`
+/// drops to three digits on a round millisecond - and either one puts a
 /// cosmetic difference on every block boundary in the conformance diff.
 pub fn iso_of(dt: DateTime<Utc>) -> String {
     if dt.timestamp_subsec_micros() == 0 {
@@ -224,8 +224,8 @@ fn looks_like_claude(cmd: &str) -> bool {
 
 /// The same rule for Codex, and a separate function rather than a parameter.
 ///
-/// `~/.codex` appears in half the command lines on a machine that runs Codex —
-/// `CODEX_HOME`, a plugin path, a rollout — and every one of those has a `.`
+/// `~/.codex` appears in half the command lines on a machine that runs Codex -
+/// `CODEX_HOME`, a plugin path, a rollout - and every one of those has a `.`
 /// before the word. Matching `/codex` on a boundary picks the binary
 /// (`/Applications/ChatGPT.app/Contents/Resources/codex`) and leaves the
 /// directories alone.
@@ -445,7 +445,7 @@ pub fn collect_claude_stats() -> Value {
 /// Real cwd and branch, read from inside a transcript.
 ///
 /// The project directory NAME is the absolute path with every "/" replaced by
-/// "-", which is not reversible — real directory names contain hyphens, so
+/// "-", which is not reversible - real directory names contain hyphens, so
 /// un-mangling turns `pattadar-platform` into `.../pattadar/platform`. The
 /// transcript records its own cwd, so read that instead of guessing.
 fn transcript_cwd(path: &Path) -> (Option<String>, Option<String>) {
@@ -550,7 +550,7 @@ pub fn collect_claude_projects() -> Vec<Value> {
             "label": label,
             "branch": branch,
             // A background sweep gets its own project directory because it runs
-            // in its own worktree. Machine-made and short-lived — mark it so a
+            // in its own worktree. Machine-made and short-lived - mark it so a
             // sha does not pose as a project someone works on.
             "worktree": ends_in_sha(&path) || path.contains("-parity/"),
             "sessions": sessions.len(),
@@ -640,6 +640,12 @@ const ASSISTANTS: &[(&str, &str, &[&str], Option<&str>)] = &[
         &[".devin", ".config/devin", ".local/share/devin"],
         None,
     ),
+    (
+        "opencode",
+        "OpenCode",
+        &[".local/share/opencode"],
+        Some("opencode"),
+    ),
 ];
 
 /// Codex keeps one line per session in an index file. Cheap to count, and it
@@ -650,7 +656,13 @@ fn codex_sessions() -> Option<usize> {
     Some(text.lines().filter(|l| !l.trim().is_empty()).count())
 }
 
-pub fn collect_assistants() -> Vec<Value> {
+/// `known` carries collector results the caller already has, so this does not
+/// re-run them. `collect()` holds the codex and copilot readings by the time it
+/// gets here, and re-reading a corpus that reaches gigabytes to ask a question
+/// already answered was doubling the cost of every cycle. A caller with nothing
+/// to hand (the one-shot `enroll`) passes an empty slice and pays for the read.
+pub fn collect_assistants(known: &[(&str, bool)]) -> Vec<Value> {
+    let known_has = |id: &str| known.iter().find(|(k, _)| *k == id).map(|(_, v)| *v);
     let h = home();
     let mut out: Vec<Value> = Vec::new();
     for (id, name, dirs, bin) in ASSISTANTS {
@@ -666,7 +678,10 @@ pub fn collect_assistants() -> Vec<Value> {
             // Not installed here. Listing it would be advertising, not reporting.
             continue;
         }
-        let supported = matches!(*id, "claude-code" | "codex" | "copilot" | "devin");
+        let supported = matches!(
+            *id,
+            "claude-code" | "codex" | "copilot" | "devin" | "opencode"
+        );
 
         // `detected` and `hasData` are different facts and the board must not
         // conflate them. A directory existing means the tool is installed; it
@@ -676,16 +691,26 @@ pub fn collect_assistants() -> Vec<Value> {
         // showing "no data", wastes the reader's click and their trust.
         let has_data = match *id {
             "claude-code" => claude_dir().join("projects").is_dir(),
-            "codex" => crate::codex::collect()["available"]
-                .as_bool()
-                .unwrap_or(false),
+            "codex" => known_has("codex").unwrap_or_else(|| {
+                crate::codex::collect()["available"].as_bool().unwrap_or(false)
+            }),
             // Copilot's two halves disagree: the CLI writes real token counts,
             // the IDE extension writes none. `hasData` is about this machine,
             // so it follows whichever half is actually installed here.
-            "copilot" => crate::copilot::collect()["available"]
-                .as_bool()
-                .unwrap_or(false),
+            "copilot" => known_has("copilot").unwrap_or_else(|| {
+                crate::copilot::collect()["available"].as_bool().unwrap_or(false)
+            }),
             "devin" => crate::devin::cli_db().exists(),
+            // Same rule as codex and copilot: use the reading the caller
+            // already has, and only pay for a second one when there is none.
+            // OpenCode's store is 178 MB on the machine this was written
+            // against, and querying it twice a cycle to answer a question
+            // already answered is the cost this argument exists to avoid.
+            "opencode" => known_has("opencode").unwrap_or_else(|| {
+                crate::opencode::collect()["available"]
+                    .as_bool()
+                    .unwrap_or(false)
+            }),
             _ => false,
         };
 
@@ -785,7 +810,7 @@ fn session_view(s: &Session, send_prompts: bool) -> Row {
             // Session titles are written from the first prompt, so they are
             // prompt text by another name and follow the same rule.
             "title": if send_prompts { json!(s.title) } else { Value::Null },
-            "project": if label.is_empty() { "—".to_string() } else { label },
+            "project": if label.is_empty() { "-".to_string() } else { label },
             "path": s.project,
             "branch": s.branch,
             "entry": s.entry,
@@ -816,7 +841,7 @@ fn session_view(s: &Session, send_prompts: bool) -> Row {
 
 /// Independent characteristics of a set of sessions, not a breakdown.
 ///
-/// These overlap on purpose — one expensive session can be subagent-heavy AND
+/// These overlap on purpose - one expensive session can be subagent-heavy AND
 /// long AND deep in context, so the percentages do not sum to 100. Each is
 /// "this share of the estimate has this property", which is the only reading
 /// that survives the overlap. Every threshold is stated in `note` so the number
@@ -852,7 +877,7 @@ fn attribution(rows: &[&Row]) -> Value {
 
     out["drivers"] = json!([
         {"key": "subagent-work", "pct": pct(sub_direct), "label": "ran as subagents",
-         "note": "Requests marked as a sidechain — work a subagent did, not the main thread."},
+         "note": "Requests marked as a sidechain - work a subagent did, not the main thread."},
         {"key": "subagent-sessions", "pct": pct(sub_sessions),
          "label": "from sessions that spawned subagents",
          "note": format!("{n_sub} of {n} sessions used at least one subagent. Each subagent \
@@ -864,7 +889,7 @@ fn attribution(rows: &[&Row]) -> Value {
         {"key": "long-sessions", "pct": pct(long),
          "label": format!("from sessions running {long_h}h+"),
          "note": format!("{n_long} of {n} sessions spanned {long_h} hours or more \
-                          between first and last request — usually a background or loop session.")},
+                          between first and last request - usually a background or loop session.")},
     ]);
     out
 }
@@ -953,7 +978,7 @@ fn blocks(idx: &Index) -> Value {
 
     // The seven-day window is a different animal: it resets on a schedule tied
     // to the account, and nothing on disk records when. A rolling seven days is
-    // the honest substitute — a real number about a real window, just not the
+    // the honest substitute - a real number about a real window, just not the
     // one that resets.
     let week_cut = now_min - 7 * 24 * 60;
     let sum_since = |m: &IndexMap<String, i64>| -> i64 {
@@ -976,8 +1001,8 @@ fn blocks(idx: &Index) -> Value {
             "since": iso_from_secs(week_cut * 60),
         },
         "note": "Your own activity, reconstructed from request timestamps on this \
-    machine. The five-hour block is wall-clock — the first request opens \
-    it and it rolls over five hours later whatever you do — so the window \
+    machine. The five-hour block is wall-clock - the first request opens \
+    it and it rolls over five hours later whatever you do - so the window \
     is measured, not estimated. What share of your plan it consumed is a \
     different question, and Anthropic answers it in the usage windows \
     above; this panel never guesses at it.",
@@ -988,7 +1013,7 @@ fn blocks(idx: &Index) -> Value {
     })
 }
 
-/// What was actually called, by name — the other half of a governance panel.
+/// What was actually called, by name - the other half of a governance panel.
 ///
 /// The configured side of that panel comes from settings files and says what an
 /// agent MAY reach. This side says what it DID reach, and the two are shown
@@ -1039,7 +1064,7 @@ fn tool_view(idx: &Index) -> Value {
         "agents": rows(rank(&idx.agents), "agent"),
         "skills": rows(rank(&idx.skills), "skill"),
         "note": "Counted from the transcripts, all time, by tool name only. A tool's \
-                 input — the command, the path, the prompt — is never read into the \
+                 input - the command, the path, the prompt - is never read into the \
                  index this is built from.",
     })
 }
@@ -1141,8 +1166,23 @@ pub fn collect_usage() -> Value {
             "tokens": {"in": tot.0, "out": tot.1, "cacheRead": tot.2, "cacheWrite": tot.3},
             "unpricedTokens": rows.iter().map(|r| r.unpriced).sum::<i64>(),
         },
+        // Claude figures are priced from the card in pricing.rs at the
+        // provider's published list rates - an estimate, and labelled one
+        // everywhere it is rendered.
+        "costBasis": crate::pricing::BASIS_LIST_PRICE,
         "byModel": models,
-        "byDay": days.iter().rev().take(60).rev().cloned().collect::<Vec<_>>(),
+        // 90, matching the window the boards keep (`WINDOW_DAYS` in
+        // server/src/share.rs, `slice(-90)` in shared/profile.mjs). At 60 the
+        // token series ran thirty days deeper than the cost series, so days
+        // 61-90 carried real tokens against `estUSD: 0` and every 90-day
+        // spend figure quietly understated itself.
+        "byDay": days
+            .iter()
+            .rev()
+            .take(crate::pricing::BOARD_WINDOW_DAYS)
+            .rev()
+            .cloned()
+            .collect::<Vec<_>>(),
         "windows": {
             "day": attribution(&since(24)),
             "week": attribution(&since(24 * 7)),
@@ -1164,12 +1204,14 @@ pub fn collect() -> Value {
     // already answered.
     let codex = crate::codex::collect();
     let copilot = crate::copilot::collect();
+    let opencode = crate::opencode::collect();
     let available = |v: &Value| v["available"].as_bool().unwrap_or(false);
     let integrations = crate::integrations::collect(&[
         ("claude-code", claude_dir().join("projects").is_dir()),
         ("codex", available(&codex)),
         ("copilot-cli", available(&copilot)),
         ("devin", crate::devin::cli_db().exists()),
+        ("opencode", available(&opencode)),
     ]);
     let integration_summary = crate::integrations::summary(&integrations);
 
@@ -1183,11 +1225,16 @@ pub fn collect() -> Value {
             "claude": collect_claude_stats(),
             "usage": collect_usage(),
             "limits": crate::limits::collect_limits(),
-            "assistants": collect_assistants(),
+            "assistants": collect_assistants(&[
+                ("codex", available(&codex)),
+                ("copilot", available(&copilot)),
+                ("opencode", available(&opencode)),
+            ]),
             "integrations": integrations,
             "integrationSummary": integration_summary,
             "codex": codex,
             "copilot": copilot,
+            "opencode": opencode,
             "governance": crate::governance::collect(),
             "projects": collect_claude_projects(),
             "daemon": collect_daemon(),
