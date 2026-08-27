@@ -182,22 +182,25 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
       }
     },
     rename: async (id, label) => {
-      await api('/api/v1/machines/rename', { method: 'POST', body: { id, label } })
+      const owner = (machines ?? []).find(m => m.id === id)?.owner
+      await api('/api/v1/machines/rename', { method: 'POST', body: { id, label, owner } })
       setMachines(prev => (prev ?? []).map(m => (m.id === id ? { ...m, label } : m)))
     },
     /* Revoking clears the key hash: the next heartbeat gets a 401 and the
        agent stops. Re-joining takes a fresh registration. */
     revoke: async (id) => {
-      await api('/api/v1/machines/revoke', { method: 'POST', body: { id } })
+      const owner = (machines ?? []).find(m => m.id === id)?.owner
+      await api('/api/v1/machines/revoke', { method: 'POST', body: { id, owner } })
       setMachines(prev => (prev ?? []).map(m => (
         m.id === id ? { ...m, status: 'revoked', snapshot: null } : m
       )))
     },
     remove: async (id) => {
-      await api('/api/v1/machines/remove', { method: 'POST', body: { id } })
+      const owner = (machines ?? []).find(m => m.id === id)?.owner
+      await api('/api/v1/machines/remove', { method: 'POST', body: { id, owner } })
       setMachines(prev => (prev ?? []).filter(m => m.id !== id))
     },
-  }), [])
+  }), [machines])
 
   /* ── the public leaderboard, which nobody joins by accident ── */
   const publicBoard = useMemo(() => ({
