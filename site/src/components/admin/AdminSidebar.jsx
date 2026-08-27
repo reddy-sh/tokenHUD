@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { UninstallMachineModal } from '../board/enroll'
 import { Pill } from '../board/panels'
 import { Ic } from '../board/Rail'
 
