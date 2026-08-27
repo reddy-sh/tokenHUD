@@ -25,7 +25,7 @@ export default function Hero({ cta, onPortal }) {
 
       <div className="hero__rail">
         <span className="hero__rail-dot" aria-hidden="true" />
-        <span>TOKENHUD — live agent monitoring · open source · MIT</span>
+        <span>TOKENHUD — a heads-up display for your AI agents · open source · MIT</span>
       </div>
 
       <h1 className="hero__display">
