@@ -314,11 +314,7 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
             hosts={data?.hosts || []}
             onPhase={() => {}}
             onRename={(id, label) => cloud.rename(id, label).catch(() => {})}
-            onRemove={(host) => {
-              /* Cloud uses machine id, not hostname. Find the machine. */
-              const m = (machines || []).find(x => x.host === host || x.id === host)
-              if (m) cloud.remove(m.id).catch(() => {})
-            }}
+            onRemove={(id) => cloud.remove(id).catch(() => {})}
           />
         )}
 

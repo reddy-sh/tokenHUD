@@ -638,7 +638,12 @@ export default function SelfHost({ onClose }) {
                 .then(() => fetchData())
                 .catch(() => {})
             }}
-            onRemove={(host) => {
+            onRemove={(id) => {
+              /* The self-host remove API uses the hostname (the `host`
+                 column in SQLite). The sidebar now passes the machine id;
+                 find the matching host entry to get the hostname. */
+              const entry = (data?.hosts || []).find(h => h.machine_id === id)
+              const host = entry?.host || id
               apiFetch(serverUrl.current, apiKeyRef.current,
                 '/api/v1/machines/remove', { host })
                 .then(() => fetchData())

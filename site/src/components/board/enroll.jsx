@@ -504,7 +504,7 @@ const UNINSTALL_CMD = `curl -fsSL ${location.origin}/uninstall.sh | sh`
    necessary local action explicit and give it to them before the record goes
    away. This also prevents a still-running agent from looking like it was
    uninstalled just because its next heartbeat was rejected. */
-function UninstallMachineModal({ machine, onClose, onRemove }) {
+export function UninstallMachineModal({ machine, onClose, onRemove }) {
   const [copied, setCopied] = useState(false)
   const [removing, setRemoving] = useState(false)
   const [error, setError] = useState(null)
