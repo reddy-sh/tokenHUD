@@ -70,3 +70,7 @@ User-agent: CCBot
 Allow: /
 
 Sitemap: https://tokenhud.com/sitemap.xml
+
+# LLM context files (proposed llms.txt convention)
+# llms.txt: https://tokenhud.com/llms.txt
+# llms-full.txt: https://tokenhud.com/llms-full.txt

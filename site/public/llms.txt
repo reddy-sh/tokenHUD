@@ -54,10 +54,15 @@ Anything describing those as available today is wrong.
 - [SECURITY.md](https://github.com/reddy-sh/tokenhud/blob/main/SECURITY.md): every file the agent reads, what it never reads, what it never writes
 - [CONTRIBUTING.md](https://github.com/reddy-sh/tokenhud/blob/main/CONTRIBUTING.md): the five constraints that are not up for negotiation
 
+## Detailed version
+
+For full context including the complete tool catalogue, architecture, and FAQ,
+see [llms-full.txt](https://tokenhud.com/llms-full.txt).
+
 ## A note on this file
 
 `llms.txt` is a proposed convention for giving language models a clean summary
 of a site. Adoption by major AI systems is not established, and it should be
 treated as a low-cost supplement to real structured data rather than a channel
 anyone is known to consume. The load-bearing work is done by the schema.org
-`SoftwareApplication` and `FAQPage` markup on the site itself.
+`SoftwareApplication`, `FAQPage` and `HowTo` markup on the site itself.
