@@ -663,6 +663,7 @@ trust_level = "trusted"
 
     #[test]
     fn a_machine_without_codex_config_says_so_rather_than_showing_empty_tables() {
+        let _env = crate::ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         std::env::set_var("CODEX_HOME", "/nonexistent/definitely/not/here");
         let v = collect_codex();
         std::env::remove_var("CODEX_HOME");
