@@ -21,11 +21,8 @@ have already written to disk, prices it, and shows you what is running, what it
 is costing, and when to step in. Nothing leaves the machine until you enroll it
 — and when you do, metrics leave, content never does.
 
-![The TokenHUD board: usage windows against your plan's real limits, what just
-finished, daily activity and tokens by model](docs/board.png)
-
-<sub>Synthetic data — the project names and figures above are generated, not a
-real machine's.</sub>
+![The TokenHUD admin shell: sessions, messages, tool calls, output tokens, value,
+usage windows, daily activity and tokens by model — dark theme](docs/board.png)
 
 ## Get started
 
