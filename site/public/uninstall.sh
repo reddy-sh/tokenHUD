@@ -5,7 +5,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/reddy-sh/tokenhud/main/scripts/uninstall-agent.sh | sh
 #
 # It intentionally leaves tokenhud-server alone. This script removes only the
-# agent service, the common installed copies of its binary, and ~/.tokenhud —
+# agent service, the common installed copies of its binary, and ~/.tokenhud -
 # the sole directory the agent creates for its enrollment, index and spool.
 
 set -eu

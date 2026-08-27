@@ -21,7 +21,7 @@ export default function Manifest() {
 `}<span className="c">  └ never oauthAccount · never projects</span>{`
 
 ~/.codex/sessions/**
-`}<span className="c">  token_count events — the last record per file</span>{`
+`}<span className="c">  token_count events - the last record per file</span>{`
 
 `}<span className="k">NEVER READ</span>{`
 `}<span className="c">  prompt text · session titles   opt-in, off by default</span>{`
@@ -30,14 +30,14 @@ export default function Manifest() {
         </div>
 
         <div>
-          <p>Resolved against <strong>your</strong> machine — real files, real sizes, not a
+          <p>Resolved against <strong>your</strong> machine - real files, real sizes, not a
             description. Nothing is read at all until you agree.</p>
           <p style={{ marginTop: 'var(--space-md)' }}>A release that reads one more file has to ask you again. Tests in the
             repository hold that list to the code that does the reading.</p>
           <p style={{ marginTop: 'var(--space-md)', color: 'var(--color-ink-3)', fontSize: 'var(--text-sm)' }}>
             <a href="https://github.com/reddy-sh/tokenhud#it-tells-you-every-file-it-will-open-before-it-opens-one"
                style={{ color: 'var(--color-accent)' }}>
-              How that works, in detail — on GitHub →
+              How that works, in detail - on GitHub →
             </a>
           </p>
         </div>

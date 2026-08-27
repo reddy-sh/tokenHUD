@@ -13,7 +13,7 @@ CDN="https://d3gu0e7g3rcz5n.cloudfront.net"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 
 echo ""
-echo "  TokenHUD — installing agent"
+echo "  TokenHUD - installing agent"
 echo ""
 
 # ── detect platform ──────────────────────────────────────────────────
@@ -40,7 +40,7 @@ if command -v shasum >/dev/null 2>&1; then
 elif command -v sha256sum >/dev/null 2>&1; then
   SHA() { sha256sum "$1" | cut -d' ' -f1; }
 else
-  echo "Neither shasum nor sha256sum found — refusing to install unverified binaries."
+  echo "Neither shasum nor sha256sum found - refusing to install unverified binaries."
   exit 1
 fi
 
@@ -70,7 +70,7 @@ curl -fsSL "${URL}.sha256" -o "${TMP}/${BINARY}.sha256"
 WANT="$(cut -d' ' -f1 <"${TMP}/${BINARY}.sha256")"
 GOT="$(SHA "${TMP}/${BINARY}")"
 if [ -z "$WANT" ] || [ "$WANT" != "$GOT" ]; then
-  echo "     CHECKSUM MISMATCH — refusing to install."
+  echo "     CHECKSUM MISMATCH - refusing to install."
   echo "       expected: ${WANT:-<empty>}"
   echo "       got:      ${GOT}"
   exit 1

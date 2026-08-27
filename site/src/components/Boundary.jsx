@@ -4,14 +4,14 @@ export default function Boundary() {
       <div className="section__head">
         <h2>Metrics leave. Content never does.</h2>
         <p>The right-hand column is not filtered out before sending. It is never read into the
-          payload in the first place — there is no code path that collects it.</p>
+          payload in the first place - there is no code path that collects it.</p>
       </div>
 
       <div className="boundary">
         <div className="boundary__col">
           <h3>Read and reported</h3>
           <ul>
-            <li>Token counts — in, out, cached</li>
+            <li>Token counts - in, out, cached</li>
             <li>Model identifiers</li>
             <li>Computed cost, labelled an estimate</li>
             <li>Session start, stop, duration</li>
