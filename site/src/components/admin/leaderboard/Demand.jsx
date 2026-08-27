@@ -1,12 +1,13 @@
 import { useMemo } from 'react'
-import { NO_ENTRIES, concentration, dailyTotals, growth, pct } from '../../../lib/demand'
+import { NO_ENTRIES, boardTotals, concentration, dailyTotals, freshness, growth, pct } from '../../../lib/demand'
 import { HourChart, StackedBarChart } from '../../board/charts'
+import { Composition, Cost } from '../../board/leaderboard'
 import { Card, Empty, MeterBar } from '../../board/panels'
-import { compact, full, SERIES, usd } from '../../board/util'
+import { compact, full, SERIES } from '../../board/util'
 
 /* Demand: how much, when, and from whom.
  *
- * Models answers "which". This answers the shape of the load — the questions
+ * Models answers "which". This answers the shape of the load - the questions
  * you ask before deciding how much of something to have ready:
  *
  *   the trend        is this growing, and how fast
@@ -46,6 +47,8 @@ export default function Demand({ board }) {
   const gSpend = useMemo(() => growth(entries, 'estUSD', 7), [entries])
   const c = useMemo(() => concentration(entries), [entries])
   const week = useMemo(() => weekdayShape(entries), [entries])
+  const totals = useMemo(() => boardTotals(entries), [entries])
+  const fresh = useMemo(() => freshness(entries), [entries])
 
   const bars = daily.map(d => ({ date: d.date, by: { tokens: d.value }, total: d.value }))
   const sessionBars = sessions.map(d => ({ date: d.date, by: { sessions: d.value }, total: d.value }))
@@ -54,7 +57,7 @@ export default function Demand({ board }) {
   const hours = board.hours
   const withheld = !hours && (board.hoursMinMachines || 0) > 0
 
-  const trend = g => (g.pct == null ? '—' : `${g.pct >= 0 ? '+' : ''}${Math.round(g.pct)}%`)
+  const trend = g => (g.pct == null ? '-' : `${g.pct >= 0 ? '+' : ''}${Math.round(g.pct)}%`)
 
   return (
     <>
@@ -71,6 +74,13 @@ export default function Demand({ board }) {
                   seven days before, across {entries.length} machine{entries.length === 1 ? '' : 's'}.
                 </>}
               {busiest && busiest.value > 0 && <> Busiest day of the week: <b>{busiest.day}</b>.</>}
+              {/* The stamp is the newest bucket that can no longer change, not
+                  the clock. Today's bucket is still filling, and a part-day
+                  read against whole ones is how a fleet appears to fall off a
+                  cliff every morning. */}
+              {fresh.through
+                ? <> Complete through <b>{fresh.through}</b>.</>
+                : <> No complete day yet - every bucket here is still filling.</>}
             </p>
           </div>
         </div>
@@ -87,13 +97,21 @@ export default function Demand({ board }) {
           </div>
           <div className="hero-stat">
             <div className="hero-stat-k">Est. value · 7d</div>
-            <div className="hero-stat-v tnum">{usd(gSpend.current)}</div>
-            <div className="hero-stat-d">{trend(gSpend)} on the week before</div>
+            {/* A week in which nothing was priceable sums to zero dollars, and
+                "$0.00" is a claim that the work was free. The basis the board
+                carries is the only thing that can tell those apart. */}
+            <div className="hero-stat-v tnum">
+              <Cost row={{ estUSD: gSpend.current, priced: totals.priced, costBasis: totals.costBasis }} />
+            </div>
+            <div className="hero-stat-d">{totals.priced ? `${trend(gSpend)} on the week before` : 'no rate card for what ran here'}</div>
           </div>
           <div className="hero-stat">
             <div className="hero-stat-k">Per machine</div>
+            {/* An average over no machines is not zero, it is undefined - and
+                a tile reading "0 tokens a week" on a board nobody has enrolled
+                yet is a statement about a fleet that does not exist. */}
             <div className="hero-stat-v tnum">
-              {compact(entries.length ? gTokens.current / entries.length : 0)}
+              {entries.length ? compact(gTokens.current / entries.length) : '-'}
             </div>
             <div className="hero-stat-d">tokens a week, on average</div>
           </div>
@@ -106,6 +124,21 @@ export default function Demand({ board }) {
             ? <Empty>Not enough days yet.</Empty>
             : <StackedBarChart rows={bars} names={['tokens']} colors={{ tokens: SERIES[0] }}
               ariaLabel="Tokens per day across the fleet" totalLabel="tokens" />}
+          {/* The bars above are the only bare totals on this board, and they
+              are bare because the daily series genuinely has no split in it -
+              a day arrives as one number. The composition underneath is all
+              time, and it is here so that nobody reads the height of a bar as
+              a quantity of work: on most of these fleets the majority of it is
+              the same context being read back. */}
+          {totals.tokens > 0 && (
+            <div style={{ marginTop: 'var(--space-md)' }}>
+              <p className="bv-note">
+                A day arrives as one number, so these bars carry no split. All time, across
+                everything on this board, it breaks down like this:
+              </p>
+              <Composition totals={totals} note={false} />
+            </div>
+          )}
         </Card>
         <Card title="Sessions per day" note="How many distinct runs those tokens came from.">
           {sessions.length < 2
@@ -132,7 +165,7 @@ export default function Demand({ board }) {
             <>
               <HourChart hours={hours} />
               <p className="bv-note">
-                Local time on each machine, added together — so a fleet spread across
+                Local time on each machine, added together - so a fleet spread across
                 timezones flattens this curve rather than showing two peaks.
               </p>
             </>
@@ -163,7 +196,7 @@ export default function Demand({ board }) {
 
       <Card
         title="Where the demand comes from"
-        note="One bar per machine, all time. A fleet whose top machine is most of the bar is one person's habit wearing a team's name — and every per-machine average taken off it will be wrong."
+        note="One bar per machine, all time. A fleet whose top machine is most of the bar is one person's habit wearing a team's name - and every per-machine average taken off it will be wrong."
       >
         {!entries.length && <Empty>No machine has reported yet.</Empty>}
         {entries.length > 0 && (

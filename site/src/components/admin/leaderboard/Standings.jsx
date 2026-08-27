@@ -1,15 +1,24 @@
-import { NO_ENTRIES, concentration, growth, pct } from '../../../lib/demand'
-import Leaderboard from '../../board/leaderboard'
+import { NO_ENTRIES, boardTotals, concentration, growth, pct } from '../../../lib/demand'
+import Leaderboard, { Composition, Cost, Methodology } from '../../board/leaderboard'
 import { Card } from '../../board/panels'
-import { compact, full, usd } from '../../board/util'
+import { compact, full } from '../../board/util'
 
-/* Standings: the ranking, and one paragraph of headline above it.
+/* Analytics: your own machines, and one paragraph of headline above them.
+ *
+ * This page is NOT the leaderboard, and the distinction is a correctness one
+ * rather than a matter of naming. `fleetOf` returns one entry per machine the
+ * account owns, so everything on this page is a comparison of your laptop
+ * against your desktop. Medals, a podium and a "#1 of 3" badge over that are
+ * a competition with one competitor: whichever machine you happen to sit at
+ * most wins, every time, and the badge says nothing you did not already know.
+ * The community leaderboard - accounts against each other, opt-in, gated on a
+ * minimum field - is a different page and a different unit.
  *
  * The hero exists because a table answers "who" and nobody arrives asking
- * "who" — they arrive asking "how are we doing", and a column of numbers makes
- * you do that arithmetic yourself. So the hero does it: one big total, the
- * direction it is moving, and the one fact that most often explains the shape
- * of the table under it — how much of this is a single machine.
+ * "who" - they arrive asking "how are we doing", and a column of numbers makes
+ * you do that arithmetic yourself. So the hero does it: one big total shown as
+ * its parts, the direction it is moving, and the one fact that most often
+ * explains the shape of the table under it - how much of this is one machine.
  */
 
 function Stat({ k, v, d, tone }) {
@@ -24,8 +33,7 @@ function Stat({ k, v, d, tone }) {
 
 function Hero({ board, right }) {
   const entries = board.entries || NO_ENTRIES
-  const tokens = entries.reduce((a, e) => a + (e.totals?.tokens || 0), 0)
-  const value = entries.reduce((a, e) => a + (e.totals?.estUSD || 0), 0)
+  const totals = boardTotals(entries)
   const up = entries.filter(e => e.status === 'up').length
   const g = growth(entries, 'tokens', 7)
   const c = concentration(entries)
@@ -41,13 +49,19 @@ function Hero({ board, right }) {
       <div className="hero-band-head">
         <div>
           <span className="hero-eyebrow">
-            {entries.length} machine{entries.length === 1 ? '' : 's'} ·{' '}
+            Analytics · {entries.length} machine{entries.length === 1 ? '' : 's'} ·{' '}
             {up ? `${up} reporting now` : 'none reporting right now'}
           </span>
-          <h1>{compact(tokens)} tokens</h1>
+          <h1>{compact(totals.tokens)} tokens</h1>
           <p className="hero-lede">
-            {full(tokens)} across every assistant these machines run, worth about{' '}
-            <b>{usd(value)}</b> at API list prices. Last seven days: {trend}.
+            {full(totals.tokens)} across every assistant these machines run.{' '}
+            {/* "Worth about $0" is the sentence this avoids: nothing here can
+                price a Codex-only fleet, and saying so is a different claim
+                from saying the work was free. */}
+            {totals.priced
+              ? <>Worth about <b><Cost row={totals} /></b> at API list prices.</>
+              : <>Not priced - this build has no rate card for what ran here.</>}
+            {' '}Last seven days: {trend}.
           </p>
         </div>
         {right}
@@ -56,15 +70,23 @@ function Hero({ board, right }) {
       <div className="hero-stats">
         <Stat k="Last 7 days" v={compact(g.current)} d={g.pct == null ? 'tokens' : `tokens · ${g.pct >= 0 ? '+' : ''}${Math.round(g.pct)}%`}
           tone={g.pct == null ? null : g.pct >= 0 ? 'up' : 'down'} />
-        <Stat k="Est. value" v={usd(value)} d="at list prices · not billed" />
+        <Stat k="Est. value" v={<Cost row={totals} />} d={totals.priced ? 'at list prices · not billed' : 'no rate card for what ran here'} />
         <Stat k="Models in use" v={String(models.size)} d={entries.length > 1 ? 'across the fleet' : 'on this machine'} />
-        <Stat k="Leader" v={leader ? leader.name : '—'}
+        <Stat k="Busiest machine" v={leader ? leader.name : '-'}
           d={leader ? `${compact(leader.totals?.tokens || 0)} · ${pct(c.top)} of the fleet` : ''} />
         {entries.length > 2 && (
           <Stat k="Top three" v={pct(c.topThree)}
             d={c.topThree > 85 ? 'most of the work sits with three machines' : 'of all tokens'} />
         )}
       </div>
+
+      {/* The headline above is a bare total until this is under it. Codex's
+          total is mostly cached input and Claude Code's chart leaves cache
+          reads out altogether, so the same figure means two different things
+          depending on which tool produced most of it. */}
+      {totals.tokens > 0 && (
+        <div style={{ marginTop: 'var(--space-lg)' }}><Composition totals={totals} /></div>
+      )}
     </section>
   )
 }
@@ -82,8 +104,9 @@ export default function Standings({ board, meId, right, hero = true }) {
       <Leaderboard
         entries={entries}
         meId={meId}
-        title="Standings"
-        note="Ranked live from the last reading each machine sent. Pick what to rank by, and over how long."
+        unit="machine"
+        title="Machines"
+        note="Your own machines, side by side, from the last reading each one sent. Pick what to count, and what to total it over."
         defaultMetric="tokens"
         defaultPeriod="all"
       />
@@ -117,6 +140,16 @@ export default function Standings({ board, meId, right, hero = true }) {
           </div>
         </Card>
       )}
+
+      {/* Last, because it is what you read when you have decided to doubt
+          something above it - and first-class, because a board that will not
+          say how it was made is asking to be trusted rather than checked. */}
+      <Methodology
+        entries={entries}
+        unit="machine"
+        pricingAsOf={board.pricingAsOf}
+        windowDays={board.windowDays}
+      />
     </>
   )
 }

@@ -6,7 +6,7 @@
  * the portal then renders a "not deployed yet" notice instead of a form
  * that cannot work.
  *
- * Everything except sign-in goes over plain HTTP to one API — the same shape
+ * Everything except sign-in goes over plain HTTP to one API - the same shape
  * the self-host board already uses against the Rust server, which is the point:
  * `SelfHost.jsx` fetches `/api/v1/overview` from a machine on your desk and
  * this fetches `/api/v1/overview` from api.tokenhud.com, and the board
@@ -55,7 +55,7 @@ export class ApiError extends Error {
 async function idToken() {
   const session = await fetchAuthSession()
   const token = session?.tokens?.idToken?.toString()
-  if (!token) throw new ApiError(401, 'Your session has expired — sign in again.')
+  if (!token) throw new ApiError(401, 'Your session has expired - sign in again.')
   return token
 }
 
@@ -89,7 +89,7 @@ export async function api(path, { method = 'GET', body, signal } = {}) {
   return unwrap(res)
 }
 
-/* A call with no credential at all — the public leaderboard, and only that.
+/* A call with no credential at all - the public leaderboard, and only that.
    It is deliberately a separate function: a route that can be read without
    signing in should have to say so in the code that reads it. */
 export async function apiPublic(path, { signal, base = apiUrl } = {}) {
