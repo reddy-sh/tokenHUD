@@ -1,5 +1,4 @@
 use std::io::{Read, Write};
-use std::sync::Arc;
 use tokenhud_server::{board::App, router, store::Store};
 
 const KEY: &str = "test-board-key-not-a-real-one";

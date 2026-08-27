@@ -76,7 +76,7 @@ pub fn agents_dir() -> PathBuf {
 /// The `sqlite3` binary, if the machine has one. macOS ships `/usr/bin/sqlite3`;
 /// most Linux does too. Absent → Devin CLI cost degrades to "sessions only",
 /// which is stated on the card rather than guessed at.
-fn sqlite3_bin() -> Option<String> {
+pub(crate) fn sqlite3_bin() -> Option<String> {
     for cand in [
         "sqlite3",
         "/usr/bin/sqlite3",
