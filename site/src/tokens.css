@@ -25,6 +25,15 @@
   --color-focus:        oklch(82% 0.180 55);
   --color-error:        oklch(70% 0.220 25);
   --color-success:      oklch(74% 0.160 145);
+  /* Warning is the accent amber, not a fourth colour. Every warn tone already
+     resolves to it - the pill dot, the rail badge, the stale session marker -
+     and a second amber would drift from the first the day one of them was
+     tuned. It carries its own name for two reasons: "this reading is suspect"
+     is a meaning where "accent" is a brand, and it is spelled by name in a JSX
+     inline style, where there is no class for CSS to reach. Undefined, that
+     style was invalid at computed-value time and the glyph simply inherited
+     its colour. */
+  --color-warn:         var(--color-accent);
   --color-bloom-1:      oklch(74% 0.220 50);
   --color-bloom-2:      oklch(60% 0.220 15);
 
@@ -33,6 +42,11 @@
   --font-body:    "Inter", system-ui, sans-serif;
   --font-mono:    "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
 
+  /* One step below --text-xs and still a whole pixel on the 16px grid: 11px.
+     The admin rails had been reaching below --text-xs with 0.6rem and 0.65rem
+     - two sizes, no token, neither of them landing on a pixel - and a rail
+     label set at 9.6px is a legibility question rather than a taste one. */
+  --text-2xs:     0.6875rem;
   --text-xs:      0.75rem;
   --text-sm:      0.8125rem;
   --text-base:    1rem;
@@ -81,6 +95,26 @@
   --page-gutter: clamp(1rem, 4vw, 3rem);
   --max-width:   80rem;
   --measure:     60ch;
+
+  /* === Layout: the signed-in shell ============================= *
+   *
+   * --page-gutter is a marketing measure. It opens to 3rem on a wide screen
+   * because a landing page wants air around a sentence; a dashboard wants the
+   * opposite, because the gutter there is the frame around a dense grid and
+   * every pixel it takes is one the grid does not get. It had leaked into the
+   * board anyway, and the two admin pages had each invented their own - so
+   * the same shell presented three different left edges depending on which
+   * section you happened to be in. One value now.
+   *
+   * The rails are named rather than repeated for the same reason. The topbar
+   * height in particular was written out as 52px in four places, three of them
+   * calc()s that had to agree with the fourth or the rails would run past the
+   * bottom of the window; and the two rails had two mini widths, 56px and
+   * 52px, which is a four-pixel difference nobody chose. */
+  --adm-bar-h:       52px;
+  --adm-rail-w:      224px;
+  --adm-rail-mini-w: 56px;
+  --adm-gutter:      clamp(var(--space-md), 3vw, var(--space-xl));
 }
 
 /* === Light theme ================================================= */
@@ -100,7 +134,14 @@
   --color-accent-2:     oklch(56% 0.220 18);
   --color-accent-soft:  oklch(62% 0.060 50);
   --color-accent-ink:   oklch(99% 0.010 70);
-  --color-focus:        oklch(68% 0.200 50);
+  /* Darker than the light accent on purpose. At oklch(68% 0.200 50) this ring
+     measured 2.9:1 against --color-paper and 2.4:1 against --color-paper-3,
+     so the one indicator a keyboard user has was the least visible thing on
+     the page in this theme. At 50% lightness it measures 6.0:1 on --color-paper,
+     5.5:1 on --color-paper-2 and 4.9:1 on --color-paper-3 - every surface a
+     focusable control sits on in the shell clears 4.5:1. Same hue family, so
+     it still reads as the same system. */
+  --color-focus:        oklch(50% 0.180 50);
   --color-error:        oklch(55% 0.220 25);
   --color-success:      oklch(55% 0.160 145);
   --color-bloom-1:      oklch(62% 0.200 50);
