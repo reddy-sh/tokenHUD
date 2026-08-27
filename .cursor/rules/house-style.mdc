@@ -1,0 +1,26 @@
+---
+description: No em dashes, nothing hardcoded that can be derived
+alwaysApply: true
+---
+
+# House style
+
+Full rules in AGENTS.md at the repository root. The two that are broken most often:
+
+## No em dashes
+
+Never use an em dash anywhere: code, comments, docs, UI strings, commit messages.
+Use a comma, a full stop, a colon, brackets, or a plain hyphen. If none of those
+fit, rewrite the sentence. Avoid the en dash too unless it is a numeric range.
+
+The long lines in comment headers are box-drawing characters, not dashes. Leave
+them alone.
+
+## Nothing hardcoded that should be derived
+
+If a value can be read, computed or configured, do that instead of typing it in.
+A literal is a second source of truth and the two drift.
+
+No hardcoded counts, prices, URLs, paths, model whitelists, magic numbers, or
+sizes quoted in prose. Two values that must agree belong in one place both read;
+if they cannot share a definition, add a test that fails when they disagree.
