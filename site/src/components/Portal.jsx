@@ -6,6 +6,7 @@ import { fleetOf, rankBoard } from '../lib/leaderboard'
 import { buildOverview } from '../lib/overview'
 import AdminSidebar from './admin/AdminSidebar'
 import AdminTopbar from './admin/AdminTopbar'
+import IntegrationsPage from './admin/IntegrationsPage'
 import LeaderboardPage, { LEADERBOARD_KEYS, LEADERBOARD_PAGES } from './admin/LeaderboardPage'
 import RootRail, { SECTIONS } from './admin/RootRail'
 import SectionRail from './admin/SectionRail'
@@ -60,6 +61,7 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
   const [rootMini, setRootMini] = useState(() => load(SK_ROOTNAV, '') === '1')
   const [collapsed, setCollapsed] = useState(() => load(SK_SUBNAV, '') === '1')
   const [boardState, setBoardState] = useState(null)
+  const [pendingTool, setPendingTool] = useState(null)
 
   /* Every fetch this component has in flight, so a sign-out or a close does
      not land a response into an unmounted tree. */
@@ -220,7 +222,10 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
   const toggleRoot = useCallback(() => {
     setRootMini(c => { save(SK_ROOTNAV, c ? '' : '1'); return !c })
   }, [])
-  const goto = useCallback(key => { setSection(key); save(SK_SECTION, key) }, [])
+  const goto = useCallback(key => {
+    if (key !== 'monitoring') setPendingTool(null)
+    setSection(key); save(SK_SECTION, key)
+  }, [])
   const gotoLb = useCallback(key => { setLbPage(key); save(SK_LBPAGE, key) }, [])
 
   /* The fleet in the shape the Leaderboard pages expect. Computed here rather
@@ -246,17 +251,23 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
     return row ? row.rank : null
   }, [profiles, meId])
 
-  /* Integration summary across all snapshots for the badge. */
+  /* Integration summary across all snapshots for the badge. Falls back to
+     the assistants array when the agent hasn't been upgraded yet. */
   const intSummary = useMemo(() => {
     const snaps = data?.latest || []
     let reading = 0, known = 0
     const seen = new Set()
+    const readingIds = new Set()
     for (const s of snaps) {
       const sum = s.metrics?.integrationSummary
       if (sum) { reading = Math.max(reading, sum.reading || 0); known = Math.max(known, sum.known || 0) }
-      for (const r of (s.metrics?.integrations || [])) seen.add(r.id)
+      const rows = s.metrics?.integrations || s.metrics?.assistants || []
+      for (const r of rows) {
+        seen.add(r.id)
+        if (r.state === 'reading' || r.hasData) readingIds.add(r.id)
+      }
     }
-    return { reading, known: known || seen.size }
+    return { reading: Math.max(reading, readingIds.size), known: known || seen.size }
   }, [data])
 
   const hasSubNav = section === 'monitoring' || section === 'leaderboard'
@@ -350,6 +361,7 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
               publicBoard={publicBoard}
               embedded
               onBoardState={setBoardState}
+              initialTool={pendingTool}
             />
           )}
           {section === 'leaderboard' && (
@@ -361,7 +373,12 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
             />
           )}
           {section === 'integrations' && (
-            <IntegrationsPage snapshots={data?.latest || []} />
+            <IntegrationsPage snapshots={data?.latest || []}
+              onNavigate={(toolId) => {
+                setPendingTool(toolId)
+                goto('monitoring')
+              }}
+            />
           )}
           {section === 'settings' && (
             <div className="adm-page" style={{ padding: 'var(--space-xl) var(--page-gutter)' }}>

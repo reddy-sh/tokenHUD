@@ -233,10 +233,17 @@ async function stubApi(page, { shares = [] } = {}) {
   return state
 }
 
-/* The shell, at Token Monitoring — the section it opens on. */
+/* The shell, at Token Monitoring — the section it opens on.
+   When a cloud backend is configured the CTA opens the sign-in card
+   rather than the self-host board, so we click through to local mode. */
 async function openBoard(page) {
   await page.goto('/')
   await page.click('.nav__cta')
+  /* If the sign-in overlay appears, switch to self-host mode. */
+  const selfHost = page.locator('button:text-is("use a local server instead")')
+  if (await selfHost.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await selfHost.click()
+  }
   await expect(page.locator('.adm-root')).toBeVisible({ timeout: 15000 })
   await expect(page.locator('.adm-side')).toBeVisible()
 }
@@ -263,7 +270,7 @@ test.describe('root navigation', () => {
     await stubApi(page)
     await openBoard(page)
     await expect(page.locator('.adm-root .adm-root-item')).toHaveText([
-      /Token Monitoring/, /Leaderboard/, /Settings/,
+      /Token Monitoring/, /Leaderboard/, /Integrations/, /Settings/,
     ])
     await expect(rootItem(page, 'Token Monitoring')).toHaveClass(/adm-item--on/)
     await expect(page.locator('.adm-crumb')).toHaveText('Token Monitoring')
@@ -314,7 +321,7 @@ test.describe('root navigation', () => {
     await expect(shell).not.toHaveClass(/adm-shell--submini/)
     await expect(page.locator('.adm-root .adm-item-text')).toHaveCount(0)
     /* Collapsed to icons, not gone: it is the only way to change section. */
-    await expect(page.locator('.adm-root .adm-root-item')).toHaveCount(3)
+    await expect(page.locator('.adm-root .adm-root-item')).toHaveCount(4)
 
     /* The machine rail has its own. */
     await page.locator('.adm-side .adm-collapse').click()
@@ -330,7 +337,7 @@ test.describe('root navigation', () => {
     await stubApi(page)
     await openLeaderboard(page)
     await page.reload()
-    await page.click('.nav__cta')
+    await openBoard(page)
     await expect(page.locator('.lb-table')).toBeVisible()
     await expect(rootItem(page, 'Leaderboard')).toHaveClass(/adm-item--on/)
     await expect(page.locator('.adm-side .adm-group-label').first()).toHaveText('LEADERBOARD')
@@ -464,7 +471,8 @@ test.describe('the Leaderboard pages', () => {
     await stubApi(page)
     await openLeaderboard(page, 'Demand')
     await page.reload()
-    await page.click('.nav__cta')
+    await openBoard(page)
+    await rootItem(page, 'Leaderboard').click()
     await expect(subItem(page, 'Demand')).toHaveClass(/adm-item--on/)
     await expect(page.locator('.hero-band h1')).toContainText('this week')
   })
