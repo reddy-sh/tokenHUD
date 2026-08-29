@@ -16,7 +16,7 @@ export default function Nav({ cta, onPortal }) {
   return (
     <header className="nav" ref={navRef}>
       <div className="nav__inner">
-        <a className="nav__brand" href="#top" aria-label="TokenHUD home">
+        <a className="nav__brand" href="#top" aria-label="TokenHUD — Token Heads-Up Display">
           <span className="nav__brand-dot" aria-hidden="true" />
           <span>Token<b>HUD</b></span>
         </a>

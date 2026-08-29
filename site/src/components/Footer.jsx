@@ -5,7 +5,7 @@ export default function Footer() {
         Metrics leave. <b>Content never does.</b>
       </p>
       <div className="footer__meta">
-        <span className="wordmark">Token<b>HUD</b></span>
+        <span className="wordmark">Token<b><abbr title="Heads-Up Display">HUD</abbr></b></span>
         <nav className="footer__links" aria-label="Footer">
           <a href="https://github.com/reddy-sh/tokenhud">GitHub</a>
           <a href="https://github.com/reddy-sh/tokenhud/blob/main/INSTALL.md">Install</a>

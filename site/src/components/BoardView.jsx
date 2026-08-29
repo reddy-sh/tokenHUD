@@ -2,17 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { profilesOf, rankBoard } from '../lib/leaderboard'
 import { TipProvider } from './board/charts'
 import {
-  CodexDays, CodexLimits, CodexModels, CodexPolicy, CodexProjects, CodexSessions, CodexSplit, CodexTiles,
-  CodexValue,
+    CodexDays, CodexLimits, CodexModels, CodexPolicy, CodexProjects, CodexSessions, CodexSplit, CodexTiles,
 } from './board/codex'
 import { AddMachineModal, MachinesPanel, UpgradeModal } from './board/enroll'
 import { ExtensionsCard, governanceBadges, McpCard, PermissionsCard, ToolCallsCard } from './board/governance'
 import { Ic } from './board/icons'
 import Leaderboard from './board/leaderboard'
 import {
-  ActivityCard, Card, DriversCard, EndedFeed, HostsFeed, HoursCard, IntegrationsCard, LiveCard,
-  ModelsTable, Offboard, ProjectsFeed, PromptsFeed, RateCard, SessionsTable, SpendCard, Tiles,
-  TokensCard, UsageWindows,
+    ActivityCard, Card, DriversCard, EndedFeed, HostsFeed, HoursCard, IntegrationsCard, LiveCard,
+    ModelsTable, Offboard, ProjectsFeed, PromptsFeed, RateCard, SessionsTable, SpendCard, Tiles,
+    TokensCard, UsageWindows,
 } from './board/panels'
 import Rail from './board/Rail'
 import { compact, usdShort } from './board/util'
@@ -67,9 +66,11 @@ export default function BoardView({
   live, onToggleLive, onRetry, connLabel, onClose, onSignOut, cloud,
   theme, onToggleTheme,
   embedded, onBoardState,
+  publicBoard,
+  initialTool,
 }) {
   const [picked, setPicked] = useState(null)     /* which machine */
-  const [toolSel, setToolSel] = useState('claude-code')
+  const [toolSel, setToolSel] = useState(initialTool || 'claude-code')
   const [railOpen, setRailOpen] = useState(false)
   const [active, setActive] = useState(null)     /* which nav row is lit */
   const [addOpen, setAddOpen] = useState(false)  /* the add-machine modal */

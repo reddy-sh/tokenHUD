@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
-import { Ic } from '../board/icons'
+import { UninstallMachineModal } from '../board/enroll'
 import { Pill } from '../board/panels'
+import { Ic } from '../board/Rail'
 
 function MachineRow({ h, isCur, outdated, collapsed, onPick, onRename, onRemove }) {
   const [editing, setEditing] = useState(false)
@@ -19,7 +20,7 @@ function MachineRow({ h, isCur, outdated, collapsed, onPick, onRename, onRemove 
 
   const doRemove = (e) => {
     e.stopPropagation()
-    onRemove(h.host)
+    onRemove({ id: h.machine_id, label: h.label, hostname: h.hostname })
   }
 
   const commitEdit = () => {
@@ -92,6 +93,7 @@ export default function AdminSidebar({
   onRename,
   onRemove,
 }) {
+  const [uninstalling, setUninstalling] = useState(null)
   const bs = board || {}
   const nav = bs.nav || []
   const active = bs.active
@@ -124,7 +126,7 @@ export default function AdminSidebar({
                 if (phase !== 'live') onPhase?.('live')
               }}
               onRename={onRename}
-              onRemove={onRemove}
+              onRemove={setUninstalling}
             />
           ))}
           {!collapsed && phase === 'live' && bs.onAdd && (
@@ -202,6 +204,13 @@ export default function AdminSidebar({
           {!collapsed && <span>Collapse</span>}
         </button>
       </div>
+      {uninstalling && (
+        <UninstallMachineModal
+          machine={uninstalling}
+          onClose={() => setUninstalling(null)}
+          onRemove={(id) => { onRemove(id); setUninstalling(null) }}
+        />
+      )}
     </aside>
   )
 }

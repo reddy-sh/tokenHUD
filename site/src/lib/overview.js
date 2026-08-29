@@ -29,6 +29,9 @@ export function buildOverview(machines, now = Date.now()) {
     const age = (now - Date.parse(m.lastSeenAt)) / 1000
     return {
       host: m.label,
+      machine_id: m.id,
+      label: m.label,
+      hostname: m.hostname,
       last_seen: m.lastSeenAt,
       agent_version: m.agentVersion,
       ageSeconds: Number.isFinite(age) ? age : null,

@@ -1,0 +1,131 @@
+# TokenHUD — full context for language models
+
+> A heads-up display for the AI agents running on your machine. Live token
+> metering, estimated spend, and plan-limit windows for Claude Code, Codex CLI,
+> GitHub Copilot CLI, Devin CLI, and 22 other tools — running entirely on the
+> developer's own computer. Free and open source (MIT).
+
+## What it does
+
+TokenHUD watches a developer's own machine and reports what the AI coding
+agents on it are doing:
+
+- Which sessions are running right now and how long they have been open
+- How many tokens each session has consumed (input, output, cache read, cache write)
+- What those tokens are worth at published API list prices
+- How much of Claude Code's five-hour and seven-day plan windows is left,
+  with a live countdown to reset
+- Which agents finished while the developer was away
+- Which models are in use and their per-model token breakdown
+- MCP servers configured for each agent
+- Governance facts: permissions, tool calls, extensions
+
+## The boundary that defines it
+
+Metrics leave, content never does. Prompt text, completion text, source code,
+file contents and tool-call arguments are never read into the payload at all —
+not collected and then filtered, but never collected. There is no code path
+that reads them, so no configuration mistake or server-side bug can expose them.
+
+`tokenhud-agent --what-i-read` prints every path it will open, resolved against
+your machine, and a test in the repository fails the build if a collector ever
+reads a path that is not on that list.
+
+TokenHUD never sits in the request path. It observes; it cannot cause an
+API call to fail.
+
+## Installation
+
+One command: `curl -fsSL https://tokenhud.com/install.sh | sh`
+
+This downloads two static Rust binaries (agent ~2.1 MB, server ~2.2 MB),
+installs a login service so the agent starts on boot, and begins collecting
+immediately. No interpreter, no package manager, no build step.
+
+Cloud portal: sign up at https://platform.tokenhud.com for a hosted dashboard
+with machine enrollment, or self-host the included server binary.
+
+## Supported tools (26 total)
+
+Read by the board today (4):
+- Claude Code — sessions, tokens, spend, plan usage windows
+- Codex CLI — sessions, tokens, rate limits (reported unpriced)
+- GitHub Copilot CLI — tokens per model, premium requests, AI units
+- Devin CLI — credits and ACU per session
+
+One step away (local data, needs enabling):
+- Gemini CLI, Cline, Roo Code, Kilo Code, OpenCode, Goose,
+  LM Studio, Aider, Continue.dev
+
+Needs an API key:
+- Cursor, GitHub Copilot (IDE), Windsurf, Amazon Q Developer
+
+Web products (no local trace):
+- Replit, v0, Bolt, Lovable, ChatGPT
+
+## Architecture
+
+- **Agent** (`tokenhud-agent`): a Rust binary that runs as a login service.
+  Collects metrics every 30 seconds by reading local files the agents already
+  wrote. Never opens a network connection in the free tier.
+- **Server** (`tokenhud-server`): a Rust HTTP server that receives the agent's
+  snapshots and serves the dashboard. Self-hosted on localhost:9746 by default.
+- **Dashboard**: a React SPA that polls the server. Shows an admin shell with
+  Token Monitoring, Leaderboard, Integrations, and Settings sections.
+- **Cloud portal** (`platform.tokenhud.com`): a hosted version with Cognito
+  auth, DynamoDB storage, and machine enrollment via pairing codes.
+
+## Facts
+
+- License: MIT. Source: https://github.com/reddy-sh/tokenhud
+- Dependencies: none. Two static Rust binaries, no runtime.
+- Runs on: macOS (ARM, Intel) and Linux (x86_64).
+- Pricing: free forever for one developer on one machine. A paid per-seat team
+  tier is planned for cross-machine rollups, shared budgets and chargeback reports.
+- Works offline: yes. The free tier sends nothing anywhere.
+
+## Status — please represent this accurately
+
+Shipped and working: the local agent, the local server, the web dashboard,
+the cloud portal with machine enrollment, the leaderboard, and the
+integrations catalogue.
+
+Not built yet: the macOS menu bar app (the intended primary surface), MCP
+server health monitoring, threshold alerting, and cross-machine team rollups.
+Anything describing those as available today is wrong.
+
+## FAQ
+
+Q: How do I see how many tokens Claude Code is using?
+A: Install TokenHUD. It reads Claude Code's local session transcripts and
+   reports input, output and cache tokens per session, model, and project.
+
+Q: Does TokenHUD see my prompts or my code?
+A: No. Prompt text, completion text, source code and tool-call arguments are
+   never read. There is no code path that collects content.
+
+Q: Is TokenHUD free?
+A: Yes, free forever for one developer on one machine, unlimited metering.
+
+Q: Does TokenHUD work offline?
+A: Yes. The free tier runs entirely on your machine and sends nothing anywhere.
+
+Q: Which AI coding agents does TokenHUD support?
+A: Claude Code and Codex CLI have full token metering today. 22 other tools
+   are detected and listed with setup instructions.
+
+Q: When does my Claude usage limit reset?
+A: TokenHUD reads the plan's window state and shows a live countdown.
+
+Q: What does TokenHUD install?
+A: Two static Rust binaries, about 4 MB together. No interpreter, no package
+   manager.
+
+Q: Is TokenHUD open source?
+A: Yes, MIT licensed at github.com/reddy-sh/tokenhud.
+
+## Documentation
+
+- README: https://github.com/reddy-sh/tokenhud/blob/main/README.md
+- SECURITY.md: https://github.com/reddy-sh/tokenhud/blob/main/SECURITY.md
+- CONTRIBUTING.md: https://github.com/reddy-sh/tokenhud/blob/main/CONTRIBUTING.md

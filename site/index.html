@@ -3,24 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>TokenHUD - Live Token Usage & Cost for Your AI Agents</title>
-
-    <!-- ── one claim, in every description ──────────────────────────────────
-         These three used to disagree inside this one file: the meta
-         description named "Claude Code, Codex CLI, Cursor, Devin and more"
-         while the Open Graph and Twitter descriptions named "Claude Code and
-         Codex CLI". Both were wrong, and differently wrong - Cursor keeps its
-         usage behind a team admin API and is not read off any disk, and the
-         agent's catalogue reads five tools, not two. A page can survive a
-         description that is shorter than the truth. It cannot survive two
-         descriptions of itself that a reader can hold side by side.
-         The five named here are the Access::Local entries in
-         agent/src/integrations.rs, which is also what the site's own
-         coverage.js counts. -->
-    <meta name="description" content="See what your AI coding agents run and cost, live on your own machine. Token metering, spend and plan limits - reads Claude Code, Codex CLI, GitHub Copilot CLI, Devin CLI and OpenCode off the disk. Free, local-first, MIT." />
+    <title>TokenHUD — A Heads-Up Display for Your AI Agents' Token Usage & Cost</title>
+    <meta name="description" content="See what your AI coding agents run and cost, live on your own machine. Token metering, spend and plan limits for Claude Code, Codex CLI, Cursor, Devin and more. Free, local-first, zero dependencies." />
     <link rel="canonical" href="https://tokenhud.com/" />
     <meta name="author" content="TokenHUD" />
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="TokenHUD" />
     <meta property="og:url" content="https://tokenhud.com/" />
@@ -31,33 +19,19 @@
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="The TokenHUD dashboard showing token spend, session metering and five-hour plan usage." />
     <meta property="og:locale" content="en_US" />
+    <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="TokenHUD - a heads-up display for the AI agents on your machine" />
     <meta name="twitter:description" content="Live token spend, session metering and plan limits for Claude Code, Codex CLI, GitHub Copilot CLI, Devin CLI and OpenCode. Runs on localhost; the hosted board is opt-in. Metrics leave, content never does." />
     <meta name="twitter:image" content="https://tokenhud.com/og.png" />
+    <!-- Icons & theme -->
     <meta name="theme-color" content="#1a120c" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-
-    <!-- ── the structured data, on the page ─────────────────────────────────
-         This markup went missing in the rewrite to React and nothing noticed,
-         because the two JSON files it used to be duplicated into were still
-         sitting in public/ looking like the job was done. It was not: a JSON
-         file in a directory nobody requests is not structured data, a <script>
-         tag is, and ld+json cannot be pulled in with src - inline is the only
-         way it exists.
-
-         Those two files (structured-data.json, faq.jsonld) are gone rather
-         than kept in step, and that is the actual fix. Two copies of the same
-         claim is how the site ended up with a canonical description in one
-         place and a stale one in another; the old site's own comment beside
-         this markup asked whoever came next to "keep these in sync with those
-         files", and whoever came next did not. One copy cannot drift.
-
-         The FAQ below mirrors src/components/Faq.jsx word for word where the
-         questions overlap, and adds the ones worth answering for an engine
-         that quotes rather than links. Markup that answers a question the page
-         does not contain is how a site loses rich results altogether. -->
+    <link rel="manifest" href="/manifest.json" />
+    <!-- GEO: llms.txt for AI crawlers -->
+    <link rel="help" type="text/plain" href="/llms.txt" title="LLM-readable site summary" />
+    <!-- AEO: structured data (SoftwareApplication + Organization + WebSite) -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -67,7 +41,7 @@
           "@id": "https://tokenhud.com/#app",
           "name": "TokenHUD",
           "alternateName": "Token HUD",
-          "description": "A heads-up display for the AI coding agents running on your machine. Live token metering, estimated spend, and plan-limit windows, read straight off the disk for Claude Code, Codex CLI, GitHub Copilot CLI, Devin CLI and OpenCode. Runs entirely on your own computer; connecting it to the hosted board is opt-in.",
+          "description": "A heads-up display for the AI coding agents running on your machine. Live token metering, estimated spend, and plan-limit windows for Claude Code and Codex CLI — running entirely on your own computer.",
           "applicationCategory": "DeveloperApplication",
           "applicationSubCategory": "Developer Monitoring Tool",
           "operatingSystem": "macOS, Linux",
@@ -89,26 +63,20 @@
               "@type": "Offer",
               "name": "Team",
               "priceCurrency": "USD",
-              "description": "Per seat. Cross-machine rollups, shared budgets, retained history, chargeback reports, and alerts to Slack and email. Planned - not yet available.",
+              "description": "Per seat. Cross-machine rollups, shared budgets, retained history, chargeback reports, and alerts to Slack and email. Planned — not yet available.",
               "availability": "https://schema.org/PreOrder"
             }
           ],
           "featureList": [
-            "Reads token usage off the disk for Claude Code, Codex CLI, GitHub Copilot CLI, Devin CLI and OpenCode, with no configuration",
-            "Tracks 26 AI coding tools in all, and says which of five situations each one is in on your machine",
+            "Discovers AI coding agents and their sessions on the host with no configuration",
             "Meters token usage and estimated spend by session, agent, model and project",
             "Shows your plan's real five-hour and seven-day usage windows and when they reset",
             "Reports which agents finished while you were away",
-            "Runs entirely on localhost and sends nothing until you choose to enroll a machine",
-            "Never reads prompt text, completion text, source code, tool-call arguments or file paths"
+            "Never reads prompt text, completion text, or source code"
           ],
-          "softwareRequirements": "None. Two static binaries installed by a one-line script; no interpreter, no package manager, no build step.",
-          "author": {
-            "@id": "https://tokenhud.com/#org"
-          },
-          "publisher": {
-            "@id": "https://tokenhud.com/#org"
-          }
+          "softwareRequirements": "Rust toolchain to build from source. Two static binaries; no interpreter, no package manager.",
+          "author": { "@id": "https://tokenhud.com/#org" },
+          "publisher": { "@id": "https://tokenhud.com/#org" }
         },
         {
           "@type": "Organization",
@@ -116,23 +84,19 @@
           "name": "TokenHUD",
           "url": "https://tokenhud.com/",
           "logo": "https://tokenhud.com/logo.png",
-          "sameAs": [
-            "https://github.com/reddy-sh/tokenhud"
-          ]
+          "sameAs": ["https://github.com/reddy-sh/tokenhud"]
         },
         {
           "@type": "WebSite",
           "@id": "https://tokenhud.com/#website",
           "url": "https://tokenhud.com/",
           "name": "TokenHUD",
-          "publisher": {
-            "@id": "https://tokenhud.com/#org"
-          }
+          "publisher": { "@id": "https://tokenhud.com/#org" }
         }
       ]
     }
     </script>
-
+    <!-- AEO: FAQ structured data -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -152,31 +116,7 @@
           "name": "Does TokenHUD see my prompts or my code?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "No. Prompt text, completion text, source code and tool-call arguments are never read into the payload at all - not filtered out afterwards. The transcript parser reads only the numeric usage fields from assistant records. There is no code path that collects content, so no configuration mistake can expose it."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Which AI coding agents does TokenHUD support?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Claude Code, Codex CLI, GitHub Copilot CLI, Devin CLI and OpenCode are read straight off the disk today - five of the 26 tools TokenHUD tracks. The rest get a tile that says which of four situations they are in: one setting away from being readable, readable but with no TokenHUD collector written for them yet, usage held behind somebody's admin API, or a web product with no local trace at all. An empty tile always says why it is empty, including when the missing piece is ours."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Does TokenHUD work offline?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. The free tier runs entirely on your machine and sends nothing anywhere - no pricing lookup, no version check, no error report. The agent, the server and the dashboard all run on localhost and the rate card is compiled into the binary, so it works start to finish with the network off."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is there a hosted version, and what does it send?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes, and it is opt-in. Nothing leaves a machine until you enroll it, which is a command you type on that machine, and the agent shows you its read manifest and asks before it opens a file. Once enrolled it sends metrics: token counts, model names, timings, session and tool-call counts, and the computed estimate. It never sends prompts, completions, source, tool-call arguments, file paths or project names, because those are not collected in the first place. The public leaderboard is a further, separate switch you have to turn on yourself."
+            "text": "No. Prompt text, completion text, source code and tool-call arguments are never read into the payload at all — not filtered out afterwards. The transcript parser reads only the numeric usage fields from assistant records. There is no code path that collects content, so no configuration mistake can expose it."
           }
         },
         {
@@ -184,23 +124,15 @@
           "name": "Is TokenHUD free?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes, free forever for one developer on one machine, with unlimited metering and no sampling. A paid per-seat team tier adds cross-machine rollups, shared budgets, retained history and chargeback reports. The free tier is not degraded to drive upgrades - the upgrade trigger is a second person needing the same numbers."
+            "text": "Yes, free forever for one developer on one machine, with unlimited metering and no sampling. A paid per-seat team tier adds cross-machine rollups, shared budgets, retained history and chargeback reports. The free tier is not degraded to drive upgrades."
           }
         },
         {
           "@type": "Question",
-          "name": "When does my Claude usage limit reset?",
+          "name": "Does TokenHUD work offline?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "TokenHUD reads the real five-hour and seven-day window state that Claude Code caches locally and shows the percentage used with a live countdown to each reset. If that cache is more than an hour old the percentages grey out and are marked stale, while the countdowns stay exact, because a reset instant is absolute."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How do I install TokenHUD?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "One line: curl -fsSL https://tokenhud.com/install.sh | sh. It downloads a prebuilt static binary for macOS or Linux, verifies it against the checksum published beside it, and installs it to ~/.local/bin. No clone, no Rust toolchain, no package manager. Running tokenhud-agent --what-i-read afterwards prints every path the agent would ever open, resolved against your machine, and opens none of them."
+            "text": "Yes. The free tier runs entirely on your machine and sends nothing anywhere. The agent, the server and the dashboard all run on localhost, so it works with the network off."
           }
         },
         {
@@ -208,7 +140,15 @@
           "name": "Will TokenHUD slow down my machine?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "No. A collection cycle takes about 0.06 seconds in steady state. The agent indexes a transcript corpus incrementally by byte offset, so after the first pass it reads only what was appended - a few kilobytes per cycle rather than re-reading a gigabyte."
+            "text": "No. A collection cycle takes about 0.06 seconds in steady state. The agent indexes a transcript corpus incrementally by byte offset, so after the first pass it reads only what was appended."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which AI coding agents does TokenHUD support?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Claude Code and Codex CLI today. TokenHUD also detects Cursor, Gemini CLI, Windsurf, Devin and other assistants installed on the machine and lists them, marking the ones no collector reads yet."
           }
         },
         {
@@ -216,7 +156,23 @@
           "name": "How do I track the cost of my AI coding agents?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "TokenHUD prices your measured token usage at published API list rates and shows estimated value per session, per model and per day. On a subscription plan the CLI reports $0 per request because the plan is a flat fee, so the figure is labelled an estimate everywhere it appears - a yardstick for comparing sessions, not a bill. Work no rate card covers is reported as unpriced rather than as zero."
+            "text": "TokenHUD prices your measured token usage at published API list rates and shows estimated value per session, per model and per day. On a subscription plan the CLI reports $0 per request because the plan is a flat fee, so the figure is labelled an estimate."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "When does my Claude usage limit reset?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "TokenHUD reads the real five-hour and seven-day window state that Claude Code caches locally and shows the percentage used with a live countdown to each reset."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I monitor MCP servers?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "MCP server discovery and health is on the roadmap and not yet built. TokenHUD today discovers and reports Claude Code agent processes on the host."
           }
         },
         {
@@ -224,7 +180,7 @@
           "name": "What does TokenHUD install?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Two static binaries, about 4 MB together. No interpreter, no npx, no pip, no package manager. The dashboard is a single self-contained bundle with no CDN reference - a test in the repository fails the build if any external reference appears in it."
+            "text": "Two static binaries, about 4 MB together. No interpreter, no npx, no pip, no package manager. The dashboard is a single self-contained HTML file with no CDN reference."
           }
         },
         {
@@ -234,6 +190,37 @@
             "@type": "Answer",
             "text": "Yes, MIT licensed, at github.com/reddy-sh/tokenhud. The agent, server and dashboard are all in the repository and it ships a self-test that runs the real collectors against your machine with nothing mocked."
           }
+        }
+      ]
+    }
+    </script>
+    <!-- AEO: HowTo schema for installation -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "@id": "https://tokenhud.com/#howto-install",
+      "name": "How to install TokenHUD",
+      "description": "Install the TokenHUD agent on macOS or Linux to start metering your AI coding agents' token usage.",
+      "totalTime": "PT2M",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "position": 1,
+          "name": "Run the install script",
+          "text": "Open a terminal and run: curl -fsSL https://tokenhud.com/install.sh | sh"
+        },
+        {
+          "@type": "HowToStep",
+          "position": 2,
+          "name": "The agent starts automatically",
+          "text": "The install script downloads the agent binary, installs a login service, and starts the agent. It begins discovering AI coding agents on your machine immediately."
+        },
+        {
+          "@type": "HowToStep",
+          "position": 3,
+          "name": "Open the dashboard",
+          "text": "Sign in at platform.tokenhud.com or open your self-hosted board at localhost:9746 to see live token usage, spend, and plan limits."
         }
       ]
     }

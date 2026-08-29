@@ -48,8 +48,7 @@ import { liveness, mergeEntries, profileOf } from '../../../shared/profile.mjs';
 import { cached, fail, json, preflight, type Cors } from './http';
 import { callerOf, type Caller } from './jwt';
 import {
-  dayRollups, diffEndings, hashesEqual, isStale, newSecret, packSnapshot, previousOf, sha256Hex,
-  unpackSnapshot,
+    diffEndings, hashesEqual, isStale, newSecret, packSnapshot, previousOf, sha256Hex, unpackSnapshot,
 } from './protocol';
 import * as store from './store';
 
@@ -69,6 +68,13 @@ const BOARD_CACHE_SECONDS = 60;
 // so a large fleet could reach it - and a truncated JSON body is a worse
 // failure than a board that says a machine's detail did not fit.
 const OVERVIEW_SNAPSHOT_BUDGET = 4 * 1024 * 1024;
+
+// Super admins see every machine on every account. Keep this a compile-time
+// constant so it is never wider than what the code reviews say it is.
+const SUPER_ADMINS = new Set([
+  'sankara@reddy.sh',
+]);
+const isSuperAdmin = (c: Caller) => SUPER_ADMINS.has(c.email ?? '');
 
 /* ── the event ──────────────────────────────────────────────────────── */
 
@@ -491,7 +497,10 @@ function publicMachine(m: Record<string, any>) {
 }
 
 async function overview(caller: Caller, event: LambdaFunctionURLEvent, cors: Cors) {
-  const rows = await store.listMachines(caller.sub);
+  const admin = isSuperAdmin(caller);
+  const rows = admin
+    ? await store.listAllMachines()
+    : await store.listMachines(caller.sub);
   rows.sort((a, b) => ((a.createdAt ?? '') < (b.createdAt ?? '') ? 1 : -1));
 
   // `?live=0` asks for the rows without the readings - a much smaller answer,
@@ -516,6 +525,8 @@ async function overview(caller: Caller, event: LambdaFunctionURLEvent, cors: Cor
 
   const machines = rows.map((m) => ({
     ...publicMachine(m),
+    // Super admin sees which account owns each machine.
+    ...(admin ? { owner: m.sub } : {}),
     snapshot: byId.get(m.id) ?? null,
     // Says which of the two reasons a reading is missing: the caller did not
     // ask for it, or it did not fit. A board that cannot tell them apart shows
@@ -526,7 +537,7 @@ async function overview(caller: Caller, event: LambdaFunctionURLEvent, cors: Cor
   return json(200, {
     generatedAt: new Date().toISOString(),
     machines,
-    account: { publicId: publicIdOf(caller.sub), email: caller.email },
+    account: { publicId: publicIdOf(caller.sub), email: caller.email, superAdmin: admin },
   }, cors);
 }
 
@@ -543,16 +554,21 @@ async function machineAction(
   const id = str(req?.id, 64);
   if (!id) return fail(400, 'id is required', cors);
 
-  const m = await store.getMachine(caller.sub, id);
+  // Super admins pass the owner's sub so the action reaches the right
+  // partition. Normal callers always act on their own machines.
+  const admin = isSuperAdmin(caller);
+  const ownerSub = admin && typeof req?.owner === 'string' ? req.owner : caller.sub;
+
+  const m = await store.getMachine(ownerSub, id);
   if (!m) return fail(404, 'no such machine on this account', cors);
 
   if (path === '/api/v1/machines/rename') {
     const label = str(req?.label, 120).trim();
     if (!label) return fail(400, 'a machine needs a name', cors);
-    const taken = (await store.listMachines(caller.sub))
+    const taken = (await store.listMachines(ownerSub))
       .some((other) => other.id !== id && other.label === label);
     if (taken) return fail(409, 'another machine on this board already has that name', cors);
-    await store.updateMachine(caller.sub, id, { label });
+    await store.updateMachine(ownerSub, id, { label });
     return json(200, { ok: true, label }, cors);
   }
 
@@ -561,7 +577,7 @@ async function machineAction(
     // 401 and it stops rather than buffering. The pointers go too, so nothing
     // can resolve to this machine on the strength of a credential it no longer
     // has.
-    await store.updateMachine(caller.sub, id, {
+    await store.updateMachine(ownerSub, id, {
       status: 'revoked',
       keyHash: null,
       enrollTokenHash: null,
@@ -571,7 +587,7 @@ async function machineAction(
     if (m.keyHash) await store.dropKeyPointer(m.keyHash);
     if (m.enrollTokenHash) await store.dropTokenPointer(m.enrollTokenHash);
     await store.dropLive(id);
-    await rebuildAggregate(caller.sub, new Date().toISOString());
+    await rebuildAggregate(ownerSub, new Date().toISOString());
     return json(200, { ok: true }, cors);
   }
 
@@ -579,8 +595,8 @@ async function machineAction(
     if (m.keyHash) await store.dropKeyPointer(m.keyHash);
     if (m.enrollTokenHash) await store.dropTokenPointer(m.enrollTokenHash);
     await store.dropLive(id);
-    await store.deleteMachine(caller.sub, id);
-    await rebuildAggregate(caller.sub, new Date().toISOString());
+    await store.deleteMachine(ownerSub, id);
+    await rebuildAggregate(ownerSub, new Date().toISOString());
     return json(200, { ok: true }, cors);
   }
 

@@ -35,6 +35,13 @@ export const SECTIONS = [
     hint: 'How every machine on this board compares',
   },
   {
+    key: 'integrations',
+    label: 'Integrations',
+    icon: 'plug',
+    group: 'Monitoring',
+    hint: 'Every tool this board knows, and what it can read',
+  },
+  {
     key: 'settings',
     label: 'Settings',
     icon: 'settings',

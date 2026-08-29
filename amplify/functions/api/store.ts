@@ -46,7 +46,7 @@ import {
     GetCommand,
     PutCommand,
     QueryCommand,
-    UpdateCommand,
+    UpdateCommand
 } from '@aws-sdk/lib-dynamodb';
 
 import { required } from './env';
@@ -117,6 +117,25 @@ export async function listMachines(sub: string): Promise<Machine[]> {
       KeyConditionExpression: '#pk = :pk AND begins_with(#sk, :m)',
       ExpressionAttributeNames: { '#pk': 'pk', '#sk': 'sk' },
       ExpressionAttributeValues: { ':pk': userPk(sub), ':m': 'M#' },
+      ExclusiveStartKey: start,
+    }));
+    out.push(...(page.Items ?? []));
+    start = page.LastEvaluatedKey;
+  } while (start);
+  return out;
+}
+
+/* All machines across every account. Only for the super admin overview —
+ * a table scan, so this must never be on a hot path. */
+export async function listAllMachines(): Promise<Machine[]> {
+  const out: Machine[] = [];
+  let start: Record<string, any> | undefined;
+  do {
+    const page = await doc.send(new ScanCommand({
+      TableName: TABLE,
+      FilterExpression: 'begins_with(#sk, :m)',
+      ExpressionAttributeNames: { '#sk': 'sk' },
+      ExpressionAttributeValues: { ':m': 'M#' },
       ExclusiveStartKey: start,
     }));
     out.push(...(page.Items ?? []));

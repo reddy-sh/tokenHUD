@@ -1,0 +1,26 @@
+{
+  "name": "TokenHUD",
+  "short_name": "TokenHUD",
+  "description": "Live token usage & cost for your AI coding agents. Meters Claude Code, Codex CLI, Cursor, Devin and more.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a120c",
+  "theme_color": "#1a120c",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "type": "image/png",
+      "sizes": "180x180"
+    },
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}

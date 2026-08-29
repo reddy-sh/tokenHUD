@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import AdminShell from './admin/AdminShell'
+import { fleetOf, rankBoard } from '../lib/leaderboard'
+import AdminSidebar from './admin/AdminSidebar'
+import AdminTopbar from './admin/AdminTopbar'
+import IntegrationsPage from './admin/IntegrationsPage'
+import LeaderboardPage, { LEADERBOARD_KEYS, LEADERBOARD_PAGES } from './admin/LeaderboardPage'
+import RootRail, { SECTIONS } from './admin/RootRail'
+import SectionRail from './admin/SectionRail'
 import Settings from './admin/Settings'
 import { ShareModal } from './board/share'
 import BoardView from './BoardView'
@@ -311,6 +317,8 @@ export default function SelfHost({ onClose }) {
   const [live, setLive] = useState(true)
   const [nonce, setNonce] = useState(0)
   const [probeSeq, setProbeSeq] = useState(0)
+  const [boardState, setBoardState] = useState(null)
+  const [pendingTool, setPendingTool] = useState(null)
   const esRef = useRef(null)
 
   /* ── auto-probe on mount and on retry ── */
@@ -477,6 +485,18 @@ export default function SelfHost({ onClose }) {
     return () => { cancelled = true }
   }, [phase, shareSeq, cloud])
 
+  const toggleCollapse = useCallback(() => {
+    setCollapsed(c => { save(SK_SUBNAV, c ? '' : '1'); return !c })
+  }, [])
+  const toggleRoot = useCallback(() => {
+    setRootMini(c => { save(SK_ROOTNAV, c ? '' : '1'); return !c })
+  }, [])
+  const goto = useCallback(key => {
+    if (key !== 'monitoring') setPendingTool(null)
+    setSection(key); save(SK_SECTION, key)
+  }, [])
+  const gotoLb = useCallback(key => { setLbPage(key); save(SK_LBPAGE, key) }, [])
+
   /* The board wants `id` on a machine row; the server calls it `installId`.
      Memoised, and above the early returns so the hook count never changes.
      Memoised specifically because the board reports its computed state back
@@ -490,6 +510,56 @@ export default function SelfHost({ onClose }) {
     [data],
   )
 
+  /* The whole fleet in the shape share.rs serves, computed here rather than
+     inside the board: the Leaderboard is its own section and must not need the
+     board mounted to have something to show. Same object as a shared link
+     carries, so the pages below render both. */
+  const fleet = useMemo(() => fleetOf(shaped), [shaped])
+  const profiles = fleet.entries
+
+  /* "You" on the leaderboard is the machine Token Monitoring is pointed at.
+     `boardState` survives the board unmounting, so switching sections does not
+     move the marker; before the board has ever mounted, fall back to the same
+     machine it would default to. */
+  const meId = boardState?.cur?.host || shaped?.latest?.[0]?.host || null
+
+  /* Two counts the Leaderboard's rail badges with. Cheap sums, and they read
+     from the same object the pages do, so a badge cannot disagree with the
+     page it points at. */
+  const liveCount = useMemo(
+    () => profiles.reduce((a, e) => a + (e.running || []).length, 0),
+    [profiles],
+  )
+  const modelCount = useMemo(
+    () => new Set(profiles.flatMap(e => (e.models || []).filter(m => m.tokens > 0).map(m => m.model))).size,
+    [profiles],
+  )
+
+  const myRank = useMemo(() => {
+    if (!meId || profiles.length < 2) return null
+    const row = rankBoard(profiles, { metric: 'tokens', period: 'all' }).rows.find(r => r.id === meId)
+    return row ? row.rank : null
+  }, [profiles, meId])
+
+  /* Integration summary across all snapshots for the badge. Falls back to
+     the assistants array when the agent hasn't been upgraded yet. */
+  const intSummary = useMemo(() => {
+    const snaps = shaped?.latest || []
+    let reading = 0, known = 0
+    const seen = new Set()
+    const readingIds = new Set()
+    for (const s of snaps) {
+      const sum = s.metrics?.integrationSummary
+      if (sum) { reading = Math.max(reading, sum.reading || 0); known = Math.max(known, sum.known || 0) }
+      const rows = s.metrics?.integrations || s.metrics?.assistants || []
+      for (const r of rows) {
+        seen.add(r.id)
+        if (r.state === 'reading' || r.hasData) readingIds.add(r.id)
+      }
+    }
+    return { reading: Math.max(reading, readingIds.size), known: known || seen.size }
+  }, [shaped])
+
   /* ── routing: probing and offline don't get the admin shell ── */
   if (phase === 'probing') return <Probing />
   if (phase === 'offline') {
@@ -500,75 +570,31 @@ export default function SelfHost({ onClose }) {
   const serverLabel = serverUrl.current.replace(/^https?:\/\//, '')
 
   return (
-    <AdminShell adapter={{
-      data: shaped,
-      keys: KEYS,
-      onClose,
-      /* No account to name, so the rail names what actually identifies this
-         session: the server it is reading. The dot means a public link to the
-         leaderboard is live right now. */
-      identity: {
-        title: 'Self-hosted',
-        detail: serverLabel,
-        live: sharedLive,
-      },
-      topbar: {
-        serverUrl: serverUrl.current, serverOk: true,
-        theme, onTheme: toggleTheme,
-        streaming, lastUpdate,
-        live, onToggleLive: () => setLive(l => !l),
-        error,
-      },
-      sidebar: {
-        phase,
-        onPhase: setPhase,
-        onRename: (machineId, label) => {
-          apiFetch(serverUrl.current, apiKeyRef.current,
-            '/api/v1/machines/rename', { machineId, label })
-            .then(() => fetchData())
-            .catch(() => {})
-        },
-        onRemove: (host) => {
-          apiFetch(serverUrl.current, apiKeyRef.current,
-            '/api/v1/machines/remove', { host })
-            .then(() => fetchData())
-            .catch(() => {})
-        },
-      },
-      leaderboard: { share: cloud.share, shared: sharedLive, onShare: () => setShareOpen(true) },
-      monitoring: ({ onBoardState }) => (phase === 'setup' ? (
-        <SetupContent
-          serverUrl={serverUrl.current}
-          data={data}
-          apiKeyRef={apiKeyRef}
-          onLive={() => setPhase('live')}
-        />
-      ) : (
-        <BoardView
-          data={shaped}
-          loading={data == null}
-          error={error}
-          streaming={streaming}
-          lastUpdate={lastUpdate}
-          live={live}
-          onToggleLive={() => setLive(l => !l)}
-          onRetry={() => setNonce(n => n + 1)}
-          connLabel={serverLabel}
-          onClose={onClose}
-          onSignOut={disconnect}
-          cloud={cloud}
-          theme={theme}
-          onToggleTheme={toggleTheme}
-          embedded
-          onBoardState={onBoardState}
-        />
-      )),
-      settings: ({ rootCollapsed, onRootCollapsed, subCollapsed, onSubCollapsed, hosts, latestRelease }) => (
-        <Settings
-          connection={{
-            serverUrl: serverUrl.current,
-            hasKey: !!apiKeyRef.current,
-            onDisconnect: disconnect,
+    <div className="dashboard-frame adm">
+      <AdminTopbar
+        onCollapse={toggleRoot}
+        serverUrl={serverUrl.current} serverOk
+        onClose={onClose}
+        theme={theme} onTheme={toggleTheme}
+        streaming={streaming} lastUpdate={lastUpdate}
+        live={live} onToggleLive={() => setLive(l => !l)}
+        error={error}
+        crumb={SECTIONS.find(x => x.key === section)?.label}
+      />
+      <div className={'adm-shell'
+        + (rootMini ? ' adm-shell--rootmini' : '')
+        + (collapsed ? ' adm-shell--submini' : '')
+        + (hasSubNav ? '' : ' adm-shell--nosub')}>
+
+        <RootRail
+          section={section} onSection={goto}
+          collapsed={rootMini} onCollapse={toggleRoot}
+          serverLabel={serverLabel}
+          shared={sharedLive}
+          badges={{
+            monitoring: (data?.hosts || []).length || null,
+            leaderboard: myRank ? '#' + myRank : null,
+            integrations: intSummary.known ? intSummary.reading + '/' + intSummary.known : null,
           }}
           theme={theme} onTheme={toggleTheme}
           live={live} onToggleLive={() => setLive(l => !l)}
@@ -583,10 +609,127 @@ export default function SelfHost({ onClose }) {
           hosts={hosts}
           latestRelease={latestRelease}
         />
-      ),
-      overlay: shareOpen && cloud.share
-        ? <ShareModal share={cloud.share} onClose={() => { setShareOpen(false); setShareSeq(n => n + 1) }} />
-        : null,
-    }} />
+
+        {section === 'leaderboard' && (
+          <SectionRail
+            title="Leaderboard"
+            rows={LEADERBOARD_PAGES.map(row => ({
+              ...row,
+              badge: row.key === 'standings' && myRank ? '#' + myRank
+                : row.key === 'live' ? String(liveCount) || null
+                  : row.key === 'models' ? String(modelCount) || null
+                    : null,
+              tone: row.key === 'live' && liveCount ? 'on' : null,
+            }))}
+            active={lbPage}
+            onPick={gotoLb}
+            collapsed={collapsed}
+            onCollapse={toggleCollapse}
+          />
+        )}
+
+        {section === 'monitoring' && (
+          <AdminSidebar
+            collapsed={collapsed} onCollapse={toggleCollapse}
+            phase={phase}
+            board={boardState}
+            hosts={data?.hosts || []}
+            serverUrl={serverUrl.current}
+            onPhase={setPhase}
+            latestRelease={latestRelease}
+            onRename={(machineId, label) => {
+              apiFetch(serverUrl.current, apiKeyRef.current,
+                '/api/v1/machines/rename', { machineId, label })
+                .then(() => fetchData())
+                .catch(() => {})
+            }}
+            onRemove={(id) => {
+              /* The self-host remove API uses the hostname (the `host`
+                 column in SQLite). The sidebar now passes the machine id;
+                 find the matching host entry to get the hostname. */
+              const entry = (data?.hosts || []).find(h => h.machine_id === id)
+              const host = entry?.host || id
+              apiFetch(serverUrl.current, apiKeyRef.current,
+                '/api/v1/machines/remove', { host })
+                .then(() => fetchData())
+                .catch(() => {})
+            }}
+          />
+        )}
+
+        <main className="adm-content">
+          {section === 'monitoring' && phase === 'setup' && (
+            <SetupContent
+              serverUrl={serverUrl.current}
+              data={data}
+              apiKeyRef={apiKeyRef}
+              onLive={() => setPhase('live')}
+            />
+          )}
+          {section === 'monitoring' && phase === 'live' && (
+            <BoardView
+              data={shaped}
+              loading={data == null}
+              error={error}
+              streaming={streaming}
+              lastUpdate={lastUpdate}
+              live={live}
+              onToggleLive={() => setLive(l => !l)}
+              onRetry={() => setNonce(n => n + 1)}
+              connLabel={serverLabel}
+              onClose={onClose}
+              onSignOut={disconnect}
+              cloud={cloud}
+              theme={theme}
+              onToggleTheme={toggleTheme}
+              embedded
+              onBoardState={setBoardState}
+              initialTool={pendingTool}
+            />
+          )}
+          {section === 'leaderboard' && (
+            <LeaderboardPage
+              board={fleet}
+              page={lbPage}
+              meId={meId}
+              share={cloud.share}
+              shared={sharedLive}
+              onShare={() => setShareOpen(true)}
+              onGoToMachines={() => goto('monitoring')}
+            />
+          )}
+          {section === 'integrations' && (
+            <IntegrationsPage snapshots={shaped?.latest || []}
+              onNavigate={(toolId) => {
+                setPendingTool(toolId)
+                goto('monitoring')
+              }}
+            />
+          )}
+          {section === 'settings' && (
+            <Settings
+              serverUrl={serverUrl.current}
+              hasKey={!!apiKeyRef.current}
+              onDisconnect={disconnect}
+              theme={theme} onTheme={toggleTheme}
+              live={live} onToggleLive={() => setLive(l => !l)}
+              streaming={streaming} lastUpdate={lastUpdate}
+              rootCollapsed={rootMini} onRootCollapsed={v => { setRootMini(v); save(SK_ROOTNAV, v ? '1' : '') }}
+              subCollapsed={collapsed} onSubCollapsed={v => { setCollapsed(v); save(SK_SUBNAV, v ? '1' : '') }}
+              data={data}
+              hosts={data?.hosts || []}
+              latestRelease={latestRelease}
+              share={cloud.share}
+              shareSeq={shareSeq}
+              onManageShare={() => setShareOpen(true)}
+            />
+          )}
+        </main>
+      </div>
+
+      {shareOpen && cloud.share && (
+        <ShareModal share={cloud.share} onClose={() => { setShareOpen(false); setShareSeq(n => n + 1) }} />
+      )}
+    </div>
   )
 }
