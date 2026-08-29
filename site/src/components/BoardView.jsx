@@ -6,15 +6,15 @@ import {
 } from './board/codex'
 import { AddMachineModal, MachinesPanel, UpgradeModal } from './board/enroll'
 import { ExtensionsCard, governanceBadges, McpCard, PermissionsCard, ToolCallsCard } from './board/governance'
+import { Ic } from './board/icons'
 import Leaderboard from './board/leaderboard'
 import {
     ActivityCard, Card, DriversCard, EndedFeed, HostsFeed, HoursCard, IntegrationsCard, LiveCard,
     ModelsTable, Offboard, ProjectsFeed, PromptsFeed, RateCard, SessionsTable, SpendCard, Tiles,
     TokensCard, UsageWindows,
 } from './board/panels'
-import Rail, { Ic } from './board/Rail'
+import Rail from './board/Rail'
 import { compact, usdShort } from './board/util'
-import GlobalOptIn from './portal/GlobalOptIn'
 
 /* intervalSeconds arrives over the network, so it is input, not
    configuration: anything outside a sane band falls back to the default. */
@@ -30,8 +30,8 @@ const procTool = p => p.tool || 'claude-code'
  *
  * These are not a tidiness pass. `nav` is a useMemo whose dependencies are
  * these very values, and the board reports `nav` up to its host shell in an
- * effect that then sets state. A fallback written inline — `m.governance ||
- * {}` — is a NEW object on every render, so the memo never hits, the effect
+ * effect that then sets state. A fallback written inline - `m.governance ||
+ * {}` - is a NEW object on every render, so the memo never hits, the effect
  * always fires, the shell always re-renders, and the board loops until React
  * gives up with "maximum update depth exceeded". A reading missing any one of
  * these subtrees (an older agent, a collector that found nothing) was enough
@@ -56,9 +56,9 @@ function Section({ id, children, cols }) {
 /* The board is presentation only: Portal owns the AppSync subscription and
    hands the synthesized overview down, so every panel below reads the same
    shape the self-host server used to serve. `cloud` carries the actions the
-   machine panels call — mint an enrollment, revoke, remove.
+   machine panels call - mint an enrollment, revoke, remove.
 
-   `embedded` mode: hides topbar + Rail — the parent provides its own shell.
+   `embedded` mode: hides topbar + Rail - the parent provides its own shell.
    The board reports computed nav / state via `onBoardState` so the parent's
    sidebar can render machine lists, section nav, and badges. */
 export default function BoardView({
@@ -175,8 +175,8 @@ export default function BoardView({
       used: toolId === 'codex' ? codex.tools : usage.tools,
     })
     /* Embedded, the leaderboard is a section of the ROOT navigation and this
-       rail is only about one machine, so it does not appear here. Standalone —
-       the cloud portal — has no root rail, so it keeps it inline, badged with
+       rail is only about one machine, so it does not appear here. Standalone -
+       the cloud portal - has no root rail, so it keeps it inline, badged with
        your own place. */
     const leaderRow = embedded ? null : {
       id: 'p-leaderboard', label: 'Leaderboard', icon: 'trophy',
@@ -192,7 +192,15 @@ export default function BoardView({
       { id: 'p-tool-calls', label: 'Tool calls', icon: 'tools', badge: govB.toolCalls.text },
       { id: 'p-permissions', label: 'Permissions', icon: 'shield', badge: govB.permissions.text },
       { id: 'p-extensions', label: 'Extensions', icon: 'blocks', badge: govB.extensions.text },
-      { id: 'p-machines', label: 'Machines', icon: 'machines', badge: up + '/' + hosts.length, tone: hosts.length && up < hosts.length ? 'bad' : null },
+      /* Embedded, the shell's own rail already opens with a MACHINES group
+         listing every machine by name, with its liveness and its remove
+         control. A second "Machines" row four rows below it - same word, same
+         rail, different job - was the loudest reason the two rails read as one
+         duplicated sidebar. The panel it scrolled to is still on the board;
+         only the row that named it twice is gone. */
+      ...(embedded ? [] : [
+        { id: 'p-machines', label: 'Machines', icon: 'machines', badge: up + '/' + hosts.length, tone: hosts.length && up < hosts.length ? 'bad' : null },
+      ]),
       {
         id: 'p-integrations',
         label: 'Integrations',
@@ -209,6 +217,10 @@ export default function BoardView({
       return [
           { id: 'p-codex-overview', label: 'Codex overview', icon: 'overview', badge: compact((codex.totals || {}).total || 0) },
         ...(leaderRow ? [leaderRow] : []),
+        {
+          id: 'p-codex-value', label: 'Codex value', icon: 'value',
+          badge: codex.priced ? usdShort(codex.estUSD || 0) : 'n/p',
+        },
         { id: 'p-codex-plan', label: 'Codex plan', icon: 'window', badge: lead ? Math.round(lead.percent) + '%' : null },
         {
           id: 'p-codex-policy', label: 'Codex policy', icon: 'shield', badge: (codex.policy || {}).sandbox || null,
@@ -289,9 +301,13 @@ export default function BoardView({
   const govForTool = toolId === 'codex' ? gov.codex : gov.claude
   const usedForTool = toolId === 'codex' ? codex.tools : usage.tools
 
-  /* The leaderboard sits second on both assistants' boards — under the
+  /* The leaderboard sits second on both assistants' boards - under the
      overview, above everything that is about one machine. It is the only
-     panel on the board that is about more than one. */
+     panel on the board that is about more than one.
+     Embedded, the Leaderboard is a section of the root navigation instead, so
+     this whole block is skipped. Nothing else may live inside it: the global
+     opt-in used to, and because every caller embeds the board, no cloud user
+     could reach it. It is a row in Settings now. */
   const leaderboardSection = embedded ? null : (
     <Section id="p-leaderboard">
       <Leaderboard
@@ -300,7 +316,6 @@ export default function BoardView({
         defaultMetric="tokens"
         defaultPeriod="all"
       />
-      {publicBoard && <GlobalOptIn publicBoard={publicBoard} />}
     </Section>
   )
 
@@ -338,7 +353,7 @@ export default function BoardView({
     <>
       {!payloads.length && (
         <Card warn>
-          No machine has reported yet. Register one below — it hands you the two
+          No machine has reported yet. Register one below - it hands you the two
           commands that install the agent and enroll it here.
         </Card>
       )}
@@ -382,7 +397,7 @@ export default function BoardView({
           {sharedTail}
           <Section id="p-recently-finished">
             <EndedFeed endings={endings} host={cur.host} toolId="claude-code" title="Recently finished"
-              note="Claude Code runs that were going at one reading and gone by the next — including the notification you never saw." />
+              note="Claude Code runs that were going at one reading and gone by the next - including the notification you never saw." />
           </Section>
         </>
       )}
@@ -393,6 +408,9 @@ export default function BoardView({
             <CodexTiles cx={codex} live={liveObj} />
           </Section>
           {leaderboardSection}
+          <Section id="p-codex-value">
+            <CodexValue cx={codex} />
+          </Section>
           <Section id="p-codex-plan" cols={2}>
             <CodexLimits cx={codex} />
             <CodexPolicy cx={codex} gov={gov.codex} />

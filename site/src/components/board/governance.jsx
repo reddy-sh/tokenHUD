@@ -48,9 +48,9 @@ export function McpCard({ toolId, gov, used }) {
               <tr key={r.name}>
                 <td>{r.name}</td>
                 <td className="bv-sub">{r.scope}</td>
-                <td className="mono" title={r.transport || ''}>{r.target || '—'}</td>
-                <td className="bv-sub" title={r.env.length ? 'Names only — no value is ever read.' : undefined}>
-                  {r.env.length ? r.env.join(', ') : '—'}
+                <td className="mono" title={r.transport || ''}>{r.target || '-'}</td>
+                <td className="bv-sub" title={r.env.length ? 'Names only - no value is ever read.' : undefined}>
+                  {r.env.length ? r.env.join(', ') : '-'}
                 </td>
                 <td style={r.tone ? { color: r.tone } : undefined}>{r.state}</td>
                 <td className={r.hit ? 'tnum' : 'tnum bv-sub'}
@@ -105,7 +105,7 @@ export function ToolCallsCard({ toolId, used }) {
               return (
                 <tr key={r.name}>
                   <td className="mono">{isMcp ? m.slice(1).join('__') : r.name}</td>
-                  <td className="bv-sub">{isMcp ? m[0] : '—'}</td>
+                  <td className="bv-sub">{isMcp ? m[0] : '-'}</td>
                   <td className="tnum">{full(r.calls)}</td>
                 </tr>
               )
@@ -139,7 +139,7 @@ export function PermissionsCard({ toolId, gov }) {
     const feats = gov.features || []
     return (
       <Card title="Permissions"
-        note="Codex governs by approval policy and sandbox rather than by rule lists — those are on the policy card above.">
+        note="Codex governs by approval policy and sandbox rather than by rule lists - those are on the policy card above.">
         <p className="bv-gov-h">features</p>
         <Chips items={feats.map(f => ({ name: f.name, off: !f.on }))} empty="none declared" />
         {gov.sources && (
@@ -219,7 +219,7 @@ export function ExtensionsCard({ toolId, gov, used }) {
     <Card title="Extensions"
       note={codex
         ? 'Installed for Codex, from config.toml and ~/.codex/skills.'
-        : 'Installed here, with how often each was actually invoked — counted from the transcripts, not from a usage cache.'}>
+        : 'Installed here, with how often each was actually invoked - counted from the transcripts, not from a usage cache.'}>
       <p className="bv-gov-h">plugins</p>
       <Chips empty="None installed."
         items={(gov.plugins || []).map(p => ({

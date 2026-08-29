@@ -3,7 +3,7 @@ import { Card, Empty, Pill } from './panels'
 import { ago, useNow } from './util'
 
 /* Machine registration, cloud edition. The actions live in the `cloud`
-   object Portal builds (mint / revoke / remove) — these components never
+   object Portal builds (mint / revoke / remove) - these components never
    talk to a server themselves. The one-shot link model is unchanged from
    the self-host board: the command is shown once, only hashes are stored,
    and a closed modal cannot resurrect a token. */
@@ -99,10 +99,10 @@ async function fetchOverviewHosts(cloud) {
 
 /* ── add-machine modal ───────────────────────────────────────────
    Phases:
-   1. generate — mint install token, build the one-liner
-   2. command  — show the command with Copy button
-   3. waiting  — after copy, poll the server for a new host
-   4. done     — new host detected, or duplicate/version mismatch  */
+   1. generate - mint install token, build the one-liner
+   2. command  - show the command with Copy button
+   3. waiting  - after copy, poll the server for a new host
+   4. done     - new host detected, or duplicate/version mismatch  */
 
 export function AddMachineModal({ cloud, onClose }) {
   const [phase, setPhase] = useState('generate') // generate | command | waiting | done
@@ -178,7 +178,7 @@ export function AddMachineModal({ cloud, onClose }) {
 
   /* Phase 3: poll the server every 3s for a new host.
 
-     Detection — three things to spot, checked in this order:
+     Detection - three things to spot, checked in this order:
      1. Brand-new hostname → "Machine connected"
      2. Same hostname, different agent_version → "Agent upgraded"
      3. Same hostname, `last_seen` moved forward → "Already running"
@@ -552,7 +552,7 @@ export function UninstallMachineModal({ machine, onClose, onRemove }) {
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
           <button className="bv-toggle" onClick={onClose} disabled={removing}>Cancel</button>
           <button className="btn btn--primary" onClick={removeFromPortal} disabled={removing}>
-            {removing ? 'Removing…' : 'I ran it — remove from portal'}
+            {removing ? 'Removing…' : 'I ran it - remove from portal'}
           </button>
         </div>
       </div>
@@ -602,7 +602,7 @@ export function MachinesPanel({ machines, cloud, onAdd }) {
 
   return (
     <Card title="Machines"
-      note="Each machine holds its own key. Revoking one shuts one door — its next report is refused and the agent stops. Re-joining takes a fresh registration."
+      note="Each machine holds its own key. Revoking one shuts one door - its next report is refused and the agent stops. Re-joining takes a fresh registration."
       right={<button className="btn btn--primary" style={{ padding: '4px 14px', fontSize: 'var(--text-xs)' }} onClick={onAdd}>Add machine</button>}>
 
       {/* Summary chips when fleet is large. */}
@@ -630,7 +630,7 @@ export function MachinesPanel({ machines, cloud, onAdd }) {
       {error && <div className="bv-warnbar">{error}</div>}
       {!list.length && (
         <Empty>
-          No machine is registered yet. Add one — it gives you a single command that
+          No machine is registered yet. Add one - it gives you a single command that
           installs the agent and enrolls it, and the board fills in as soon as it reports.
         </Empty>
       )}
@@ -684,7 +684,7 @@ export function MachinesPanel({ machines, cloud, onAdd }) {
                       {left != null && left > 0 && (
                         <span className="tnum">link expires {Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}</span>
                       )}
-                      {left != null && left <= 0 && <span>link expired unclaimed — cancel it and mint a new one</span>}
+                      {left != null && left <= 0 && <span>link expired unclaimed - cancel it and mint a new one</span>}
                     </>
                   ) : (
                     <>
@@ -692,7 +692,7 @@ export function MachinesPanel({ machines, cloud, onAdd }) {
                         <span className="bv-paircode" style={{ fontSize: 'var(--text-xs)' }}
                           title="Must match the code the enrolling terminal prints">{mc.code}</span>
                       )}
-                      <span>{mc.platform || '—'}</span>
+                      <span>{mc.platform || '-'}</span>
                       <span>agent {mc.agentVersion || '?'}</span>
                       {mc.hostname && mc.hostname !== mc.label && <span>hostname {mc.hostname}</span>}
                       {mc.installId && <span className="mono">id {String(mc.installId).slice(0, 8)}</span>}

@@ -6,7 +6,7 @@ import { ago, compact, usd } from './util'
  *
  * The dialog has one job beyond minting a link, and it is the important one:
  * showing what the link actually says. A privacy control nobody can check is
- * a promise, and this one is checkable — the preview under the switch is the
+ * a promise, and this one is checkable - the preview under the switch is the
  * real public payload, fetched from the real public endpoint with no
  * credential, ranked by the code the public page runs. If a project name were
  * ever going to leak, it would be visible right there before the link is
@@ -23,7 +23,7 @@ import { ago, compact, usd } from './util'
 
 /* The URL a person actually sends someone: this page, with the slug in the
    hash and the API it should read from beside it. The site is static and the
-   API is wherever the server runs, so the link has to carry both — there is
+   API is wherever the server runs, so the link has to carry both - there is
    no third place that knows. */
 export function shareLink(slug, apiUrl) {
   const here = location.origin + location.pathname
@@ -51,7 +51,7 @@ function Copy({ text, label = 'Copy' }) {
 /* ── what a shared board says, and what it does not ─────────────────── */
 
 const CARRIES = [
-  'Token counts — input, output, cache reads and writes',
+  'Token counts - input, output, cache reads and writes',
   'Model names, and the tokens and estimated value against each',
   'Sessions, requests, tool calls, messages, active days',
   'One row per date: tokens, estimated value, counts',
@@ -76,7 +76,7 @@ function Disclosure({ identities }) {
           <li>
             {identities === 'host'
               ? <b>Machine names, as you named them</b>
-              : 'A pseudonym per machine — never the machine name'}
+              : 'A pseudonym per machine - never the machine name'}
           </li>
         </ul>
       </div>
@@ -110,7 +110,7 @@ function Preview({ board, error, loading }) {
       <ul className="sh-preview-rows">
         {ranked.rows.slice(0, 5).map(r => (
           <li key={r.id}>
-            <span className="lb-rank">{r.rank ?? '—'}</span>
+            <span className="lb-rank">{r.rank ?? '-'}</span>
             <span className="lb-name">{r.name}</span>
             <span className="bv-sub">{r.tier.tier.name}</span>
             <span className="tnum">{compact(r.value)} tokens</span>
@@ -168,7 +168,7 @@ export function ShareModal({ share, onClose }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  /* Read the link back the way a stranger would — no key, same endpoint. */
+  /* Read the link back the way a stranger would - no key, same endpoint. */
   useEffect(() => {
     if (!live || !apiUrl) { setPreview({ loading: false }); return }
     let cancelled = false
@@ -197,7 +197,7 @@ export function ShareModal({ share, onClose }) {
         <h2>{live ? 'This board is public' : 'Share this board'}</h2>
         <p className="enroll-sub">
           A public link to the leaderboard: how much your machines ran, which models did it,
-          and how that changed day to day. Anyone with the link can read it — nobody can find
+          and how that changed day to day. Anyone with the link can read it - nobody can find
           it without one.
         </p>
 

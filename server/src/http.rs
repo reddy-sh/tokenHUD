@@ -676,7 +676,7 @@ pub async fn install_script(
     Query(qs): Query<HashMap<String, String>>,
 ) -> impl IntoResponse {
     let key = headers.get("x-tokenhud-key").and_then(|v| v.to_str().ok());
-    let token_ok = qs.get("t").map_or(false, |t| app.take_install_token(t));
+    let token_ok = qs.get("t").is_some_and(|t| app.take_install_token(t));
     if !token_ok && !app.authorized(key) {
         return unauthorized(&headers);
     }
@@ -832,7 +832,7 @@ pub async fn upgrade_script(
     Query(qs): Query<HashMap<String, String>>,
 ) -> impl IntoResponse {
     let key = headers.get("x-tokenhud-key").and_then(|v| v.to_str().ok());
-    let token_ok = qs.get("t").map_or(false, |t| app.take_install_token(t));
+    let token_ok = qs.get("t").is_some_and(|t| app.take_install_token(t));
     if !token_ok && !app.authorized(key) {
         return unauthorized(&headers);
     }

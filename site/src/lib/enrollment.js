@@ -1,6 +1,6 @@
 /* Minting an enrollment link, browser-side.
  *
- * The portal generates the one-shot token and stores only its SHA-256 —
+ * The portal generates the one-shot token and stores only its SHA-256 -
  * the same discipline as the self-host server, where no secret survives in
  * the store. The raw token exists in exactly two places: the command shown
  * once in the register modal, and the agent's memory while it enrolls.
@@ -18,8 +18,8 @@ export async function sha256Hex(s) {
   return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
-/* 32 random bytes, base64url without padding — the 43-character shape the
-   server mints and the agent's claim endpoint validates (20–100 chars). */
+/* 32 random bytes, base64url without padding - the 43-character shape the
+   server mints and the agent's claim endpoint validates (20-100 chars). */
 export function newToken() {
   const bytes = crypto.getRandomValues(new Uint8Array(32))
   let bin = ''

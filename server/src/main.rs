@@ -1,23 +1,23 @@
-//! TokenHUD server — takes what agents send, keeps it, serves the board.
+//! TokenHUD server - takes what agents send, keeps it, serves the board.
 //!
 //! ```text
 //! tokenhud-server --new-key            print a key, then set TOKENHUD_KEY
 //! TOKENHUD_KEY=… tokenhud-server       http://127.0.0.1:8787
 //! ```
 //!
-//! SQLite for storage, and it binds loopback by default — set TOKENHUD_BIND
+//! SQLite for storage, and it binds loopback by default - set TOKENHUD_BIND
 //! deliberately, and read the note below before you do.
 //!
 //! ## On exposing this
 //!
 //! The ingest key is a bearer secret in a header. Over plain HTTP on a LAN that
 //! is adequate against accident and useless against anyone listening. If this
-//! server ever leaves your machine, put it behind TLS — a reverse proxy is the
-//! easy answer — and treat TOKENHUD_KEY as a real credential.
+//! server ever leaves your machine, put it behind TLS - a reverse proxy is the
+//! easy answer - and treat TOKENHUD_KEY as a real credential.
 //!
 //! Defaults are chosen so that doing nothing is safe: loopback bind, key
-//! required for writes, and the agent sends no prompt text. CORS is allowed —
-//! a board is a different origin from the API it reads — but it grants a
+//! required for writes, and the agent sends no prompt text. CORS is allowed -
+//! a board is a different origin from the API it reads - but it grants a
 //! browser nothing the key does not already gate.
 
 use std::path::PathBuf;
@@ -59,22 +59,22 @@ async fn main() {
     // secret in the browser.
     let protect_reads = std::env::var("TOKENHUD_PROTECT_READS").unwrap_or_default() == "1";
     // Every reader of the event stream holds a task for as long as it watches.
-    // Cheap here — a task, not a thread — but still bounded rather than hoped
+    // Cheap here - a task, not a thread - but still bounded rather than hoped
     // about: past the cap the endpoint says no and the board falls back to
     // polling, which still works and is what it did before.
     let max_streams: u64 = env_or("TOKENHUD_MAX_STREAMS", "64").parse().unwrap_or(64);
-    // Only needed when something sits in front of this server — a proxy, a
+    // Only needed when something sits in front of this server - a proxy, a
     // tunnel, a hostname. A shared leaderboard link has to name an API a
     // stranger's browser can reach, and this is the only place that knows.
     let public_url = env_or("TOKENHUD_PUBLIC_URL", "");
 
     if key.is_empty() {
-        println!("TOKENHUD_KEY is not set — ingest will reject every agent.");
+        println!("TOKENHUD_KEY is not set - ingest will reject every agent.");
         println!("Generate one:  tokenhud-server --new-key");
         println!("Then:          export TOKENHUD_KEY=<that value>\n");
     }
     if bind != "127.0.0.1" {
-        println!("! binding {bind} — this server is reachable from the network.");
+        println!("! binding {bind} - this server is reachable from the network.");
         println!("! put TLS in front of it before sending a real key over the wire.\n");
     }
 
@@ -97,7 +97,7 @@ async fn main() {
     let router = router(app.clone());
 
     // Retention runs on a timer, not per request. Once at startup so a
-    // long-stopped server catches up, then hourly — the horizon is 30 days, so
+    // long-stopped server catches up, then hourly - the horizon is 30 days, so
     // the exact cadence is irrelevant and the cost of getting it wrong on the
     // ingest path is not.
     {

@@ -1,9 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Two pages, which is every page this site has.
+
+  The leaderboard is a fragment route because the site is a single static
+  artifact with no server-side routing in front of it - App.jsx switches on
+  location.hash. That is worth knowing before reading the second entry: most
+  crawlers strip the fragment and will treat it as another request for "/",
+  so this entry buys discovery by a reader or an assistant following the file
+  rather than a second URL in an index. It is listed anyway because it is a
+  real, linkable, public page that a person can open and paste, and leaving
+  the only other page of the site out of its own sitemap to avoid a duplicate
+  a crawler would collapse on its own is the wrong trade.
+
+  Its priority is lower than the landing page's on purpose: the landing page
+  is what should rank, and the leaderboard is empty until people opt in.
+-->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://tokenhud.com/</loc>
-    <lastmod>2026-08-23</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://tokenhud.com/#/leaderboard</loc>
+    <lastmod>2026-08-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
   </url>
 </urlset>

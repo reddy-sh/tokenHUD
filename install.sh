@@ -50,7 +50,7 @@ case "$OS-$ARCH" in
 esac
 
 say ""
-say "TokenHUD — a heads-up display for the AI agents on your machine."
+say "TokenHUD - a heads-up display for the AI agents on your machine."
 say "  platform  $OS $ARCH"
 say "  binaries  $PREFIX"
 say "  state     $STATE   (the only directory it writes)"
@@ -76,7 +76,7 @@ if curl -fsSL --head "$BASE/tokenhud-agent-$TARGET" >/dev/null 2>&1; then
     curl -fsSL "$BASE/$b-$TARGET.sha256" -o "$TMP/$b.sha256"
     WANT="$(cut -d' ' -f1 < "$TMP/$b.sha256")"
     [ -n "$WANT" ] && [ "$WANT" = "$(hash_of "$TMP/$b")" ] \
-      || die "checksum mismatch on $b — do not run it. Report at https://github.com/$REPO/issues"
+      || die "checksum mismatch on $b - do not run it. Report at https://github.com/$REPO/issues"
     say "  $b checksum verified: $(printf '%s' "$WANT" | cut -c1-16)…"
   done
   mv "$TMP/tokenhud-agent" "$TMP/tokenhud-server" "$PREFIX/"
@@ -93,12 +93,12 @@ if curl -fsSL --head "$BASE/tokenhud-agent-$TARGET" >/dev/null 2>&1; then
 else
   command -v cargo >/dev/null 2>&1 || die "no release for $TARGET yet, and cargo is not installed.
   Install Rust from https://rustup.rs and run this again, or clone and run ./scripts/start-all.sh"
-  say "No published binary for $TARGET yet — building from source (about 30s)…"
+  say "No published binary for $TARGET yet - building from source (about 30s)…"
   SRC="$TMP/src"
   git clone --depth 1 "https://github.com/$REPO" "$SRC" >/dev/null 2>&1 || die "clone failed"
   ( cd "$SRC" && cargo build --release --manifest-path agent/Cargo.toml  >/dev/null 2>&1 \
                  && cargo build --release --manifest-path server/Cargo.toml >/dev/null 2>&1 ) \
-    || die "build failed — run it by hand in $SRC to see why"
+    || die "build failed - run it by hand in $SRC to see why"
   cp "$SRC/agent/target/release/tokenhud-agent"   "$PREFIX/"
   cp "$SRC/server/target/release/tokenhud-server" "$PREFIX/"
 fi
@@ -146,7 +146,7 @@ say "  set -a; . $ENVF; set +a"
 say "  tokenhud-server &"
 say "  tokenhud-agent &"
 say ""
-say "That server is API-only — no dashboard ships in it. Read it directly:"
+say "That server is API-only - no dashboard ships in it. Read it directly:"
 say ""
 say "  curl -s http://127.0.0.1:8787/api/v1/overview"
 say ""

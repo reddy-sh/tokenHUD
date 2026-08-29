@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 /* The install flow: the script is accessible, the CDN serves binaries,
  * and the "Add a machine" modal shows a single combined command.
  *
- * The CDN test hits the live CloudFront distribution — it does not need
+ * The CDN test hits the live CloudFront distribution - it does not need
  * a local backend, but it does need network access. */
 
 const CDN = 'https://d3gu0e7g3rcz5n.cloudfront.net'

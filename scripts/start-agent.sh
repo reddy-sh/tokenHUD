@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Start the agent (and check first — if it is already running, say so).
+# Start the agent (and check first - if it is already running, say so).
 #
 #   ./scripts/start-agent.sh
 #
 # The agent reads this machine's AI-assistant state and reports it to the API
 # server every 30 seconds. Where its server and key come from, in order:
-#   1. ~/.tokenhud/machine.json — this machine was enrolled from a board link
+#   1. ~/.tokenhud/machine.json - this machine was enrolled from a board link
 #      (`tokenhud-agent enroll "<link>"`); nothing else is needed.
-#   2. .env in this repo — the local install's shared key, next to the server.
+#   2. .env in this repo - the local install's shared key, next to the server.
 # Consent gates everything: the agent will not start until the read manifest
 # has been agreed to, and this script never agrees on your behalf.
 [ -n "${BASH_VERSION:-}" ] || exec bash "$0" "$@"

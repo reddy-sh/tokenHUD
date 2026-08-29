@@ -1,7 +1,7 @@
 # tokenhud.com
 #
 # Posture: OPEN to AI crawlers, deliberately. TokenHUD's buyers ask assistants
-# "how do I see what my coding agents are costing" — being citable is the
+# "how do I see what my coding agents are costing" - being citable is the
 # distribution channel, so blocking the crawlers that answer that question
 # would be blocking the customer. A product with nothing to hide on a
 # marketing site loses nothing by being read.
@@ -65,7 +65,7 @@ Allow: /
 
 # Common Crawl. Feeds many downstream datasets; allowing it is the widest
 # reach available and the least controllable. Kept open for a public
-# marketing page — revisit if the site ever hosts anything non-public.
+# marketing page - revisit if the site ever hosts anything non-public.
 User-agent: CCBot
 Allow: /
 

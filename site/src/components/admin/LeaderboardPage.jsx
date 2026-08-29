@@ -11,14 +11,14 @@ import Standings from './leaderboard/Standings'
  * They are four because they are four different questions, and a single page
  * that answered all of them would answer none of them well:
  *
- *   Standings  who is ahead — the ranking, and a headline above it
+ *   Standings  who is ahead - the ranking, and a headline above it
  *   Live       what is running at this instant, as counts
  *   Models     which models did the work, how that is shifting, what it costs
  *   Demand     how much, when, and how evenly it is spread
  *
  * The split is also the business shape. Standings is what a team looks at;
  * Models and Demand are what somebody who builds models would pay for, and
- * both are aggregate by construction — nothing on either page names a project,
+ * both are aggregate by construction - nothing on either page names a project,
  * a prompt or a path, because the payload they read cannot carry one. */
 
 export const LEADERBOARD_PAGES = [
@@ -47,7 +47,7 @@ export default function LeaderboardPage({
         <Card warn>
           No machine has reported yet, so there is nothing to rank. Add one from{' '}
           <button className="lb-inline-link" onClick={onGoToMachines}>Token Monitoring</button>{' '}
-          — every page here fills in as agents check in.
+          - every page here fills in as agents check in.
         </Card>
       </div>
     )

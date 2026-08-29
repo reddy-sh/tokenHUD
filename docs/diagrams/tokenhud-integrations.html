@@ -41,7 +41,7 @@
   </noscript>
   <style>
     /* ==========================================================
-       THEME VARIABLES — switch by toggling [data-theme] on <html>
+       THEME VARIABLES - switch by toggling [data-theme] on <html>
        ========================================================== */
     :root,
     [data-theme="dark"] {
@@ -128,7 +128,7 @@
     }
 
     /* ==========================================================
-       SIGNAL FLOW — an opt-in, motion-forward visual preset.
+       SIGNAL FLOW - an opt-in, motion-forward visual preset.
        The variables also target a standalone exported SVG, whose
        root carries data-preset and data-theme directly.
        ========================================================== */
@@ -196,7 +196,7 @@
     }
 
     /* ==========================================================
-       BLUEPRINT — a review-first drafting preset for deployment,
+       BLUEPRINT - a review-first drafting preset for deployment,
        infrastructure, and technical design documentation. It keeps
        the same semantic palette and geometry while trading glow for
        precise grid contrast, squared materials, and drafting marks.
@@ -272,7 +272,7 @@
     }
 
     /* ==========================================================
-       EDITORIAL — a warm, publication-minded preset for design
+       EDITORIAL - a warm, publication-minded preset for design
        reviews, launch notes, and documentation. The diagram keeps
        the same semantic palette and exact geometry, but trades
        software chrome for paper, ink, ruled structure, and one
@@ -2730,7 +2730,7 @@
     html[data-preset="blueprint"] .guided-view-chapter,
     html[data-preset="blueprint"] .guided-view-chapter-index { border-radius: 0.12rem !important; }
 
-    /* Story Shelf — keep every authored chapter and the Play action visible,
+    /* Story Shelf - keep every authored chapter and the Play action visible,
        but do not spend a second row on unavailable director controls before
        the reader enters a chapter. Existing data-active-view state expands
        the full guided surface without a new toggle or stored preference. */
@@ -2792,7 +2792,7 @@
 
     /* Preserve the one-screen guarantee on ordinary laptop displays. The
        high-screen expansion above must not trade a fuller canvas for page
-       scrolling at 900–1080px heights. */
+       scrolling at 900-1080px heights. */
     @media (min-width: 768px) and (max-height: 1100px) {
       .header { margin-bottom: 1rem; }
       .diagram-container { padding: 0.875rem; }
@@ -2868,7 +2868,7 @@
     .card li { margin-bottom: 0.375rem; }
 
     /* ==========================================================
-       Print stylesheet — hide interactive controls, force light,
+       Print stylesheet - hide interactive controls, force light,
        drop the grid so the diagram doesn't waste ink, use landscape
        so wide diagrams fit, pack summary cards into 2 columns to
        avoid an orphan card on a trailing page.
@@ -2876,8 +2876,8 @@
     @page { size: landscape; margin: 1.5cm; }
 
     @media print {
-      /* Force the FULL light palette — including component fills/strokes and
-         lane/arrow colors — so printing from dark theme doesn't put neon
+      /* Force the FULL light palette - including component fills/strokes and
+         lane/arrow colors - so printing from dark theme doesn't put neon
          strokes and translucent dark fills on white paper. */
       :root, [data-theme="dark"], [data-theme="light"] {
         --bg: #ffffff;
@@ -3453,7 +3453,7 @@
       font-size: 0.55rem;
     }
 
-    /* Toast — brief feedback for actions like "copied" */
+    /* Toast - brief feedback for actions like "copied" */
     .archify-toast {
       position: fixed;
       top: 1rem;
@@ -3841,7 +3841,7 @@
     }
 
     /* ==========================================================
-       SVG SEMANTIC CLASSES — use these instead of inline fill/stroke
+       SVG SEMANTIC CLASSES - use these instead of inline fill/stroke
        ========================================================== */
     .c-grid       { stroke: var(--grid); fill: none; }
     .c-mask       { fill: var(--mask); stroke: none; }
@@ -4910,7 +4910,7 @@
 
         <!-- Boundaries (behind everything) -->
         <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="0" x="30" y="90" width="1200" height="457" rx="12" class="c-region" stroke-width="1"/>
-        <text x="38" y="108" class="t-cloud" font-size="9" font-weight="600">your machine — every integration is read locally</text>
+        <text x="38" y="108" class="t-cloud" font-size="9" font-weight="600">your machine - every integration is read locally</text>
 
         <rect data-graph-role="structural-frame" data-composition-frame-kind="security-group" data-composition-frame-id="1" x="360" y="90" width="230" height="457" rx="8" class="c-security-group" stroke-width="1"/>
         <text x="368" y="108" class="t-security" font-size="9" font-weight="600">tokenhud-agent collectors</text>
@@ -4925,11 +4925,11 @@
         <path data-edge-from="devin_probe" data-edge-to="snapshot" data-edge-label="sessions · last active" data-edge-key="6" data-composition-points="560,496;645,496;645,323;730,323" d="M 560 496 L 637 496 Q 645 496 645 488 L 645 331 Q 645 323 653 323 L 730 323" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         <path data-edge-from="detector" data-edge-to="snapshot" data-edge-label="installed list" data-edge-key="7" data-composition-points="560,381;645,381;645,330;730,330" d="M 560 381 L 637 381 Q 645 381 645 373 L 645 338 Q 645 330 653 330 L 730 330" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
         <path data-edge-from="snapshot" data-edge-to="board_view" data-edge-label="assistants array" data-edge-key="8" data-composition-points="890,323;1030,323" d="M 890 323 L 1030 323" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="devin_probe" data-edge-to="devin_cloud" data-edge-label="never called — metrics stay local" data-edge-key="9" data-composition-points="560,496;925,496;925,551;1290,551" d="M 560 496 L 917 496 Q 925 496 925 504 L 925 543 Q 925 551 933 551 L 1290 551" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="devin_probe" data-edge-to="devin_cloud" data-edge-label="never called - metrics stay local" data-edge-key="9" data-composition-points="560,496;925,496;925,551;1290,551" d="M 560 496 L 917 496 Q 925 496 925 504 L 925 543 Q 925 551 933 551 L 1290 551" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
 
         <!-- Components -->
-        <g id="node-claude_dirs" data-node-id="claude_dirs" data-node-label="~/.claude" tabindex="0" role="button" aria-label="Focus ~/.claude, transcripts · usage cache, your machine — every integration is read locally" aria-pressed="false" data-node-kind="external" data-node-sublabel="transcripts · usage cache" data-node-context="your machine — every integration is read locally">
-          <title>~/.claude · transcripts · usage cache · your machine — every integration is read locally</title>
+        <g id="node-claude_dirs" data-node-id="claude_dirs" data-node-label="~/.claude" tabindex="0" role="button" aria-label="Focus ~/.claude, transcripts · usage cache, your machine - every integration is read locally" aria-pressed="false" data-node-kind="external" data-node-sublabel="transcripts · usage cache" data-node-context="your machine - every integration is read locally">
+          <title>~/.claude · transcripts · usage cache · your machine - every integration is read locally</title>
           <rect x="60" y="120" width="170" height="62" rx="6" class="c-mask"/>
           <rect x="60" y="120" width="170" height="62" rx="6" class="c-external" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(66 126) scale(0.6875)">
@@ -4940,8 +4940,8 @@
         <text data-detail="context" x="145" y="165" class="t-muted" font-size="9" text-anchor="middle">transcripts · usage cache</text>
         </g>
 
-        <g id="node-codex_dirs" data-node-id="codex_dirs" data-node-label="~/.codex" tabindex="0" role="button" aria-label="Focus ~/.codex, sessions · rate limits, your machine — every integration is read locally" aria-pressed="false" data-node-kind="external" data-node-sublabel="sessions · rate limits" data-node-context="your machine — every integration is read locally">
-          <title>~/.codex · sessions · rate limits · your machine — every integration is read locally</title>
+        <g id="node-codex_dirs" data-node-id="codex_dirs" data-node-label="~/.codex" tabindex="0" role="button" aria-label="Focus ~/.codex, sessions · rate limits, your machine - every integration is read locally" aria-pressed="false" data-node-kind="external" data-node-sublabel="sessions · rate limits" data-node-context="your machine - every integration is read locally">
+          <title>~/.codex · sessions · rate limits · your machine - every integration is read locally</title>
           <rect x="60" y="235" width="170" height="62" rx="6" class="c-mask"/>
           <rect x="60" y="235" width="170" height="62" rx="6" class="c-external" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(66 241) scale(0.6875)">
@@ -4952,8 +4952,8 @@
         <text data-detail="context" x="145" y="280" class="t-muted" font-size="9" text-anchor="middle">sessions · rate limits</text>
         </g>
 
-        <g id="node-devin_dirs" data-node-id="devin_dirs" data-node-label="Devin acp-messages" tabindex="0" role="button" aria-label="Focus Devin acp-messages, *.db per session · macOS, your machine — every integration is read locally" aria-pressed="false" data-node-kind="external" data-node-sublabel="*.db per session · macOS" data-node-context="your machine — every integration is read locally">
-          <title>Devin acp-messages · *.db per session · macOS · your machine — every integration is read locally</title>
+        <g id="node-devin_dirs" data-node-id="devin_dirs" data-node-label="Devin acp-messages" tabindex="0" role="button" aria-label="Focus Devin acp-messages, *.db per session · macOS, your machine - every integration is read locally" aria-pressed="false" data-node-kind="external" data-node-sublabel="*.db per session · macOS" data-node-context="your machine - every integration is read locally">
+          <title>Devin acp-messages · *.db per session · macOS · your machine - every integration is read locally</title>
           <rect x="60" y="465" width="170" height="62" rx="6" class="c-mask"/>
           <rect x="60" y="465" width="170" height="62" rx="6" class="c-external" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(66 471) scale(0.6875)">
@@ -4964,8 +4964,8 @@
         <text data-detail="context" x="145" y="510" class="t-muted" font-size="9" text-anchor="middle">*.db per session · macOS</text>
         </g>
 
-        <g id="node-others" data-node-id="others" data-node-label="Six more installs" tabindex="0" role="button" aria-label="Focus Six more installs, Cursor · Gemini · Copilot …, your machine — every integration is read locally" aria-pressed="false" data-node-kind="external" data-node-sublabel="Cursor · Gemini · Copilot …" data-node-context="your machine — every integration is read locally">
-          <title>Six more installs · Cursor · Gemini · Copilot … · your machine — every integration is read locally</title>
+        <g id="node-others" data-node-id="others" data-node-label="Six more installs" tabindex="0" role="button" aria-label="Focus Six more installs, Cursor · Gemini · Copilot …, your machine - every integration is read locally" aria-pressed="false" data-node-kind="external" data-node-sublabel="Cursor · Gemini · Copilot …" data-node-context="your machine - every integration is read locally">
+          <title>Six more installs · Cursor · Gemini · Copilot … · your machine - every integration is read locally</title>
           <rect x="60" y="350" width="170" height="62" rx="6" class="c-mask"/>
           <rect x="60" y="350" width="170" height="62" rx="6" class="c-external" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(66 356) scale(0.6875)">
@@ -4976,8 +4976,8 @@
         <text data-detail="context" x="145" y="395" class="t-muted" font-size="9" text-anchor="middle">Cursor · Gemini · Copilot …</text>
         </g>
 
-        <g id="node-claude_reader" data-node-id="claude_reader" data-node-label="Claude collectors" tabindex="0" role="button" aria-label="Focus Claude collectors, priced end-to-end, your machine — every integration is read locally › tokenhud-agent collectors" aria-pressed="false" data-node-kind="backend" data-node-sublabel="priced end-to-end" data-node-context="your machine — every integration is read locally › tokenhud-agent collectors">
-          <title>Claude collectors · priced end-to-end · your machine — every integration is read locally › tokenhud-agent collectors</title>
+        <g id="node-claude_reader" data-node-id="claude_reader" data-node-label="Claude collectors" tabindex="0" role="button" aria-label="Focus Claude collectors, priced end-to-end, your machine - every integration is read locally › tokenhud-agent collectors" aria-pressed="false" data-node-kind="backend" data-node-sublabel="priced end-to-end" data-node-context="your machine - every integration is read locally › tokenhud-agent collectors">
+          <title>Claude collectors · priced end-to-end · your machine - every integration is read locally › tokenhud-agent collectors</title>
           <rect x="390" y="120" width="170" height="62" rx="6" class="c-mask"/>
           <rect x="390" y="120" width="170" height="62" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(396 126) scale(0.6875)">
@@ -4987,8 +4987,8 @@
         <text data-detail="context" x="475" y="165" class="t-muted" font-size="9" text-anchor="middle">priced end-to-end</text>
         </g>
 
-        <g id="node-codex_reader" data-node-id="codex_reader" data-node-label="Codex collector" tabindex="0" role="button" aria-label="Focus Codex collector, counted · unpriced, your machine — every integration is read locally › tokenhud-agent collectors" aria-pressed="false" data-node-kind="backend" data-node-sublabel="counted · unpriced" data-node-context="your machine — every integration is read locally › tokenhud-agent collectors">
-          <title>Codex collector · counted · unpriced · your machine — every integration is read locally › tokenhud-agent collectors</title>
+        <g id="node-codex_reader" data-node-id="codex_reader" data-node-label="Codex collector" tabindex="0" role="button" aria-label="Focus Codex collector, counted · unpriced, your machine - every integration is read locally › tokenhud-agent collectors" aria-pressed="false" data-node-kind="backend" data-node-sublabel="counted · unpriced" data-node-context="your machine - every integration is read locally › tokenhud-agent collectors">
+          <title>Codex collector · counted · unpriced · your machine - every integration is read locally › tokenhud-agent collectors</title>
           <rect x="390" y="235" width="170" height="62" rx="6" class="c-mask"/>
           <rect x="390" y="235" width="170" height="62" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(396 241) scale(0.6875)">
@@ -4998,8 +4998,8 @@
         <text data-detail="context" x="475" y="280" class="t-muted" font-size="9" text-anchor="middle">counted · unpriced</text>
         </g>
 
-        <g id="node-devin_probe" data-node-id="devin_probe" data-node-label="Devin activity probe" tabindex="0" role="button" aria-label="Focus Devin activity probe, never opens a .db, your machine — every integration is read locally › tokenhud-agent collectors" aria-pressed="false" data-node-kind="security" data-node-sublabel="never opens a .db" data-node-context="your machine — every integration is read locally › tokenhud-agent collectors">
-          <title>Devin activity probe · never opens a .db · your machine — every integration is read locally › tokenhud-agent collectors</title>
+        <g id="node-devin_probe" data-node-id="devin_probe" data-node-label="Devin activity probe" tabindex="0" role="button" aria-label="Focus Devin activity probe, never opens a .db, your machine - every integration is read locally › tokenhud-agent collectors" aria-pressed="false" data-node-kind="security" data-node-sublabel="never opens a .db" data-node-context="your machine - every integration is read locally › tokenhud-agent collectors">
+          <title>Devin activity probe · never opens a .db · your machine - every integration is read locally › tokenhud-agent collectors</title>
           <rect x="390" y="465" width="170" height="62" rx="6" class="c-mask"/>
           <rect x="390" y="465" width="170" height="62" rx="6" class="c-security" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(396 471) scale(0.6875)">
@@ -5010,8 +5010,8 @@
         <text data-detail="context" x="475" y="510" class="t-muted" font-size="9" text-anchor="middle">never opens a .db</text>
         </g>
 
-        <g id="node-detector" data-node-id="detector" data-node-label="collect_assistants" tabindex="0" role="button" aria-label="Focus collect_assistants, detected ≠ hasData, your machine — every integration is read locally › tokenhud-agent collectors" aria-pressed="false" data-node-kind="backend" data-node-sublabel="detected ≠ hasData" data-node-context="your machine — every integration is read locally › tokenhud-agent collectors">
-          <title>collect_assistants · detected ≠ hasData · your machine — every integration is read locally › tokenhud-agent collectors</title>
+        <g id="node-detector" data-node-id="detector" data-node-label="collect_assistants" tabindex="0" role="button" aria-label="Focus collect_assistants, detected ≠ hasData, your machine - every integration is read locally › tokenhud-agent collectors" aria-pressed="false" data-node-kind="backend" data-node-sublabel="detected ≠ hasData" data-node-context="your machine - every integration is read locally › tokenhud-agent collectors">
+          <title>collect_assistants · detected ≠ hasData · your machine - every integration is read locally › tokenhud-agent collectors</title>
           <rect x="390" y="350" width="170" height="62" rx="6" class="c-mask"/>
           <rect x="390" y="350" width="170" height="62" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(396 356) scale(0.6875)">
@@ -5021,8 +5021,8 @@
         <text data-detail="context" x="475" y="395" class="t-muted" font-size="9" text-anchor="middle">detected ≠ hasData</text>
         </g>
 
-        <g id="node-snapshot" data-node-id="snapshot" data-node-label="Snapshot JSON" tabindex="0" role="button" aria-label="Focus Snapshot JSON, one reading per cycle, your machine — every integration is read locally" aria-pressed="false" data-node-kind="backend" data-node-sublabel="one reading per cycle" data-node-context="your machine — every integration is read locally">
-          <title>Snapshot JSON · one reading per cycle · your machine — every integration is read locally</title>
+        <g id="node-snapshot" data-node-id="snapshot" data-node-label="Snapshot JSON" tabindex="0" role="button" aria-label="Focus Snapshot JSON, one reading per cycle, your machine - every integration is read locally" aria-pressed="false" data-node-kind="backend" data-node-sublabel="one reading per cycle" data-node-context="your machine - every integration is read locally">
+          <title>Snapshot JSON · one reading per cycle · your machine - every integration is read locally</title>
           <rect x="730" y="292" width="160" height="62" rx="6" class="c-mask"/>
           <rect x="730" y="292" width="160" height="62" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(736 298) scale(0.6875)">
@@ -5032,8 +5032,8 @@
         <text data-detail="context" x="810" y="337" class="t-muted" font-size="9" text-anchor="middle">one reading per cycle</text>
         </g>
 
-        <g id="node-board_view" data-node-id="board_view" data-node-label="Assistant dropdown" tabindex="0" role="button" aria-label="Focus Assistant dropdown, read · detected · marked, your machine — every integration is read locally" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="read · detected · marked" data-node-context="your machine — every integration is read locally">
-          <title>Assistant dropdown · read · detected · marked · your machine — every integration is read locally</title>
+        <g id="node-board_view" data-node-id="board_view" data-node-label="Assistant dropdown" tabindex="0" role="button" aria-label="Focus Assistant dropdown, read · detected · marked, your machine - every integration is read locally" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="read · detected · marked" data-node-context="your machine - every integration is read locally">
+          <title>Assistant dropdown · read · detected · marked · your machine - every integration is read locally</title>
           <rect x="1030" y="292" width="170" height="62" rx="6" class="c-mask"/>
           <rect x="1030" y="292" width="170" height="62" rx="6" class="c-frontend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(1036 298) scale(0.6875)">
@@ -5094,9 +5094,9 @@
           <rect x="916.6" y="303" width="86.8" height="14" rx="3" class="c-mask"/>
           <text x="960" y="313" class="t-backend" font-size="8" text-anchor="middle">assistants array</text>
         </g>
-        <g data-detail="context" data-edge-from="devin_probe" data-edge-to="devin_cloud" data-edge-label="never called — metrics stay local" data-edge-key="9">
+        <g data-detail="context" data-edge-from="devin_probe" data-edge-to="devin_cloud" data-edge-label="never called - metrics stay local" data-edge-key="9">
           <rect x="840.8" y="503.5" width="168.4" height="14" rx="3" class="c-mask"/>
-          <text x="925" y="513.5" class="t-security" font-size="8" text-anchor="middle">never called — metrics stay local</text>
+          <text x="925" y="513.5" class="t-security" font-size="8" text-anchor="middle">never called - metrics stay local</text>
         </g>
 
         <!-- Legend -->
@@ -5313,7 +5313,7 @@
         </div>
         <ul>
           <li>&bull; Claude Code: sessions, tokens, spend and the plan&#39;s real usage windows, priced end-to-end</li>
-          <li>&bull; Codex CLI: sessions, tokens and rate limits counted exactly — shown unpriced rather than priced with an invented rate card</li>
+          <li>&bull; Codex CLI: sessions, tokens and rate limits counted exactly - shown unpriced rather than priced with an invented rate card</li>
         </ul>
       </div>
 
@@ -5325,7 +5325,7 @@
         <ul>
           <li>&bull; detected and hasData are separate facts the board refuses to conflate</li>
           <li>&bull; Windsurf is the live example: ~/.windsurf exists and holds zero bytes of usage</li>
-          <li>&bull; Cursor, Gemini CLI, Copilot, Windsurf, Antigravity, Aider are listed as installed — never as an empty board that looks broken</li>
+          <li>&bull; Cursor, Gemini CLI, Copilot, Windsurf, Antigravity, Aider are listed as installed - never as an empty board that looks broken</li>
         </ul>
       </div>
 
@@ -5336,7 +5336,7 @@
         </div>
         <ul>
           <li>&bull; Local session databases carry no cost and almost no token data, so reporting spend would mean inventing it</li>
-          <li>&bull; The probe counts .db files and reads timestamps — it never opens one, and no SQLite engine ships in the agent</li>
+          <li>&bull; The probe counts .db files and reads timestamps - it never opens one, and no SQLite engine ships in the agent</li>
           <li>&bull; Real accounting lives in Devin&#39;s cloud API behind a per-user key; calling it would break &quot;nothing leaves your machine&quot;</li>
         </ul>
       </div>
@@ -5369,7 +5369,7 @@
     }
 
     /* ============================================================
-       Visual style try-on — one topology, four bundled presets.
+       Visual style try-on - one topology, four bundled presets.
        The reader's choice is intentionally session-only: it updates the
        live page and canonical SVG together, but never rewrites the source,
        URL, or a later diagram's authored default.
@@ -5480,7 +5480,7 @@
     })();
 
     /* ============================================================
-       Theme toggle — persists to localStorage, respects system pref
+       Theme toggle - persists to localStorage, respects system pref
        ============================================================ */
 
     Archify.theme = (function () {
@@ -5545,7 +5545,7 @@
     })();
 
     /* ============================================================
-       Export — Share Card / PNG / JPEG / WebP / SVG / WebM and clipboard
+       Export - Share Card / PNG / JPEG / WebP / SVG / WebM and clipboard
 
        Raster exports are always rendered at 4x source resolution for
        maximum sharpness. The trick: we set the serialized SVG's
@@ -5583,12 +5583,12 @@
        * Serialize the main SVG into a standalone document.
        *
        * Two modes:
-       * - Default (opts.autoTheme=false) — locks the serialized SVG to the
+       * - Default (opts.autoTheme=false) - locks the serialized SVG to the
        *   viewer's current theme. Used by the raster pipeline
        *   (PNG/JPEG/WebP/clipboard) because canvas rasterization needs
        *   deterministic colors; a raster cannot react to
        *   prefers-color-scheme after encoding.
-       * - autoTheme=true — emits BOTH dark and light variable sets plus a
+       * - autoTheme=true - emits BOTH dark and light variable sets plus a
        *   `@media (prefers-color-scheme)` rule so the resulting SVG
        *   self-themes when embedded in GitHub READMEs or other hosts that
        *   expose a color scheme. Used for "Download SVG".
@@ -5954,7 +5954,7 @@
           : null;
         // Scale width/height so the browser rasterizes the vectors at target
         // resolution directly. viewBox stays unchanged so coordinates don't
-        // shift. This is the key to sharp rasters — do NOT scale later via
+        // shift. This is the key to sharp rasters - do NOT scale later via
         // canvas upscaling.
         clone.setAttribute('width', vb.width * scale);
         clone.setAttribute('height', vb.height * scale);
@@ -6133,7 +6133,7 @@
         // Serialize at a safe scale (RASTER_SCALE=4 by default, reduced if the
         // resulting canvas would exceed MAX_CANVAS_PIXELS). The SVG itself is
         // rasterized at target resolution natively; drawImage draws at natural
-        // size — no upsampling blur.
+        // size - no upsampling blur.
         var svg = document.querySelector('.diagram-container svg');
         var vb = svg.viewBox.baseVal;
         var scale = pickSafeScale(vb.width, vb.height);
@@ -6153,7 +6153,7 @@
                 ctx.fillStyle = currentBg();
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
               }
-              // Draw at natural size — SVG was already rasterized at target res.
+              // Draw at natural size - SVG was already rasterized at target res.
               ctx.drawImage(img, 0, 0);
               URL.revokeObjectURL(svgUrl);
               var mime = format === 'jpeg' ? 'image/jpeg' :
@@ -6964,7 +6964,7 @@
     })();
 
     /* ============================================================
-       Motion Governor — one reader switch and one motion budget. Ambient
+       Motion Governor - one reader switch and one motion budget. Ambient
        trace yields to the strongest semantic owner; Still also parks bounded
        viewer signals without discarding their static meaning.
        ============================================================ */
@@ -7299,7 +7299,7 @@
     Archify.sourceEvidence.installBeacons();
 
     /* ============================================================
-       Explore — stable-ID neighborhood focus + dependency-free pan/zoom.
+       Explore - stable-ID neighborhood focus + dependency-free pan/zoom.
        Renderer IDs become deep-linkable semantic hooks without turning the
        standalone artifact into a canvas editor.
        ============================================================ */
@@ -7653,7 +7653,7 @@
           name.textContent = source.label || source.path.split('/').pop() || source.path;
           var location = document.createElement('code');
           location.textContent = source.line
-            ? 'L' + source.line + (source.endLine && source.endLine !== source.line ? '–' + source.endLine : '') + ' ↗'
+            ? 'L' + source.line + (source.endLine && source.endLine !== source.line ? '-' + source.endLine : '') + ' ↗'
             : 'Open ↗';
           var sourcePath = document.createElement('small');
           sourcePath.textContent = source.path;
@@ -8662,7 +8662,7 @@
     })();
 
     /* ============================================================
-       Intent Trace — temporary one-hop topology before durable focus.
+       Intent Trace - temporary one-hop topology before durable focus.
        Fine-pointer hover and keyboard focus share the same stable-ID preview;
        touch continues directly to the existing click-to-focus contract.
        ============================================================ */
@@ -9176,7 +9176,7 @@
           button.setAttribute('aria-pressed', 'false');
           button.setAttribute('tabindex', index === 0 ? '0' : '-1');
           button.setAttribute('aria-label', 'Open chapter ' + (index + 1) + ' of ' + views.length + ': ' + view.label + ', ' + view.focus.length + ' stops');
-          button.title = view.label + ' — ' + (view.note || view.focus.length + ' selected nodes');
+          button.title = view.label + ' - ' + (view.note || view.focus.length + ' selected nodes');
           var position = document.createElement('span');
           position.className = 'guided-view-chapter-index';
           position.setAttribute('aria-hidden', 'true');
@@ -9220,7 +9220,7 @@
             deltaLabel.hidden = true;
             button.removeAttribute('data-chapter-delta');
             button.setAttribute('aria-label', 'Current chapter ' + (index + 1) + ' of ' + views.length + ': ' + views[index].label + ', ' + views[index].focus.length + ' stops');
-            button.title = views[index].label + ' — current chapter, ' + views[index].focus.length + ' stops';
+            button.title = views[index].label + ' - current chapter, ' + views[index].focus.length + ' stops';
           } else {
             var delta = chapterDelta(activeIndex >= 0 ? views[activeIndex] : null, views[index]);
             var compact = '=' + delta.stay.length + ' +' + delta.enter.length + ' \u2212' + delta.leave.length;
@@ -9232,7 +9232,7 @@
             deltaLabel.querySelector('[data-delta-kind="leave"]').textContent = '\u2212' + delta.leave.length;
             button.setAttribute('data-chapter-delta', compact);
             button.setAttribute('aria-label', 'Open chapter ' + (index + 1) + ' of ' + views.length + ': ' + views[index].label + '. Chapter focus delta: ' + expanded);
-            button.title = views[index].label + ' — ' + compact + ' chapter focus';
+            button.title = views[index].label + ' - ' + compact + ' chapter focus';
           }
           if (current) button.setAttribute('aria-current', 'step');
           else button.removeAttribute('aria-current');
@@ -10518,7 +10518,7 @@
     })();
 
     /* ============================================================
-       Adaptive Reader Shell — one diagram across laptop and monitor.
+       Adaptive Reader Shell - one diagram across laptop and monitor.
        The canonical SVG and viewBox never change. On ordinary desktop pages,
        wide diagrams receive only enough outer width to use the available
        height without pushing summary cards below the viewport. Mobile,
@@ -11155,7 +11155,7 @@
     })();
 
     /* ============================================================
-       Semantic Radar — simplified semantic bounds + live viewport.
+       Semantic Radar - simplified semantic bounds + live viewport.
        The radar is built at runtime so the checked artifact still contains
        one canonical SVG block, and export serialization remains untouched.
        ============================================================ */
@@ -11435,7 +11435,7 @@
     })();
 
     /* ============================================================
-       Presentation Stage — a shareable, viewport-filling live view.
+       Presentation Stage - a shareable, viewport-filling live view.
        It changes only HTML layout and URL state; SVG semantics and export
        serialization remain untouched. Escape first clears an active guided
        view/focus, then exits the stage.
@@ -11509,7 +11509,7 @@
     })();
 
     /* ============================================================
-       Node Finder — stable-ID search over the existing semantic SVG.
+       Node Finder - stable-ID search over the existing semantic SVG.
        Search never changes the IR or SVG geometry: selecting a result resets
        the viewport, releases a guided view, and delegates to semantic focus.
        ============================================================ */
@@ -11769,7 +11769,7 @@
     })();
 
     /* ============================================================
-       Route Probe — shortest directed path over compiled semantics.
+       Route Probe - shortest directed path over compiled semantics.
        The graph is read from renderer-owned stable IDs and relationship
        endpoints. BFS order follows authored DOM edge order, so equal-length
        choices are deterministic without adding weights or a graph runtime.
@@ -12782,7 +12782,7 @@
     })();
 
     /* ============================================================
-       Semantic Lens — a counted, viewer-only legend over data-node-kind.
+       Semantic Lens - a counted, viewer-only legend over data-node-kind.
        One selected kind reveals every authored relationship touching it.
        Two selected kinds compare only direct cross-kind relationships while
        preserving the full diagram as a dimmed spatial reference.
@@ -13448,7 +13448,7 @@
     })();
 
     /* ============================================================
-       Diagram Guide — a factual command deck over existing interactions.
+       Diagram Guide - a factual command deck over existing interactions.
        Counts come from compiled semantics; actions delegate to Finder, Route
        Probe, Semantic Radar, Semantic Lens, Story Trail, Presentation, theme, export, and
        camera without adding a second command implementation or SVG state.

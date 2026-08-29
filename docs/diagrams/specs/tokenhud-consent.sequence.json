@@ -23,7 +23,7 @@
         "id": "drift",
         "label": "A release reads more",
         "focus": ["agent", "manifest", "user"],
-        "note": "One more file read means a different digest — the agent asks again instead of inheriting an older yes."
+        "note": "One more file read means a different digest - the agent asks again instead of inheriting an older yes."
       }
     ]
   },
@@ -50,7 +50,7 @@
     { "from": "agent", "to": "collectors", "y": 482, "label": "reads enabled", "variant": "emphasis" },
     { "from": "agent", "to": "manifest", "y": 578, "label": "recompute digest", "variant": "default" },
     { "from": "manifest", "to": "agent", "y": 620, "label": "digest differs", "variant": "return" },
-    { "from": "agent", "to": "user", "y": 662, "label": "asks again — nothing read", "variant": "security" }
+    { "from": "agent", "to": "user", "y": 662, "label": "asks again - nothing read", "variant": "security" }
   ],
   "activations": [
     { "participant": "runsh", "from": 174, "to": 230, "type": "backend" },
@@ -62,8 +62,8 @@
     { "participant": "manifest", "from": 572, "to": 626, "type": "security" }
   ],
   "cards": [
-    { "dot": "rose", "title": "Consent Is a Digest", "items": ["Agreement is recorded against a stable digest of the manifest, not a one-time yes", "A release that reads one more file produces a different digest and asks again", "Revoking is deleting ~/.tokenhud/consent.json — no account, no server involved"] },
-    { "dot": "cyan", "title": "Shown Before Anything", "items": ["--what-i-read prints every path resolved against your machine — real counts and sizes, reading nothing", "--dry-run shows the exact payload it would send, sent nowhere", "With no terminal to ask on, the agent stops and tells you how to agree explicitly"] },
+    { "dot": "rose", "title": "Consent Is a Digest", "items": ["Agreement is recorded against a stable digest of the manifest, not a one-time yes", "A release that reads one more file produces a different digest and asks again", "Revoking is deleting ~/.tokenhud/consent.json - no account, no server involved"] },
+    { "dot": "cyan", "title": "Shown Before Anything", "items": ["--what-i-read prints every path resolved against your machine - real counts and sizes, reading nothing", "--dry-run shows the exact payload it would send, sent nowhere", "With no terminal to ask on, the agent stops and tells you how to agree explicitly"] },
     { "dot": "amber", "title": "Held to the Code by Tests", "items": ["One test greps every collector for path literals and fails on anything the manifest does not declare", "One fails if the manifest claims a path nothing reads", "One asserts the excluded ~/.claude.json keys appear nowhere in the code that opens it"] }
   ]
 }

@@ -10,14 +10,14 @@ import { ago, clock } from './board/util'
 /* A shared board: the page at the end of a public link.
  *
  * It talks to no backend of its own. The link carries the slug and the API to
- * read it from, it fetches that one endpoint with no credential — the same
- * request a stranger's browser makes — and renders what comes back. There is
+ * read it from, it fetches that one endpoint with no credential - the same
+ * request a stranger's browser makes - and renders what comes back. There is
  * no key here to leak because there is no key here at all.
  *
  * Everything on screen came through the whitelist in server/src/share.rs.
  * Whatever the agent collects, this page can only draw what that let out. */
 
-/* `#/b/<slug>?api=<origin>` — the slug says which board, the api says where to
+/* `#/b/<slug>?api=<origin>` - the slug says which board, the api says where to
    ask. Both are needed: the site is static and the server is wherever the
    person sharing runs it. */
 export function parseShareHash(hash) {
@@ -60,7 +60,7 @@ function Head({ board, api, onRefresh, refreshing }) {
         {board
           ? <>
             A live leaderboard of AI coding work across {board.totals?.machines || 0} machine
-            {board.totals?.machines === 1 ? '' : 's'} — tokens, models and daily activity.
+            {board.totals?.machines === 1 ? '' : 's'} - tokens, models and daily activity.
             Nothing here says what the work was about.
           </>
           : 'Loading…'}
@@ -128,8 +128,8 @@ export default function PublicBoard({ route }) {
 
   useEffect(() => { load(true) }, [load])
 
-  /* Slow poll. There is no stream here — an anonymous reader gets no token
-     for one — and a leaderboard does not change by the second. */
+  /* Slow poll. There is no stream here - an anonymous reader gets no token
+     for one - and a leaderboard does not change by the second. */
   useEffect(() => {
     const t = setInterval(() => { if (!document.hidden) load(false) }, 60000)
     return () => clearInterval(t)
@@ -163,7 +163,7 @@ export default function PublicBoard({ route }) {
         <LeaderboardTiles entries={entries} />
 
         {/* Everything, stacked, with jump links. A shared board is read by
-            somebody who did not choose to be here — hiding half of it behind
+            somebody who did not choose to be here - hiding half of it behind
             tabs would be asking them to hunt. */}
         <nav className="pb-jump" aria-label="Sections">
           {[
@@ -180,7 +180,7 @@ export default function PublicBoard({ route }) {
             <p className="bv-note">
               {board.share?.identities === 'host'
                 ? 'Machines appear under the names their owner gave them.'
-                : 'Machine names are replaced with pseudonyms that exist only on this link — the same machine is called something else on any other shared board.'}
+                : 'Machine names are replaced with pseudonyms that exist only on this link - the same machine is called something else on any other shared board.'}
             </p>
           </section>
 
@@ -196,12 +196,12 @@ export default function PublicBoard({ route }) {
             tools already write to disk and reports it. This page is a filtered view of that:
             token counts, model names, and one row per day. Project names, file paths, prompt
             text, session titles, tool and MCP server names, and plan limits are not part of
-            what a shared board carries — the server builds this payload by naming the fields
+            what a shared board carries - the server builds this payload by naming the fields
             that go out, so a field nobody listed simply does not appear.
           </p>
           <p className="bv-note">
             Estimated value is priced at API list rates
-            {board.pricingAsOf ? ` as of ${board.pricingAsOf}` : ''} and is not a bill —
+            {board.pricingAsOf ? ` as of ${board.pricingAsOf}` : ''} and is not a bill -
             most of these machines run on flat-rate plans. Codex tokens are counted but not
             priced. {board.windowDays} days of daily history travel with the board.
             {stale && ' No machine is reporting right now, so these are the last numbers each one sent.'}

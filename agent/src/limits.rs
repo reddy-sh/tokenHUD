@@ -1,4 +1,4 @@
-//! Rate-limit windows — the real ones, read from Claude Code's own cache.
+//! Rate-limit windows - the real ones, read from Claude Code's own cache.
 //!
 //! Three things shape this module, and all three are honesty problems rather
 //! than engineering ones:
@@ -10,7 +10,7 @@
 //!     degrade separately and the payload keeps them separable.
 //!   · **The file holds far more than this, and the omissions are deliberate.**
 //!     `utilization.spend`, `projects`, `oauthAccount` are never read. Keys are
-//!     read BY NAME, never enumerated — `utilization` carries unshipped internal
+//!     read BY NAME, never enumerated - `utilization` carries unshipped internal
 //!     buckets under rotating codenames, and a panel built by iterating that
 //!     dict would one day grow a meter labelled "amber ladder".
 //!
@@ -38,7 +38,7 @@ fn label_for(kind: &str) -> Option<&'static str> {
 /// A per-install salt for the account hash.
 ///
 /// Without it, a truncated hash of the account uuid is the same string on every
-/// machine that account touches — a stable cross-host identifier travelling in
+/// machine that account touches - a stable cross-host identifier travelling in
 /// a payload that crosses a network. The point of the hash is to answer "is
 /// this still the same account as last reading" on ONE board.
 fn salt() -> String {
@@ -112,7 +112,7 @@ enum Found {
 ///
 /// Claude Code rewrites this file while running. A read landing mid-write gets
 /// a parse error, which is a transient fact about timing and not a fact about
-/// the machine — so it is retried once before being reported.
+/// the machine - so it is retried once before being reported.
 fn load() -> Found {
     for path in candidates() {
         if !path.is_file() {
@@ -143,7 +143,7 @@ fn label(row: &Map<String, Value>) -> String {
     if kind == "weekly_scoped" {
         // Only the display name the server itself supplied. The neighbouring
         // keys are internal bucket codenames that rotate, and nothing on disk
-        // maps them to a model — inventing that mapping would put a made-up
+        // maps them to a model - inventing that mapping would put a made-up
         // model name on the board.
         let name = row
             .get("scope")

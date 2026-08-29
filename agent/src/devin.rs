@@ -76,7 +76,7 @@ pub fn agents_dir() -> PathBuf {
 /// The `sqlite3` binary, if the machine has one. macOS ships `/usr/bin/sqlite3`;
 /// most Linux does too. Absent → Devin CLI cost degrades to "sessions only",
 /// which is stated on the card rather than guessed at.
-fn sqlite3_bin() -> Option<String> {
+pub(crate) fn sqlite3_bin() -> Option<String> {
     for cand in [
         "sqlite3",
         "/usr/bin/sqlite3",
@@ -431,6 +431,7 @@ mod tests {
             .unwrap()
             .success());
 
+        let _env = crate::ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         std::env::set_var("XDG_DATA_HOME", &dir);
         let c = read_cli().expect("a db");
         std::env::remove_var("XDG_DATA_HOME");
@@ -451,12 +452,21 @@ mod tests {
 
     #[test]
     fn a_machine_without_devin_reports_nothing_rather_than_zero() {
+        let _env = crate::ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         std::env::set_var("XDG_DATA_HOME", "/nonexistent/x");
         std::env::set_var("XDG_CONFIG_HOME", "/nonexistent/y");
+        // The harness does NOT restore the environment between tests, they share
+        // one process, so HOME has to be put back by hand or every test that
+        // runs after this one looks at a machine with no home directory.
+        let home = std::env::var("HOME").ok();
         std::env::set_var("HOME", "/nonexistent/z"); // kills the Desktop path too
         let a = activity();
         std::env::remove_var("XDG_DATA_HOME");
         std::env::remove_var("XDG_CONFIG_HOME");
+        match home {
+            Some(h) => std::env::set_var("HOME", h),
+            None => std::env::remove_var("HOME"),
+        }
         // (HOME is restored by the harness between tests; do not rely on it here)
         assert!(
             a.is_none(),
@@ -481,6 +491,7 @@ mod tests {
         )
         .unwrap();
 
+        let _env = crate::ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         std::env::set_var("XDG_CONFIG_HOME", &dir);
         let mcp = mcp_servers();
         let agents = agent_names();

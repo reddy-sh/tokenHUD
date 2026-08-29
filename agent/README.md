@@ -3,12 +3,12 @@
 The agent, rewritten. Same readings, same payload, one binary and no runtime.
 
 It replaced a Python implementation that lived here until it had been diffed
-against this one field by field — 860 leaves of a real payload, zero
+against this one field by field - 860 leaves of a real payload, zero
 differences. That diff is gone with the thing it compared against; what
 survived it is `tests/machine.rs`, which runs against your real machine.
 
-**Installing it properly — a PATH binary, launch at login, a Linux box, the
-uninstall — is [INSTALL.md](INSTALL.md).** This page is the short version.
+**Installing it properly - a PATH binary, launch at login, a Linux box, the
+uninstall - is [INSTALL.md](INSTALL.md).** This page is the short version.
 
 ## Install (no Rust required)
 
@@ -28,7 +28,7 @@ every tagged version.
 ./scripts/run.sh status                   # says "agent up (pid …) · rust"
 ```
 
-To look before you switch — this sends nothing and writes nothing but the index:
+To look before you switch - this sends nothing and writes nothing but the index:
 
 ```bash
 ./agent/target/release/tokenhud-agent --dry-run | head -40
@@ -42,7 +42,7 @@ existing install carries straight over with no re-scan.
 | | the Python agent it replaced | this one |
 |---|---:|---:|
 | resident, running | 24.4 MB | **6.5 MB** |
-| warm cycle | 130–200 ms · 33 MB peak | **50 ms · 13 MB peak** |
+| warm cycle | 130-200 ms · 33 MB peak | **50 ms · 13 MB peak** |
 | cold scan, 1.1 GB corpus | 590 MB peak | **95 MB peak** |
 | ships as | assumes a `python3` | **1.94 MB binary** |
 
@@ -57,7 +57,7 @@ cargo test --manifest-path agent/Cargo.toml
 
 24 of them: 13 unit tests, and 11 in `tests/machine.rs` that run the real
 collectors against your real machine and mock nothing. A check whose source is
-absent — no transcripts, no usage cache — skips and says why rather than
+absent - no transcripts, no usage cache - skips and says why rather than
 failing. `cargo test -- --nocapture` prints those.
 
 The one that matters most is `reading_the_limits_never_writes_claude_json`,
@@ -68,7 +68,7 @@ which asserts mechanically what `SECURITY.md` promises in prose.
 | file | what it is |
 |---|---|
 | `src/main.rs` | the loop, the POST, the disk spool |
-| `src/collect.rs` | every collector — one function each, as in the Python |
+| `src/collect.rs` | every collector - one function each, as in the Python |
 | `src/transcripts.rs` | the incremental index: byte offsets, budget, buckets |
 | `src/pricing.rs` | the rate card, and Python's banker's rounding reproduced |
 | `src/limits.rs` | the plan's usage windows out of `~/.claude.json` |

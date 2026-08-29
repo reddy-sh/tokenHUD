@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test'
-import { rankBoard, streakOf, tierOf, tierProgress } from '../src/lib/leaderboard.js'
+import { rankBoard, streakOf, tierOf, tierProgress, TREND } from '../src/lib/leaderboard.js'
 
 /* The leaderboard and its share link.
  *
- * Two halves. The ranking is pure, so it is tested as a function — windows,
+ * Two halves. The ranking is pure, so it is tested as a function - windows,
  * streaks and tiers are arithmetic and deserve arithmetic's kind of test. The
  * rest is tested through the real board with the API stubbed at the network,
  * which is the only way to check the thing that actually matters: that the
@@ -248,7 +248,18 @@ async function openBoard(page) {
   await expect(page.locator('.adm-side')).toBeVisible()
 }
 
-const rootItem = (page, name) => page.locator('.adm-root .adm-root-item', { hasText: name })
+/* By accessible name, not by text: the root rail is a strip of icons unless
+   somebody opens it, so for most of these tests its buttons have no text at
+   all. The name is on the button either way. */
+const rootItem = (page, name) => page.locator('.adm-root').getByRole('button', { name, exact: true })
+
+/* Open the root rail's labels. Its default is 56px of icons - it is a product
+   switcher, not a sidebar - so anything that reads a label or a badge off it
+   has to ask for them first, the same way a person would. */
+async function expandRoot(page) {
+  await page.locator('button.adm-toggle').click()
+  await expect(page.locator('.adm-shell')).not.toHaveClass(/adm-shell--rootmini/)
+}
 
 /* By heading, not by text: "Connection" also appears in the Live updates
    card's note, and a filter that matched it would pass for the wrong reason. */
@@ -266,14 +277,22 @@ async function openLeaderboard(page, sub) {
 }
 
 test.describe('root navigation', () => {
-  test('two products and a workspace section, with the board on the first', async ({ page }) => {
+  test('two products and a workspace section, as a strip of icons', async ({ page }) => {
     await stubApi(page)
     await openBoard(page)
+    /* Three destinations, and no labels: the rail opens as a 56px product
+       switcher beside the machine rail rather than as a second sidebar. */
+    await expect(page.locator('.adm-shell')).toHaveClass(/adm-shell--rootmini/)
+    await expect(page.locator('.adm-root .adm-root-item')).toHaveCount(3)
+    await expect(page.locator('.adm-root .adm-item-text')).toHaveCount(0)
+    await expect(rootItem(page, 'Token Monitoring')).toHaveClass(/adm-item--on/)
+    await expect(page.locator('.adm-crumb')).toHaveText('Token Monitoring')
+
+    /* Asked for, the labels are there and in that order. */
+    await expandRoot(page)
     await expect(page.locator('.adm-root .adm-root-item')).toHaveText([
       /Token Monitoring/, /Leaderboard/, /Integrations/, /Settings/,
     ])
-    await expect(rootItem(page, 'Token Monitoring')).toHaveClass(/adm-item--on/)
-    await expect(page.locator('.adm-crumb')).toHaveText('Token Monitoring')
   })
 
   test('each section brings its own second rail, or none', async ({ page }) => {
@@ -282,7 +301,7 @@ test.describe('root navigation', () => {
     await expect(page.locator('.adm-side .adm-group-label').first()).toHaveText('MACHINES')
 
     await rootItem(page, 'Leaderboard').click()
-    /* A rail of its own — the machines are not what you pick between here. */
+    /* A rail of its own - the machines are not what you pick between here. */
     await expect(page.locator('.adm-side .adm-group-label').first()).toHaveText('LEADERBOARD')
     await expect(page.locator('.adm-side .adm-item--btn')).toHaveText([
       /Leaderboard/, /Live/, /Models/, /Demand/,
@@ -310,27 +329,51 @@ test.describe('root navigation', () => {
     await expect(page.locator('#p-leaderboard')).toHaveCount(0)
   })
 
-  test('the two rails collapse independently', async ({ page }) => {
+  test('the machine rail says Machines once', async ({ page }) => {
+    await stubApi(page)
+    await openBoard(page)
+    /* It said it twice: the group heading over the machine list, and a
+       "Machines" row four rows below it in the board's own navigation. Same
+       word, same rail, two meanings - which is most of why two rails read as
+       one sidebar drawn twice. The heading stays; the row is gone. */
+    await expect(page.locator('.adm-side .adm-group-label', { hasText: 'MACHINES' })).toHaveCount(1)
+    /* The board's own navigation rows are links; the machine list is not. */
+    await expect(page.locator('.adm-side a.adm-item', { hasText: 'Machines' })).toHaveCount(0)
+    /* The panel it pointed at is still on the board - only the row went. */
+    await expect(page.locator('#p-machines')).toHaveCount(1)
+  })
+
+  test('the two rails fold independently, and only one has a Collapse button', async ({ page }) => {
     await stubApi(page)
     await openBoard(page)
     const shell = page.locator('.adm-shell')
 
-    /* The topbar hamburger is the root rail's. */
-    await page.locator('button.adm-toggle').click()
+    /* One Collapse control in the whole shell, in the rail that is worth
+       folding away. Two footers each offering "Collapse" was the other half
+       of why the rails read as duplicates of each other. */
+    await expect(page.locator('.adm-collapse')).toHaveCount(1)
+    await expect(page.locator('.adm-side .adm-collapse')).toHaveCount(1)
+
+    /* The topbar hamburger is the root rail's, and it opens rather than
+       closes: icons are where this rail starts. */
     await expect(shell).toHaveClass(/adm-shell--rootmini/)
+    await page.locator('button.adm-toggle').click()
+    await expect(shell).not.toHaveClass(/adm-shell--rootmini/)
     await expect(shell).not.toHaveClass(/adm-shell--submini/)
     await expect(page.locator('.adm-root .adm-item-text')).toHaveCount(0)
     /* Collapsed to icons, not gone: it is the only way to change section. */
     await expect(page.locator('.adm-root .adm-root-item')).toHaveCount(4)
 
-    /* The machine rail has its own. */
+    /* The machine rail folds on its own, and leaves the other one alone. */
     await page.locator('.adm-side .adm-collapse').click()
     await expect(shell).toHaveClass(/adm-shell--submini/)
-    await expect(shell).toHaveClass(/adm-shell--rootmini/)
+    await expect(shell).not.toHaveClass(/adm-shell--rootmini/)
 
     await page.locator('button.adm-toggle').click()
-    await expect(shell).not.toHaveClass(/adm-shell--rootmini/)
+    await expect(shell).toHaveClass(/adm-shell--rootmini/)
     await expect(shell).toHaveClass(/adm-shell--submini/)
+    /* Collapsed to icons, not gone: it is the only way to change section. */
+    await expect(page.locator('.adm-root .adm-root-item')).toHaveCount(3)
   })
 
   test('the section you were in is where you come back to', async ({ page }) => {
@@ -354,11 +397,19 @@ test.describe('the Leaderboard section', () => {
     await expect(rows.nth(0)).toContainText('big-machine')
     await expect(rows.nth(1)).toContainText('mid-machine')
     await expect(rows.nth(2)).toContainText('small-machine')
-    /* Three machines, three places. */
-    await expect(page.locator('.lb-pod')).toHaveCount(3)
-    /* The fleet at a glance, above the ranking. */
+    /* Ordered, and deliberately not crowned. Every entry on this page belongs
+       to one account, so a podium here is a competition with a single
+       competitor: whichever machine you sit at most takes gold every week, and
+       a medal that can only ever say that says nothing. Medals, steps and the
+       "#1 of 3" badge belong to the community board, where the entrants are
+       different people. This asserts the absence because the absence is the
+       decision - a podium reappearing here would be a regression nobody would
+       otherwise notice. */
+    await expect(page.locator('.lb-podium')).toHaveCount(0)
+    /* The fleet at a glance, above the ranking. The stat names the machine
+       that did the most work without calling it the winner. */
     await expect(page.locator('.hero-band')).toContainText('3 machines')
-    await expect(page.locator('.hero-stat', { hasText: 'Leader' })).toContainText('big-machine')
+    await expect(page.locator('.hero-stat', { hasText: 'Busiest machine' })).toContainText('big-machine')
   })
 
   test('the machine Token Monitoring is pointed at is marked', async ({ page }) => {
@@ -387,6 +438,11 @@ test.describe('the Leaderboard section', () => {
   test('the root badge is your place on the board', async ({ page }) => {
     await stubApi(page)
     await openBoard(page)
+    /* As icons the rail carries a dot per badge - enough to say "there is
+       something here", which is all 56px can honestly say. */
+    await expect(rootItem(page, 'Leaderboard').locator('.adm-root-dot')).toHaveCount(1)
+
+    await expandRoot(page)
     await expect(rootItem(page, 'Leaderboard').locator('.adm-nav-n')).toHaveText('#1')
     await expect(rootItem(page, 'Token Monitoring').locator('.adm-nav-n')).toHaveText('3')
   })
@@ -399,7 +455,7 @@ test.describe('the Leaderboard pages', () => {
 
     await expect(page.locator('.hero-band h1')).toContainText('tokens')
     await expect(page.locator('.lb-table')).toBeVisible()
-    /* Models moved to their own page — this one does not carry them. */
+    /* Models moved to their own page - this one does not carry them. */
     await expect(page.locator('.bv-card', { hasText: "Share of the fleet's work" })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Export aggregates' })).toHaveCount(0)
   })
@@ -429,7 +485,7 @@ test.describe('the Leaderboard pages', () => {
     /* Reach is machines, not a percentage dressed up as one. */
     await expect(table.locator('tbody tr').first()).toContainText('3/3')
     await expect(page.locator('.bv-card', { hasText: 'Adoption, day by day' })).toBeVisible()
-    await expect(page.locator('.bv-card', { hasText: 'Momentum' })).toBeVisible()
+    await expect(page.locator('.bv-card', { hasText: 'Trending' })).toBeVisible()
   })
 
   test('the aggregate export is models and totals, never machines', async ({ page }) => {
@@ -445,7 +501,23 @@ test.describe('the Leaderboard pages', () => {
     for await (const chunk of stream) text += chunk
     const report = JSON.parse(text)
 
-    expect(report.schema).toBe('tokenhud.fleet-demand/1')
+    /* Second revision of the shape. A reader that parsed the first one cannot
+       parse this one safely - the totals gained their composition, the scope
+       gained what it is complete through, and `momentum7d` rows gained the
+       flag saying whether they cleared the floor - so the version moved with
+       them rather than the fields appearing under a number that promised
+       otherwise. */
+    expect(report.schema).toBe('tokenhud.fleet-demand/2')
+    /* The floor travels with the numbers it filtered, and it is the floor that
+       actually did the filtering rather than a second copy typed into the
+       export. A trending list whose rule is not in the file is a list that has
+       to be taken on trust; a rule retyped beside it is free to drift from the
+       one the board ranked by, which is the same dishonesty arriving a release
+       later. Read from TREND so this fails the moment they disagree. */
+    expect(report.trend.minTokens).toBe(TREND.minTokens)
+    expect(report.trend.minSharePct).toBe(TREND.minSharePct)
+    expect(report.trend.formula).toBe(TREND.formula)
+    expect(report.trend.windowDays).toBe(TREND.days)
     expect(report.scope.machines).toBe(3)
     expect(report.models.length).toBeGreaterThan(0)
     expect(report.models[0]).toHaveProperty('sharePct')
@@ -498,11 +570,19 @@ test.describe('settings', () => {
     await openBoard(page)
     await rootItem(page, 'Settings').click()
 
+    /* Icons is where the root rail starts, so this switch is how somebody
+       opens it for good rather than how they fold it away. */
     const rootSwitch = page.locator('.set-row', { hasText: 'Section navigation' }).locator('.set-switch')
-    await expect(rootSwitch).toHaveText(/Expanded/)
-    await rootSwitch.click()
-    await expect(page.locator('.adm-shell')).toHaveClass(/adm-shell--rootmini/)
     await expect(rootSwitch).toHaveText(/Icons only/)
+    await rootSwitch.click()
+    await expect(page.locator('.adm-shell')).not.toHaveClass(/adm-shell--rootmini/)
+    await expect(rootSwitch).toHaveText(/Expanded/)
+
+    /* And it is remembered, which the old encoding could not express once
+       "icons" became the default. */
+    await page.reload()
+    await page.click('.nav__cta')
+    await expect(page.locator('.adm-shell')).not.toHaveClass(/adm-shell--rootmini/)
   })
 
   test('making a link private from settings takes it away', async ({ page }) => {
@@ -592,7 +672,7 @@ test.describe('the shared board', () => {
     await expect(rows.nth(0)).toContainText('amber-otter')
     await expect(rows.nth(1)).toContainText('quiet-heron')
 
-    /* Everything, stacked, with jump links — a shared board hides nothing
+    /* Everything, stacked, with jump links - a shared board hides nothing
        behind a tab its reader did not know to press. */
     await expect(page.locator('.pb-section')).toHaveCount(4)
     await expect(page.locator('.pb-jump a')).toHaveText(['Leaderboard', 'Live', 'Models', 'Demand'])
@@ -600,7 +680,7 @@ test.describe('the shared board', () => {
     /* Models are the part that is public on purpose. */
     await expect(page.locator('.pb-main')).toContainText('opus-5')
     await expect(page.locator('.pb-main')).toContainText('gpt-5.3-codex')
-    /* Counted, not priced — never a zero dressed up as free. */
+    /* Counted, not priced - never a zero dressed up as free. */
     await expect(page.locator('.pb-main')).toContainText('not priced')
   })
 
@@ -643,7 +723,7 @@ test.describe('the shared board', () => {
 
   test('a malformed link falls through to the site rather than a blank page', async ({ page }) => {
     await stubApi(page)
-    /* `api` has to be an http(s) origin — a link is a thing people paste. */
+    /* `api` has to be an http(s) origin - a link is a thing people paste. */
     await page.goto(`/#/b/${SLUG}?api=javascript%3Aalert(1)`)
     await expect(page.locator('.hero__display')).toBeVisible()
   })

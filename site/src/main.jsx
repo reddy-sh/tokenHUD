@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-/* Fonts ship with the bundle — no CDN, so the CSP can stay shut and the
+/* Fonts ship with the bundle - no CDN, so the CSP can stay shut and the
    page renders the same offline. */
 import '@fontsource/inter/400.css'
 import '@fontsource/inter/500.css'

@@ -6,7 +6,7 @@ import { ago, compact, dur, full, SERIES } from '../../board/util'
  *
  * This is the half of the signal that a daily rollup cannot give you. A month
  * of tokens says what a fleet did; a count of running agents says what it is
- * doing, and those two answer different questions — capacity against history.
+ * doing, and those two answer different questions - capacity against history.
  *
  * Every number here is a count. What each of those agents is working on is not
  * on this page and is not in the payload it reads: the whitelist carries the
@@ -14,14 +14,14 @@ import { ago, compact, dur, full, SERIES } from '../../board/util'
  * up, and stops there.
  *
  * The honest caveat is loud on purpose. "Right now" is the last reading each
- * machine sent, which is up to an interval old — and a machine that stopped
+ * machine sent, which is up to an interval old - and a machine that stopped
  * reporting is quiet, not idle.
  */
 
 const KIND_TONE = { 'IDE session': 'ok', headless: 'warn' }
 
 function Chips({ rows, total }) {
-  if (!rows.length) return <span className="bv-sub">—</span>
+  if (!rows.length) return <span className="bv-sub">-</span>
   return (
     <div className="live-chips">
       {rows.map(r => (
@@ -68,24 +68,40 @@ export default function Live({ board }) {
             <div className="hero-stat-v tnum">{live.reporting}/{live.machinesTotal}</div>
             <div className="hero-stat-d">{live.stale ? `${live.stale} gone quiet` : 'all checking in'}</div>
           </div>
-          <div className="hero-stat">
-            <div className="hero-stat-k">Blocks open</div>
-            <div className="hero-stat-v tnum">{live.blocksOpen}</div>
-            <div className="hero-stat-d">five-hour windows in flight</div>
-          </div>
-          <div className="hero-stat">
-            <div className="hero-stat-k">Requests in flight</div>
-            <div className="hero-stat-v tnum">{compact(live.blockRequests)}</div>
-            <div className="hero-stat-d">this block, across the fleet</div>
-          </div>
-          <div className="hero-stat">
-            <div className="hero-stat-k">Output this block</div>
-            <div className="hero-stat-v tnum">{compact(live.blockOutput)}</div>
-            <div className="hero-stat-d">tokens</div>
-          </div>
+          {/* Three tiles that only exist where five-hour blocks were reported.
+              They were reading `e.block` unconditionally, and `mergeEntries`
+              sets that to null on every merged board - so on the cloud and on
+              any board built from merged entries they read 0 / 0 / 0 forever,
+              which does not say "no block data": it says the fleet is idle.
+              A count nobody sent is not a count of zero. */}
+          {live.blocksReported ? (
+            <>
+              <div className="hero-stat">
+                <div className="hero-stat-k">Blocks open</div>
+                <div className="hero-stat-v tnum">{live.blocksOpen}</div>
+                <div className="hero-stat-d">five-hour windows in flight</div>
+              </div>
+              <div className="hero-stat">
+                <div className="hero-stat-k">Requests in flight</div>
+                <div className="hero-stat-v tnum">{compact(live.blockRequests)}</div>
+                <div className="hero-stat-d">this block, across the fleet</div>
+              </div>
+              <div className="hero-stat">
+                <div className="hero-stat-k">Output this block</div>
+                <div className="hero-stat-v tnum">{compact(live.blockOutput)}</div>
+                <div className="hero-stat-d">tokens</div>
+              </div>
+            </>
+          ) : (
+            <div className="hero-stat">
+              <div className="hero-stat-k">Five-hour blocks</div>
+              <div className="hero-stat-v tnum">-</div>
+              <div className="hero-stat-d">not reported to this board</div>
+            </div>
+          )}
           <div className="hero-stat">
             <div className="hero-stat-k">Longest running</div>
-            <div className="hero-stat-v tnum">{live.longest ? dur(live.longest) : '—'}</div>
+            <div className="hero-stat-v tnum">{live.longest ? dur(live.longest) : '-'}</div>
             <div className="hero-stat-d">of the agents up now</div>
           </div>
         </div>
@@ -95,7 +111,7 @@ export default function Live({ board }) {
         <Card title="By product" note="Which assistant the running agents belong to.">
           <Chips rows={live.byTool} total={live.processes} />
         </Card>
-        <Card title="By kind" note="How they were started — an editor session, a headless run, a subagent.">
+        <Card title="By kind" note="How they were started - an editor session, a headless run, a subagent.">
           <Chips rows={live.byKind} total={live.processes} />
         </Card>
       </section>
@@ -107,7 +123,7 @@ export default function Live({ board }) {
         {!live.machines.length && (
           <Empty>
             Nothing is running on any machine as of the last reading. That is a real
-            answer, not a missing one — agents come and go between readings, and the
+            answer, not a missing one - agents come and go between readings, and the
             Recently finished panel in Token Monitoring is where the ones that ended
             are listed.
           </Empty>
@@ -121,8 +137,11 @@ export default function Live({ board }) {
                   <th className="lb-c-num tnum">Running</th>
                   <th>Kinds</th>
                   <th className="lb-c-num tnum">Longest up</th>
-                  <th className="lb-c-bar">This 5h block</th>
-                  <th className="lb-c-num tnum">Requests</th>
+                  {/* Two columns of dashes are worse than two columns fewer:
+                      an empty column looks like missing values in rows that
+                      are otherwise complete. */}
+                  {live.blocksReported && <th className="lb-c-bar">This 5h block</th>}
+                  {live.blocksReported && <th className="lb-c-num tnum">Requests</th>}
                 </tr>
               </thead>
               <tbody>
@@ -143,18 +162,22 @@ export default function Live({ board }) {
                           {[...new Set(mch.kinds)].slice(0, 3).map(k => (
                             <Pill key={k} tone={KIND_TONE[k] || ''}>{k}</Pill>
                           ))}
-                          {!mch.kinds.length && <span className="bv-sub">—</span>}
+                          {!mch.kinds.length && <span className="bv-sub">-</span>}
                         </div>
                       </td>
-                      <td className="lb-c-num tnum">{mch.oldest ? dur(mch.oldest) : '—'}</td>
-                      <td className="lb-c-bar">
-                        {mch.block
-                          ? <MeterBar pct={used} color={SERIES[0]}
-                            label={mch.block.open ? 'open' : 'closed'}
-                            right={mch.block.minutesLeft ? dur(mch.block.minutesLeft * 60) + ' left' : ''} />
-                          : <span className="bv-sub">—</span>}
-                      </td>
-                      <td className="lb-c-num tnum">{mch.block ? full(mch.block.requests) : '—'}</td>
+                      <td className="lb-c-num tnum">{mch.oldest ? dur(mch.oldest) : '-'}</td>
+                      {live.blocksReported && (
+                        <td className="lb-c-bar">
+                          {mch.block
+                            ? <MeterBar pct={used} color={SERIES[0]}
+                              label={mch.block.open ? 'open' : 'closed'}
+                              right={mch.block.minutesLeft ? dur(mch.block.minutesLeft * 60) + ' left' : ''} />
+                            : <span className="bv-sub">-</span>}
+                        </td>
+                      )}
+                      {live.blocksReported && (
+                        <td className="lb-c-num tnum">{mch.block ? full(mch.block.requests) : '-'}</td>
+                      )}
                     </tr>
                   )
                 })}
@@ -165,9 +188,14 @@ export default function Live({ board }) {
         <p className="bv-note" style={{ marginTop: 'var(--space-md)' }}>
           &ldquo;Right now&rdquo; means the last reading each machine sent, so this is up to one
           reporting interval old. A machine that stopped reporting shows its last known
-          state and is marked as such — quiet is not the same as idle, and a board that
+          state and is marked as such - quiet is not the same as idle, and a board that
           conflated them would understate load exactly when it mattered.
           Counts only: what any of these agents is working on is not collected here.
+          {!live.blocksReported && (
+            <> Five-hour blocks are a Claude Code figure about one machine, so a board built
+              from merged entries is not given them at all. They are absent here rather than
+              zero, which is a different claim.</>
+          )}
         </p>
       </Card>
     </>

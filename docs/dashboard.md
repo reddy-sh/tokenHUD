@@ -25,7 +25,7 @@ There are two rails, and they answer different questions.
 └────────────────┴──────────────────┴─────────────────────────────┘
 ```
 
-The **root rail** — behind the hamburger in the top bar — answers *which
+The **root rail** - behind the hamburger in the top bar - answers *which
 product*. Choosing here changes what the content area **is**.
 
 The **section rail** answers *where inside it*. Token Monitoring's rail picks a
@@ -36,19 +36,19 @@ They collapse independently, and that is deliberate: on a narrow screen the
 machine list is the first thing worth giving up and the product switch is the
 last. Both collapse states persist, as does the section you were last in and
 the Leaderboard page you were last on. On a phone the root rail stays as icons
-— it is the only way to change section — and the section rail is what drops.
+- it is the only way to change section - and the section rail is what drops.
 
 ## Token Monitoring
 
 Everything about one machine at a time. The section rail carries:
 
-- **Machines** — every machine reporting, with liveness. Click one to view it;
+- **Machines** - every machine reporting, with liveness. Click one to view it;
   rename or remove it in place; **Add machine** hands you the two commands that
   install and enroll an agent, and **Upgrade agents** appears when one is
   behind the latest release.
-- **Assistant** — appears when a machine has usage from more than one, so you
+- **Assistant** - appears when a machine has usage from more than one, so you
   can read the board as Claude Code or as Codex CLI.
-- **Dashboard** — the panels, with a live count against each: Overview, Usage
+- **Dashboard** - the panels, with a live count against each: Overview, Usage
   windows, Recently finished, Activity, Value, Sessions, Models, Running now,
   Projects, MCP servers, Tool calls, Permissions, Extensions, Machines,
   Integrations, Prompts.
@@ -62,30 +62,30 @@ the handshake complete.
 
 ## Leaderboard
 
-The fleet rather than a machine — nothing on it is scoped by which laptop is
+The fleet rather than a machine - nothing on it is scoped by which laptop is
 selected, which is why it is at the root and not behind the machine picker.
 Four pages: **Leaderboard**, **Live**, **Models**, **Demand**. See
 [The Leaderboard](leaderboard.md).
 
 ## Settings
 
-- **Connection** — the server address, whether the admin key is held in this
+- **Connection** - the server address, whether the admin key is held in this
   browser, and **Disconnect**, which forgets both. The server keeps running.
-- **Appearance** — theme, and a switch for each rail.
-- **Live updates** — follow or pause the agents, when the last reading landed,
+- **Appearance** - theme, and a switch for each rail.
+- **Live updates** - follow or pause the agents, when the last reading landed,
   and how many event-stream readers the server is pushing to against its cap.
-- **Public links** — every live share with its view count and its URL, a
+- **Public links** - every live share with its view count and its URL, a
   one-click revoke, and **Manage sharing** for the full dialog. See
   [Sharing a board](sharing.md).
-- **This server** — machines, snapshots, keyframes, endings, database size and
+- **This server** - machines, snapshots, keyframes, endings, database size and
   path.
-- **Agents** — which agent versions are reporting, against the latest release.
+- **Agents** - which agent versions are reporting, against the latest release.
 
 ## Live updates
 
 The board is pushed to, not polled. The server sends a `reading` event the
 moment an agent's snapshot lands, and a slow poll backstops a dropped
-connection — so a board left open is current without asking, and a board whose
+connection - so a board left open is current without asking, and a board whose
 socket died is stale by seconds rather than silently frozen.
 
 The **Live** switch in the top bar is the manual override. Off, the

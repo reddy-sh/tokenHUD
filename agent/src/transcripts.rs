@@ -1,4 +1,4 @@
-//! Transcript index — per-session usage, read once and never re-read.
+//! Transcript index - per-session usage, read once and never re-read.
 //!
 //! Three decisions worth keeping, and the reason this is not a naive reader:
 //!
@@ -16,13 +16,13 @@
 
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub const VERSION: u32 = 5;
+pub const VERSION: u32 = 6;
 pub const BIG_CONTEXT: i64 = 150_000;
 pub const LONG_SESSION_HOURS: f64 = 8.0;
 const KEEP_DAYS: usize = 120;
@@ -32,7 +32,7 @@ const KEEP_MINUTE_DAYS: i64 = 9;
 ///
 /// Built-in tools are a fixed short list, but an MCP server contributes one
 /// name per tool it exports and a machine can mount many. The cap is not a
-/// guess at a sane number of tools — it is the guarantee that a broken or
+/// guess at a sane number of tools - it is the guarantee that a broken or
 /// hostile server cannot make this index grow without bound. Names already
 /// known keep counting past it; only new ones stop being learned.
 const MAX_TOOL_NAMES: usize = 800;
@@ -95,6 +95,20 @@ pub struct Session {
     pub tools: i64,
     #[serde(rename = "maxCtx", default)]
     pub max_ctx: i64,
+    /// The last `message.id` whose usage was counted into this session.
+    ///
+    /// Claude Code writes one transcript line per content block and repeats
+    /// the SAME `usage` object on every one of them, so a turn that thought,
+    /// spoke and called three tools lands as five lines carrying one request's
+    /// tokens five times. Counting each line inflated this machine's totals by
+    /// ~1.8x. Usage is therefore counted once per `message.id`.
+    ///
+    /// Persisted because reads resume at a byte offset: a turn's blocks are
+    /// written milliseconds apart and almost always land in one cycle, but a
+    /// cycle boundary can bisect them, and the id that bridges it has to
+    /// survive in the index rather than in memory.
+    #[serde(rename = "lastMsg", default)]
+    pub last_msg: Option<String>,
     #[serde(default)]
     pub models: IndexMap<String, Tok>,
     #[serde(default)]
@@ -175,6 +189,19 @@ pub fn home() -> PathBuf {
     std::env::var("HOME")
         .map(PathBuf::from)
         .unwrap_or_else(|_| PathBuf::from("/"))
+}
+
+/// `$XDG_DATA_HOME`, or `~/.local/share`.
+///
+/// Lives here beside the other path helpers because two collectors now want
+/// it - Devin's session store and OpenCode's - and a second private copy of
+/// this is how the two quietly disagree about where a user's data lives when
+/// one of them is fixed and the other is not.
+pub fn data_home() -> PathBuf {
+    match std::env::var("XDG_DATA_HOME") {
+        Ok(v) if !v.is_empty() => expand_tilde(&v),
+        _ => home().join(".local").join("share"),
+    }
 }
 
 pub fn expand_tilde(s: &str) -> PathBuf {
@@ -307,6 +334,9 @@ pub fn parse_iso(ts: &str) -> Option<chrono::DateTime<chrono::Utc>> {
 struct Caches {
     minute: HashMap<String, i64>,
     day: HashMap<String, String>,
+    /// Message ids already counted this cycle, per session. Cleared with the
+    /// cache; `Session::last_msg` is what carries across cycles.
+    seen: HashMap<String, HashSet<String>>,
 }
 
 /// One transcript record into the index. Assistant turns carry the usage.
@@ -382,7 +412,7 @@ fn absorb(idx: &mut Index, rec: &serde_json::Value, c: &mut Caches) {
         .and_then(|v| v.as_str())
         .unwrap_or("unknown")
         .to_string();
-    // `<synthetic>` is the CLI's marker for a message it wrote itself — a
+    // `<synthetic>` is the CLI's marker for a message it wrote itself - a
     // cancellation notice, a replayed error. No request was made and no tokens
     // were billed, so counting it would put a model on the board nobody ran.
     if model.starts_with('<') {
@@ -395,7 +425,7 @@ fn absorb(idx: &mut Index, rec: &serde_json::Value, c: &mut Caches) {
     let mut cw5 = n(cc.and_then(|c| c.get("ephemeral_5m_input_tokens")));
     if cw1 == 0 && cw5 == 0 {
         // Older transcripts report one total. Assume the cheaper TTL rather
-        // than the dearer one — an estimate should not flatter itself.
+        // than the dearer one - an estimate should not flatter itself.
         cw5 = n(u.get("cache_creation_input_tokens"));
     }
     let tin = n(u.get("input_tokens"));
@@ -409,21 +439,52 @@ fn absorb(idx: &mut Index, rec: &serde_json::Value, c: &mut Caches) {
         cw1,
     };
 
-    s.req += 1;
-    bump(&mut s.models, &model, &tok);
-    if rec
-        .get("isSidechain")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false)
-    {
-        bump(&mut s.sub, &model, &tok);
-    }
-    let context = tin + tcr + cw5 + cw1;
-    if context > s.max_ctx {
-        s.max_ctx = context;
-    }
-    if context > BIG_CONTEXT {
-        bump(&mut s.ctx, &model, &tok);
+    // One API turn, many transcript lines, one `usage`. Count it once.
+    //
+    // The id is taken from the message, falling back to the record's
+    // requestId; a line carrying neither cannot be paired with anything, so it
+    // is counted rather than silently dropped - under-counting a real request
+    // would be the worse error.
+    let msg_id = msg
+        .get("id")
+        .and_then(|v| v.as_str())
+        .or_else(|| rec.get("requestId").and_then(|v| v.as_str()));
+    let counted = match msg_id {
+        None => true,
+        Some(id) => {
+            let fresh = s.last_msg.as_deref() != Some(id)
+                && c.seen
+                    .entry(sid.to_string())
+                    .or_default()
+                    .insert(id.to_string());
+            if fresh {
+                s.last_msg = Some(id.to_string());
+            }
+            fresh
+        }
+    };
+
+    // Tool calls are NOT deduplicated with the usage: each of those repeated
+    // lines carries a DIFFERENT content block, so the tool_use blocks live on
+    // the second and later lines. Dropping them with the duplicate usage would
+    // trade an over-count of tokens for an under-count of tool calls.
+    if counted {
+        s.req += 1;
+        bump(&mut s.models, &model, &tok);
+        if rec
+            .get("isSidechain")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+        {
+            bump(&mut s.sub, &model, &tok);
+        }
+        let context = tin + tcr + cw5 + cw1;
+        if context > s.max_ctx {
+            s.max_ctx = context;
+        }
+        if context > BIG_CONTEXT {
+            bump(&mut s.ctx, &model, &tok);
+        }
     }
     if let Some(list) = msg.get("content").and_then(|v| v.as_array()) {
         for b in list {
@@ -459,14 +520,16 @@ fn absorb(idx: &mut Index, rec: &serde_json::Value, c: &mut Caches) {
         }
     }
 
-    if let Some(day) = local_day(ts, &mut c.day) {
-        bump(idx.days.entry(day).or_default(), &model, &tok);
-    }
-    if let Some(minute) = epoch_minute(ts, &mut c.minute) {
-        let k = minute.to_string();
-        *idx.minutes.entry(k.clone()).or_insert(0) += 1;
-        if tout != 0 {
-            *idx.out_minutes.entry(k).or_insert(0) += tout;
+    if counted {
+        if let Some(day) = local_day(ts, &mut c.day) {
+            bump(idx.days.entry(day).or_default(), &model, &tok);
+        }
+        if let Some(minute) = epoch_minute(ts, &mut c.minute) {
+            let k = minute.to_string();
+            *idx.minutes.entry(k.clone()).or_insert(0) += 1;
+            if tout != 0 {
+                *idx.out_minutes.entry(k).or_insert(0) += tout;
+            }
         }
     }
 }
@@ -524,6 +587,7 @@ pub fn scan() -> (Index, Scan) {
     let mut caches = Caches {
         minute: HashMap::new(),
         day: HashMap::new(),
+        seen: HashMap::new(),
     };
     let (mut total, mut read, mut done_bytes) = (0u64, 0u64, 0u64);
     let mut touched = false;
@@ -616,7 +680,7 @@ pub fn scan() -> (Index, Scan) {
             continue;
         }
         if off == started_at {
-            // Nothing complete was read — leave the offset alone, as the
+            // Nothing complete was read - leave the offset alone, as the
             // Python does when its window holds no newline.
             done_bytes += off;
             continue;
@@ -708,12 +772,75 @@ mod tests {
         let mut c = Caches {
             minute: HashMap::new(),
             day: HashMap::new(),
+            seen: HashMap::new(),
         };
         for l in lines {
             let v: serde_json::Value = serde_json::from_str(l).unwrap();
             absorb(&mut idx, &v, &mut c);
         }
         idx
+    }
+
+    /// Claude Code writes one line per content block and repeats the SAME
+    /// `usage` on every one. Summing them inflated this machine's real corpus
+    /// by 1.79x (34,984 usage-bearing lines against 19,135 distinct ids), and
+    /// every token, dollar and rank downstream carried that error.
+    #[test]
+    fn one_turn_many_lines_is_counted_once() {
+        // A thought, a sentence and two tool calls: four lines, one request.
+        let line = |block: &str| {
+            format!(
+                r#"{{"type":"assistant","sessionId":"s","requestId":"req_1",
+                "timestamp":"2026-08-01T10:00:00Z","message":{{"id":"msg_1",
+                "model":"claude-opus-5","usage":{{"input_tokens":100,"output_tokens":20}},
+                "content":[{block}]}}}}"#
+            )
+        };
+        let idx = absorbed(&[
+            line(r#"{"type":"thinking"}"#).as_str(),
+            line(r#"{"type":"text"}"#).as_str(),
+            line(r#"{"type":"tool_use","name":"Read"}"#).as_str(),
+            line(r#"{"type":"tool_use","name":"Edit"}"#).as_str(),
+        ]);
+        let s = &idx.sessions["s"];
+        let t = &s.models["claude-opus-5"];
+
+        // Usage: once, not four times.
+        assert_eq!((t.tin, t.out), (100, 20), "usage must be counted once per message.id");
+        assert_eq!(s.req, 1, "four lines are one request");
+        assert_eq!(idx.days["2026-08-01"]["claude-opus-5"].tin, 100, "the day rollup counts once too");
+
+        // Tool calls: every block, because each line carries a different one.
+        // Deduplicating these along with the usage would trade an over-count
+        // of tokens for an under-count of tools.
+        assert_eq!(s.tools, 2, "tool_use blocks on later lines must still count");
+        assert_eq!(idx.tools["Read"], 1);
+        assert_eq!(idx.tools["Edit"], 1);
+    }
+
+    /// Two genuinely different turns must not be collapsed into one.
+    #[test]
+    fn distinct_messages_still_count_separately() {
+        let line = |id: &str| {
+            format!(
+                r#"{{"type":"assistant","sessionId":"s","timestamp":"2026-08-01T10:00:00Z",
+                "message":{{"id":"{id}","model":"claude-opus-5",
+                "usage":{{"input_tokens":100,"output_tokens":20}}}}}}"#
+            )
+        };
+        let idx = absorbed(&[line("msg_1").as_str(), line("msg_2").as_str()]);
+        let t = &idx.sessions["s"].models["claude-opus-5"];
+        assert_eq!((t.tin, t.out, idx.sessions["s"].req), (200, 40, 2));
+    }
+
+    /// A line with no id at all is counted rather than dropped: under-counting
+    /// a real request is the worse of the two errors.
+    #[test]
+    fn a_line_with_no_id_is_still_counted() {
+        let line = r#"{"type":"assistant","sessionId":"s","timestamp":"2026-08-01T10:00:00Z",
+            "message":{"model":"claude-opus-5","usage":{"input_tokens":7}}}"#;
+        let idx = absorbed(&[line, line]);
+        assert_eq!(idx.sessions["s"].models["claude-opus-5"].tin, 14);
     }
 
     #[test]
@@ -779,6 +906,7 @@ mod tests {
         let mut c = Caches {
             minute: HashMap::new(),
             day: HashMap::new(),
+            seen: HashMap::new(),
         };
         let call = |name: &str| -> serde_json::Value {
             serde_json::from_str(&format!(

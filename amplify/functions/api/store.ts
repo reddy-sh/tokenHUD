@@ -3,9 +3,9 @@
 // One table, no secondary indexes. That is a cost decision before it is a
 // design one: an Amplify-managed GSI projects every attribute, so the previous
 // shape of this backend copied the whole reading into an index on every single
-// heartbeat and paid for it twice. Here the two lookups the hot path needs —
+// heartbeat and paid for it twice. Here the two lookups the hot path needs -
 // "which machine holds this key" and "which machine does this enrollment token
-// belong to" — are their own small items, which makes each of them one
+// belong to" - are their own small items, which makes each of them one
 // strongly-consistent GetItem: cheaper than an index, and correct on the first
 // try rather than after the retry an eventually-consistent index needs.
 //
@@ -15,18 +15,32 @@
 //   U#<sub>              M#<machineId>     machine: identity, auth, rollup
 //   U#<sub>              AGG               that account's machines, summed
 //   M#<machineId>        LIVE              the latest reading, gzipped   (7d)
+//   M#<machineId>        D#<YYYY-MM-DD>    one day of that machine, summed (400d)
 //   KEY#<sha256>         AUTH              machine key   → account, machine
 //   TOK#<sha256>         ENROLL            enroll token  → account, machine (15m)
 //   HANDLE#<lower>       CLAIM             handle        → account
 //   LB#roster            U#<sub>           an opted-in account's entry
 //   LB#global            CACHE             the ranked board, gzipped     (1h)
+//   GH#stars             CACHE             the repo's star count         (24h)
+//
+// The day rows are the only history this backend keeps, and they are why it
+// keeps any. Everything else here is a snapshot: LIVE expires in a week, the
+// machine rollup is overwritten every thirty seconds, and the aggregate is
+// derived from both. Before the day rows existed, an account's entire past
+// lived on the machines' own disks and was re-derived by the agent on every
+// heartbeat - so a fleet that stopped reporting had no past at all after seven
+// days, and "all time" meant "as far back as whichever agents are still
+// running can still see". The day row is written under the machine rather than
+// the account because it is the machine's own arithmetic; the account's total
+// for a day is the merge of its machines' rows, computed on read.
 //
 // Nothing here holds a secret in the clear. Keys and tokens are stored as
 // SHA-256 and looked up by it, the same discipline as the self-host server's
-// SQLite store — see server/src/store.rs.
+// SQLite store - see server/src/store.rs.
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
+    BatchWriteCommand,
     DeleteCommand,
     DynamoDBDocumentClient,
     GetCommand,
@@ -35,7 +49,9 @@ import {
     UpdateCommand
 } from '@aws-sdk/lib-dynamodb';
 
-const TABLE = process.env.TABLE_NAME as string;
+import { required } from './env';
+
+const TABLE = required('TABLE_NAME');
 
 // removeUndefinedValues because the handler builds rows out of optional fields
 // and DynamoDB rejects an explicit undefined; convertClassInstanceToMap is off
@@ -53,6 +69,10 @@ export const machineSk = (id: string) => `M#${id}`;
 const LIVE_TTL_SECONDS = 7 * 24 * 3600;
 const ENROLL_TTL_SECONDS = 15 * 60;
 const BOARD_TTL_SECONDS = 3600;
+// A day out of date is as wrong as a star count is allowed to get if this
+// function is never invoked in between; the ten-minute soft window in the
+// handler is what actually decides how often GitHub is asked.
+const STAR_TTL_SECONDS = 24 * 3600;
 
 const epoch = (seconds: number) => Math.floor(Date.now() / 1000) + seconds;
 
@@ -73,7 +93,7 @@ export async function getMachine(sub: string, id: string): Promise<Machine | nul
 }
 
 /* A pointer item resolved, then the machine itself read by primary key.
-   Two GetItems, both small, both strongly consistent — which is the whole
+   Two GetItems, both small, both strongly consistent - which is the whole
    reason the pointer exists instead of an index. */
 async function machineVia(pointerPk: string, pointerSk: string): Promise<Machine | null> {
   const { Item } = await doc.send(new GetCommand({
@@ -165,7 +185,7 @@ export async function updateMachine(
 /* The aggregate's input, and nothing else.
  *
  * A machine row also carries the previous reading's process list and up to
- * forty endings — about 4 KB that the aggregate has no use for. Projecting
+ * forty endings - about 4 KB that the aggregate has no use for. Projecting
  * halves what this query reads, and it runs on the heartbeat path, so the
  * halving is the difference between a read cost that grows with machines and
  * one that grows with machines twice. */
@@ -194,7 +214,7 @@ export async function listMachineRollups(sub: string): Promise<Machine[]> {
  * both would write, the second would win, and the agent holding the first
  * would 401 forever with nothing to explain it. `attribute_not_exists(keyHash)`
  * makes the second write fail instead, and the loser is told the key was
- * already delivered — which is what the self-host server says, and it says it
+ * already delivered - which is what the self-host server says, and it says it
  * for the same reason: `UPDATE ... WHERE key_hash IS NULL`.
  *
  * False means somebody else got there first. */
@@ -275,7 +295,7 @@ export async function dropTokenPointer(tokenHash: string) {
 /* ── the latest reading ─────────────────────────────────────────────── */
 
 /* Its own item, because the heartbeat reads the machine row on the way in and
-   the board reads it twenty times a minute — neither should have to carry
+   the board reads it twenty times a minute - neither should have to carry
    26 KB of gzip to do it. The TTL is the retention policy: a machine that
    stopped reporting a week ago stops costing storage without anyone deciding. */
 export async function putLive(machineId: string, packed: string, at: string) {
@@ -295,6 +315,73 @@ export async function getLive(machineId: string): Promise<{ packed?: string; at?
 
 export async function dropLive(machineId: string) {
   await doc.send(new DeleteCommand({ TableName: TABLE, Key: { pk: `M#${machineId}`, sk: 'LIVE' } }));
+}
+
+/* ── the daily record ───────────────────────────────────────────────── */
+
+/* One machine's days, written under the machine's own partition.
+ *
+ * The date is the whole sort key, which is what makes re-ingesting a day an
+ * overwrite rather than an addition: the agent re-derives the same ninety days
+ * from disk on every heartbeat, and a row keyed on anything else - an ingest
+ * id, a timestamp - would turn each of those into a fresh copy and make a
+ * day's tokens grow by their own value every thirty seconds. Nothing here
+ * increments; every field is replaced by what the reading currently says the
+ * day held.
+ *
+ * BatchWriteItem because the once-a-day backfill hands this up to ninety rows
+ * and ninety round trips would cost more in Lambda duration than in DynamoDB.
+ * It does not throttle by throwing - it hands back the writes it declined - so
+ * one immediate retry, and then the throttle is reported as one, which the
+ * router turns into the 503 that makes the agent buffer and try again. The
+ * writes are idempotent, so trying again is free of consequence. */
+export async function putMachineDays(
+  machineId: string,
+  days: Record<string, unknown>[],
+): Promise<void> {
+  for (let i = 0; i < days.length; i += 25) {
+    let pending = days.slice(i, i + 25).map((day) => ({
+      PutRequest: { Item: { pk: `M#${machineId}`, sk: `D#${day.date}`, ...day } },
+    }));
+    for (let attempt = 0; pending.length && attempt < 2; attempt++) {
+      const out = await doc.send(new BatchWriteCommand({ RequestItems: { [TABLE]: pending } }));
+      pending = (out.UnprocessedItems?.[TABLE] ?? []) as typeof pending;
+    }
+    if (pending.length) {
+      const throttled = new Error(`${pending.length} day rollups were declined by the table`);
+      // Named so the router answers 503 rather than 500: unprocessed items are
+      // exactly what BatchWriteItem returns instead of raising for throughput,
+      // and the agent's response to the two differs.
+      throttled.name = 'ProvisionedThroughputExceededException';
+      throw throttled;
+    }
+  }
+}
+
+/* The days that have fallen off the end of the reading the agent still sends.
+ *
+ * `before` is the oldest date the current reading covers, so this asks only
+ * for what the reading can no longer speak for. That is a bound on cost as
+ * much as on meaning: the reading carries ninety days and the rows are kept
+ * for four hundred, so without it every aggregate rebuild would re-read three
+ * months of days it is about to discard. The upper bound is inclusive, and the
+ * caller drops the boundary date - a day the reading covers is the reading's
+ * to state, because it is the newer of the two. */
+export async function listMachineDaysBefore(machineId: string, before: string): Promise<Machine[]> {
+  const out: Machine[] = [];
+  let start: Record<string, any> | undefined;
+  do {
+    const page = await doc.send(new QueryCommand({
+      TableName: TABLE,
+      KeyConditionExpression: '#pk = :pk AND #sk BETWEEN :lo AND :hi',
+      ExpressionAttributeNames: { '#pk': 'pk', '#sk': 'sk' },
+      ExpressionAttributeValues: { ':pk': `M#${machineId}`, ':lo': 'D#', ':hi': `D#${before}` },
+      ExclusiveStartKey: start,
+    }));
+    out.push(...(page.Items ?? []));
+    start = page.LastEvaluatedKey;
+  } while (start);
+  return out;
 }
 
 /* ── the account profile and its handle ─────────────────────────────── */
@@ -425,5 +512,35 @@ export async function putBoardCache(packed: string, computedAt: string) {
   await doc.send(new PutCommand({
     TableName: TABLE,
     Item: { pk: 'LB#global', sk: 'CACHE', packed, computedAt, ttl: epoch(BOARD_TTL_SECONDS) },
+  }));
+}
+
+/* ── the repo's star count, cached ──────────────────────────────────── */
+
+/* The same two-tier shape the board cache uses, for the same reason: a hard
+ * TTL that bounds how long a row may sit here, and a timestamp the handler
+ * reads to decide whether it is fresh enough to serve without going out.
+ *
+ * `count` and `fetchedAt` describe the number; `checkedAt` describes the last
+ * attempt to get one. They are two different facts and a GitHub outage
+ * separates them - the number stays as true as it was, the attempt is
+ * current - so a reader is never shown a stale count wearing a fresh
+ * timestamp. `count` is absent, not zero, when there has never been one:
+ * this repo genuinely has zero stars today, and a schema that cannot tell
+ * "none" from "not known" would report the outage as a real number. */
+export type StarCache = { count?: number; fetchedAt?: string; checkedAt?: string };
+
+export async function getStarCache(): Promise<StarCache | null> {
+  const { Item } = await doc.send(new GetCommand({
+    TableName: TABLE,
+    Key: { pk: 'GH#stars', sk: 'CACHE' },
+  }));
+  return (Item as StarCache) ?? null;
+}
+
+export async function putStarCache(cache: StarCache) {
+  await doc.send(new PutCommand({
+    TableName: TABLE,
+    Item: { pk: 'GH#stars', sk: 'CACHE', ...cache, ttl: epoch(STAR_TTL_SECONDS) },
   }));
 }

@@ -1,5 +1,5 @@
-// The wire protocol has three implementations — the self-host server in Rust,
-// this Lambda, and the browser that mints the link — and two of them have to
+// The wire protocol has three implementations - the self-host server in Rust,
+// this Lambda, and the browser that mints the link - and two of them have to
 // produce the same pairing code from the same token or a person eye-matching
 // the terminal against the portal is told the truth is a mismatch. Nothing in
 // the type system holds them together, so this does: the vectors below are
@@ -15,8 +15,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  diffEndings, etimeSeconds, isStale, newSecret, packSnapshot, pairingCode, previousOf,
-  sha256Hex, trimToBudget, unpackSnapshot,
+  DAY_RETENTION_SECONDS, dayRollups, diffEndings, etimeSeconds, isStale, newSecret, packSnapshot,
+  pairingCode, previousOf, sha256Hex, trimToBudget, unpackSnapshot,
 } from './protocol.ts';
 
 /* ── the cross-implementation vectors ───────────────────────────────── */
@@ -270,4 +270,107 @@ test('the stub previousOf leaves behind still drives the two things that read it
 test('previousOf survives a reading with no processes at all', () => {
   assert.deepEqual(previousOf({}), { collectedAt: null, metrics: { processes: [] } });
   assert.deepEqual(previousOf(null), { collectedAt: null, metrics: { processes: [] } });
+});
+
+/* ── the daily record ───────────────────────────────────────────────── */
+
+// These rows outlive the reading they came from by more than a year, so what
+// they are allowed to hold is a publishing decision rather than a storage one.
+// The list below is the one `mergeEntries` already puts on a page strangers
+// read, and the tests are here to make widening it deliberate.
+
+const ONE_DAY_MS = 86_400_000;
+const noon = (date) => Date.parse(`${date}T12:00:00Z`);
+
+const aDay = (over = {}) => ({
+  date: '2026-08-24',
+  tokens: 1_234_567,
+  estUSD: 4.5,
+  sessions: 3,
+  toolCalls: 88,
+  messages: 12,
+  byModel: { 'claude-sonnet-4-5': 1_000_000, 'gpt-5-codex': 234_567 },
+  ...over,
+});
+
+test('a day rollup carries counts and nothing that names a machine or a project', () => {
+  const [row] = dayRollups([aDay({
+    // Everything a reading knows and a stored day may not repeat.
+    host: 'workbench', project: '/Users/someone/secret-startup', branch: 'feature/acquisition',
+    prompt: 'rewrite the pricing page', cwd: '/Users/someone', sessions_detail: ['s-1'],
+  })], noon('2026-08-24'));
+
+  assert.deepEqual(
+    Object.keys(row).sort(),
+    ['byModel', 'date', 'estUSD', 'messages', 'sessions', 'tokens', 'toolCalls', 'ttl'],
+  );
+  assert.equal(row.tokens, 1_234_567);
+  assert.deepEqual(row.byModel, { 'claude-sonnet-4-5': 1_000_000, 'gpt-5-codex': 234_567 });
+});
+
+test('a day rollup holds nothing that could make two writes of it distinct', () => {
+  // Idempotence is the point of the row: the agent re-derives the same ninety
+  // days from disk every thirty seconds, so re-ingesting a day has to replace
+  // it. The sort key is the date alone - but a row carrying an ingest time, a
+  // sequence number or a run id would defeat that from the other side, by
+  // making a second write of the same day a different item to compare.
+  const [row] = dayRollups([aDay()], noon('2026-08-24'));
+  for (const forbidden of ['collectedAt', 'ingestedAt', 'writtenAt', 'id', 'seq', 'installId']) {
+    assert.equal(row[forbidden], undefined, `${forbidden} would make a day two rows`);
+  }
+  // Twice through, unchanged: nothing accumulates on the way past.
+  const again = dayRollups([aDay()], noon('2026-08-24'));
+  assert.deepEqual(again, dayRollups([aDay()], noon('2026-08-24')));
+});
+
+test('the retention window is measured from the day, not from the ingest', () => {
+  // A backfill written today for a day three months ago must not buy that day
+  // four hundred more days. Otherwise every heartbeat pushes the horizon out
+  // and the window is not a window.
+  const old = dayRollups([aDay({ date: '2026-06-01' })], noon('2026-08-24'))[0];
+  assert.equal(old.ttl, Date.parse('2026-06-01T00:00:00Z') / 1000 + DAY_RETENTION_SECONDS);
+
+  const later = dayRollups([aDay({ date: '2026-06-01' })], noon('2026-11-30'))[0];
+  assert.equal(later.ttl, old.ttl, 'rewriting a day does not extend it');
+});
+
+test('a day already past the retention window is not written at all', () => {
+  const day = aDay({ date: '2025-01-01' });
+  const midnight = Date.parse('2025-01-01T00:00:00Z');
+
+  assert.equal(dayRollups([day], midnight + 399 * ONE_DAY_MS).length, 1, 'still inside');
+  assert.deepEqual(dayRollups([day], midnight + 401 * ONE_DAY_MS), [], 'written and swept is waste');
+});
+
+test('a day with no tokens is a day, not a missing day', () => {
+  // Zero is a measurement: the agent ran, the machine was on, nobody used it.
+  // Dropping the row would make that indistinguishable from a day the record
+  // never had, and the streak on the board is counted off exactly this.
+  const [row] = dayRollups([aDay({ tokens: 0, estUSD: 0, sessions: 0 })], noon('2026-08-24'));
+  assert.equal(row.tokens, 0);
+  assert.equal(row.estUSD, 0);
+});
+
+test('a count nobody reported is absent rather than zero', () => {
+  const [row] = dayRollups([{ date: '2026-08-24', tokens: 10 }], noon('2026-08-24'));
+  assert.equal(row.tokens, 10);
+  assert.equal('estUSD' in row, false, 'unpriced and free are different facts');
+  assert.equal('toolCalls' in row, false);
+  assert.equal('byModel' in row, false, 'an empty map claims the models were counted');
+});
+
+test('a day that is not a date is not a day', () => {
+  const junk = ['2026-8-4', '2026-13-45', 'yesterday', '', '2026-08-24T11:00:00Z', null];
+  for (const date of junk) {
+    assert.deepEqual(dayRollups([{ date, tokens: 5 }], noon('2026-08-24')), [], String(date));
+  }
+  assert.deepEqual(dayRollups(null), [], 'a reading with no days at all');
+  assert.deepEqual(dayRollups({ '2026-08-24': 5 }), [], 'byDay is a list, not a map');
+});
+
+test('a per-model count that is not a number does not become one', () => {
+  const [row] = dayRollups([aDay({
+    byModel: { 'claude-sonnet-4-5': 1_000, unknown: null, broken: 'lots', '': 5 },
+  })], noon('2026-08-24'));
+  assert.deepEqual(row.byModel, { 'claude-sonnet-4-5': 1_000 });
 });

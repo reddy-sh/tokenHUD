@@ -32,9 +32,21 @@ export default function Hero({ cta, onPortal }) {
         Know what your<br />agents cost.
       </h1>
 
+      {/* Two overclaims lived in this paragraph. "Every AI coding agent on your
+          machine" is not true of any tool and is not true of this one - the
+          agent's catalogue knows several times as many tools as it can read,
+          and the integrations section says so plainly a screen down, so the
+          hero was being contradicted by its own page. And "Runs on localhost",
+          full stop, described only half the product: the button four inches to
+          the left opens a hosted board. Both are fixed here rather than
+          softened, because the local half is the strongest thing on the page
+          and the hosted half is opt-in - saying so in the first paragraph turns
+          a contradiction the reader would otherwise discover into a choice they
+          are being offered. */}
       <p className="hero__sub">
-        Live token metering, estimated spend and plan-limit windows for every AI coding agent on your machine.
-        Runs on localhost. Reads files your agents already wrote. Never touches your prompts or code.
+        Live token metering, estimated spend and plan-limit windows for the AI coding agents on your machine.
+        Runs on localhost, reads files your agents already wrote, and never touches your prompts or code.
+        Connect it to the hosted board when you want a second machine in the picture - metrics leave, content never does.
       </p>
 
       <div className="hero__actions">

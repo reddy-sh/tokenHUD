@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test'
  * These tests run without a deployed backend. A checkout that has never
  * deployed has no amplify_outputs.json, so the portal explains itself with
  * the "Portal not deployed" card; a checkout with a sandbox deployed shows
- * the sign-in form. Both are the signed-out portal — the assertions accept
+ * the sign-in form. Both are the signed-out portal - the assertions accept
  * either, and the form-specific ones skip when there is no backend. */
 
 const CARD = '.dashboard-card'
@@ -86,7 +86,7 @@ test.describe('Portal, signed out', () => {
 
   test('the browser derives the same pairing code as the server and the Lambda', async ({ page }) => {
     /* The third of three implementations. A person is asked to compare the
-       code their terminal printed against the code this page shows — so if
+       code their terminal printed against the code this page shows - so if
        these drift, the portal tells them to refuse a machine that is fine.
        The same vectors are pinned in server/tests/pairing.rs and
        amplify/functions/ingest/protocol.test.mjs; they came from the Rust one. */

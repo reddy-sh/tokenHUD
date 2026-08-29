@@ -3,7 +3,7 @@
  * The arithmetic moved to shared/ at the repo root when the cloud API stopped
  * being AppSync and started ranking accounts itself: the global board and the
  * private board must agree, and the only way to guarantee that is one copy of
- * the code. Nothing about the browser's imports changed — every component that
+ * the code. Nothing about the browser's imports changed - every component that
  * asked this module for `rankBoard`, `profilesOf`, `METRICS` or a tier still
  * gets it here.
  *

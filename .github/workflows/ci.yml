@@ -1,10 +1,10 @@
 # CI for a project that ships two binaries and asks you to install nothing
-# beside them — plus the cloud half: the portal and the ingest function.
+# beside them - plus the cloud half: the portal and the ingest function.
 #
 # The Rust jobs are the same shape: format, lint, test against the real
 # machine, then build and run the thing. `cargo tree --depth 1` is printed in
 # each so a new dependency has to be noticed in review rather than discovered
-# later — the closest equivalent to the "no third-party imports" check this
+# later - the closest equivalent to the "no third-party imports" check this
 # repo had while it was Python, and the same intent: the dependency list is a
 # test.
 #

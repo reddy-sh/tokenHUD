@@ -1,4 +1,4 @@
-//! TokenHUD agent — runs on a machine, reads it, ships it.
+//! TokenHUD agent - runs on a machine, reads it, ships it.
 //!
 //!     TOKENHUD_SERVER=http://127.0.0.1:8787 TOKENHUD_KEY=… tokenhud-agent
 //!
@@ -10,7 +10,7 @@
 //!
 //!   · **It buffers.** A laptop that closes its lid mid-post must not lose the
 //!     reading. Failed snapshots queue on disk (bounded) and go out with the
-//!     next successful post — a flaky network shows as a gap that fills in.
+//!     next successful post - a flaky network shows as a gap that fills in.
 //!
 //!   · **It never crashes the loop.** Any failure in a cycle is logged and the
 //!     loop continues, panics included. A monitoring agent that dies on the one
@@ -19,7 +19,7 @@
 //!   · **It sends no secrets.** Prompt text is opt-in and command lines are
 //!     truncated. See `collect.rs`.
 
-use tokenhud_agent::{collect, limits, manifest, transcripts};
+use tokenhud_agent::{collect, enable, limits, manifest, transcripts};
 
 use flate2::write::GzEncoder;
 use flate2::Compression;
@@ -107,7 +107,7 @@ mod consent {
         }
         match record("interactive") {
             Ok(()) => {
-                println!("\nAgreed. Recorded in ~/.tokenhud/consent.json — delete it to revoke.\n");
+                println!("\nAgreed. Recorded in ~/.tokenhud/consent.json - delete it to revoke.\n");
                 true
             }
             Err(e) => {
@@ -122,7 +122,7 @@ const SPOOL_MAX: usize = 500; // snapshots; ~a few MB, bounded on purpose
 
 /// This machine's own identity and enrollment.
 ///
-/// `~/.tokenhud/id` is random, minted once, derived from nothing — hostnames
+/// `~/.tokenhud/id` is random, minted once, derived from nothing - hostnames
 /// collide and get renamed, and an identity that survives both is the whole
 /// reason this file exists. `~/.tokenhud/machine.json` is what `enroll` wrote:
 /// which server this machine reports to, and the key that is this machine's
@@ -223,11 +223,11 @@ impl Config {
         // Overriding HALF of an enrollment mixes credentials across servers:
         // the enrolled key is valid only at the enrolled server, so a lone
         // TOKENHUD_SERVER sends it somewhere that will refuse it forever (and
-        // a lone TOKENHUD_KEY does the mirror image). Say so up front — the
+        // a lone TOKENHUD_KEY does the mirror image). Say so up front - the
         // 401 that follows would otherwise be a mystery.
         if enrolled.is_some() && (env_server != env_key) {
             log("warning: this machine is enrolled, but only one of TOKENHUD_SERVER /");
-            log("TOKENHUD_KEY is set — the env half wins and the enrolled half fills in,");
+            log("TOKENHUD_KEY is set - the env half wins and the enrolled half fills in,");
             log("which pairs a key with a server it was not issued for. Set both or neither.");
         }
         let server = match std::env::var("TOKENHUD_SERVER") {
@@ -270,7 +270,7 @@ fn gzip(raw: &[u8]) -> std::io::Result<Vec<u8>> {
 
 /// What happened to a POST, split the way the spool needs it split: a server
 /// that is away will take this reading later, a server that REFUSED it never
-/// will — buffering against a 401 just grows a spool that can only be replayed
+/// will - buffering against a 401 just grows a spool that can only be replayed
 /// into the same 401.
 enum Post {
     Sent,
@@ -288,7 +288,7 @@ fn post(cfg: &Config, snapshot: &Value) -> Post {
     };
     // Compress the UPLOAD, not just the download. A snapshot is ~60 KB of
     // highly repetitive JSON and gzips about 5:1. On loopback that is a
-    // rounding error; over a network — which is where this is heading — it is
+    // rounding error; over a network - which is where this is heading - it is
     // the difference between a rounding error and a bill. The server accepts
     // both, so an old agent talking to a new server still works.
     let gz = gzip(&raw).ok();
@@ -397,7 +397,7 @@ fn spool_flush(cfg: &Config) {
         }
         match post(cfg, &row) {
             Post::Sent => {}
-            // 401/403 is about the KEY, not this row — the data is fine and
+            // 401/403 is about the KEY, not this row - the data is fine and
             // will be accepted once the credential is fixed. Keep everything.
             Post::Refused(401) | Post::Refused(403) => {
                 stopped = true;
@@ -405,8 +405,8 @@ fn spool_flush(cfg: &Config) {
             }
             // 400/413/422 are about THIS row (malformed, too large): replaying
             // it can only be refused again, and stopping on it would wedge the
-            // flush forever. Drop it and keep going. Any other 4xx — 404 from
-            // a misrouted proxy, 429, 408 — is about the moment, not the row.
+            // flush forever. Drop it and keep going. Any other 4xx - 404 from
+            // a misrouted proxy, 429, 408 - is about the moment, not the row.
             Post::Refused(400) | Post::Refused(413) | Post::Refused(422) => {
                 log("dropping one buffered snapshot the server refused as malformed or too large");
             }
@@ -440,7 +440,7 @@ fn cycle(cfg: &Config) {
     let mid = cfg
         .install_id
         .clone()
-        .unwrap_or_else(|| machine::ensure_id());
+        .unwrap_or_else(machine::ensure_id);
     snap["machineId"] = serde_json::json!(mid);
     if let Some(id) = &cfg.install_id {
         snap["installId"] = serde_json::json!(id);
@@ -470,11 +470,11 @@ fn cycle(cfg: &Config) {
         // Buffering would grow a spool that can only replay into the same
         // refusal; the readings before the mistake are kept, these are not.
         Post::Refused(401) | Post::Refused(403) => {
-            log("key rejected (401/403) — not buffering. Fix TOKENHUD_KEY, or enroll this");
+            log("key rejected (401/403) - not buffering. Fix TOKENHUD_KEY, or enroll this");
             log("machine with a fresh link from the board: tokenhud-agent enroll \"<link>\"");
         }
         Post::Refused(400) | Post::Refused(413) | Post::Refused(422) => {
-            log("server refused this reading as malformed or too large — dropped, not buffered");
+            log("server refused this reading as malformed or too large - dropped, not buffered");
         }
         _ => {
             spool_add(cfg, &snap);
@@ -486,7 +486,7 @@ fn cycle(cfg: &Config) {
 // ── enrollment ──────────────────────────────────────────────────────────
 
 /// One HTTP exchange, JSON in and JSON out, with status errors kept as
-/// answers rather than raised as errors — an enrollment poll NEEDS to read
+/// answers rather than raised as errors - an enrollment poll NEEDS to read
 /// the body of a 404 to say something useful.
 fn http_json(method: &str, url: &str, body: Option<&Value>) -> Result<(u16, Value), String> {
     let ua = format!("tokenhud-agent/{}", collect::AGENT_VERSION);
@@ -517,7 +517,7 @@ fn http_json(method: &str, url: &str, body: Option<&Value>) -> Result<(u16, Valu
     Ok((code, serde_json::from_str(&text).unwrap_or(Value::Null)))
 }
 
-/// `tokenhud-agent enroll "<server>#<token>"` — claim a link the board
+/// `tokenhud-agent enroll "<server>#<token>"` - claim a link the board
 /// minted, wait for a person to approve this machine there, and keep the key
 /// that comes back. The board key never touches this machine.
 ///
@@ -540,7 +540,7 @@ fn enroll_cmd(link: Option<&String>) {
             (s.trim_end_matches('/').to_string(), t.to_string())
         }
         _ => {
-            eprintln!("that does not look like an enrollment link — expected <server-url>#<token>");
+            eprintln!("that does not look like an enrollment link - expected <server-url>#<token>");
             std::process::exit(2);
         }
     };
@@ -553,7 +553,7 @@ fn enroll_cmd(link: Option<&String>) {
 
     let install_id = machine::ensure_id();
     // A secret this machine just invented, sent with the claim and demanded
-    // back at key delivery — so the link alone, leaked into a chat or a shell
+    // back at key delivery - so the link alone, leaked into a chat or a shell
     // history, cannot collect this machine's key.
     let poll_secret = limits::random_hex(24);
     let body = serde_json::json!({
@@ -565,7 +565,7 @@ fn enroll_cmd(link: Option<&String>) {
         "agentVersion": collect::AGENT_VERSION,
         "manifestDigest": manifest::digest(),
         // What the approver sees: which AI assistants live on this machine.
-        "assistants": collect::collect_assistants(),
+        "assistants": collect::collect_assistants(&[]),
     });
     let (code, resp) = match http_json("POST", &format!("{server}/api/v1/enroll"), Some(&body)) {
         Ok(r) => r,
@@ -580,7 +580,7 @@ fn enroll_cmd(link: Option<&String>) {
             .and_then(|v| v.as_str())
             .unwrap_or("the server refused the enrollment");
         eprintln!("enrollment refused ({code}): {why}");
-        eprintln!("Links are one-shot and expire in 15 minutes — mint a fresh one on the board.");
+        eprintln!("Links are one-shot and expire in 15 minutes - mint a fresh one on the board.");
         std::process::exit(1);
     }
     let pair = resp
@@ -601,7 +601,7 @@ fn enroll_cmd(link: Option<&String>) {
     let deadline = std::time::Instant::now() + Duration::from_secs(900);
     loop {
         if std::time::Instant::now() > deadline {
-            eprintln!("timed out waiting for approval — mint a fresh link and enroll again.");
+            eprintln!("timed out waiting for approval - mint a fresh link and enroll again.");
             std::process::exit(1);
         }
         std::thread::sleep(Duration::from_secs(2));
@@ -612,7 +612,7 @@ fn enroll_cmd(link: Option<&String>) {
         ) {
             Ok(r) => r,
             Err(e) => {
-                log(&format!("poll failed ({e}) — retrying"));
+                log(&format!("poll failed ({e}) - retrying"));
                 continue;
             }
         };
@@ -629,7 +629,7 @@ fn enroll_cmd(link: Option<&String>) {
                         println!("  Approved. This machine reports as “{label}”.");
                         println!();
                         println!(
-                            "  Its key is in {} — its own, revocable alone.",
+                            "  Its key is in {} - its own, revocable alone.",
                             machine::cfg_path().display()
                         );
                         println!("  Reporting now. Ctrl-C stops it; see agent/INSTALL.md to keep");
@@ -686,7 +686,16 @@ fn main() {
         enroll_cmd(args.get(2));
     }
 
-    // Show what would be read, and read nothing. Needs no key and no consent —
+    // `enable` does one edit and stops, where `enroll` returns and falls into
+    // the reporting loop. The two are opposite intents: enrolling says "start
+    // watching this machine", enabling says "change this one file". Running a
+    // 30-second loop after the second would be answering a question nobody
+    // asked.
+    if args.get(1).map(String::as_str) == Some("enable") {
+        std::process::exit(enable::cmd(&args[2..]));
+    }
+
+    // Show what would be read, and read nothing. Needs no key and no consent -
     // it is the thing you run *before* deciding.
     if has("--what-i-read") || has("--what-it-reads") {
         print!("{}", manifest::render());
@@ -726,13 +735,20 @@ fn main() {
         println!("tokenhud-agent {}\n", collect::AGENT_VERSION);
         println!("  enroll \"<link>\"  claim an enrollment link from the board; this machine");
         println!("                    gets its own key, approvable and revocable alone");
+        println!("  enable <tool>   turn a tool's own usage logging on: prints the diff, asks,");
+        println!(
+            "                    then merges. Knows: {}",
+            enable::ENABLEABLE.join(", ")
+        );
+        println!("  enable --print <tool>");
+        println!("                    the same edit as JSON, for a coding agent to apply");
         println!("  --what-i-read   every file it opens, resolved against this machine");
         println!("  --dry-run       print the reading it would send, and send nothing");
         println!("  --accept        agree to the manifest without being prompted");
         println!("  --consent-status  exit 0 if the current manifest is already agreed");
         println!("  --once          one cycle, then exit");
         println!("  --version       print the version and exit");
-        println!("\nConfigured by TOKENHUD_SERVER, TOKENHUD_KEY, TOKENHUD_INTERVAL —");
+        println!("\nConfigured by TOKENHUD_SERVER, TOKENHUD_KEY, TOKENHUD_INTERVAL -");
         println!("or by ~/.tokenhud/machine.json, which `enroll` writes for you.");
         println!("See agent/INSTALL.md for the rest.");
         return;
@@ -748,7 +764,7 @@ fn main() {
     }
 
     if !cfg.dry && cfg.key.is_empty() {
-        log("No key — the server will refuse this agent. Either enroll this machine");
+        log("No key - the server will refuse this agent. Either enroll this machine");
         log("with a link from the board:  tokenhud-agent enroll \"<link>\"");
         log("or set TOKENHUD_KEY (generate one: tokenhud-server --new-key).");
         std::process::exit(2);

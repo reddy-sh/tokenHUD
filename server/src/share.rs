@@ -15,14 +15,14 @@
 //!   counters            sessions, requests, tool calls, messages, active days
 //!   daily activity      one row per date: tokens, estimated value, counts,
 //!                       and which models those tokens went to
-//!   what is running     right now: tool, kind, headless, how long — counts,
+//!   what is running     right now: tool, kind, headless, how long - counts,
 //!                       never a command line
 //!   coarse machine      operating system and core count
-//!   which assistants    Claude Code, Codex CLI — the products, not the paths
+//!   which assistants    Claude Code, Codex CLI - the products, not the paths
 //!
 //! Those last two are what make this a demand signal rather than a scoreboard:
 //! model mix over time is adoption and migration, and what is running right now
-//! is live load. Both are aggregate by construction — a count of Claude Code
+//! is live load. Both are aggregate by construction - a count of Claude Code
 //! processes says nothing about what they are doing.
 //!
 //! What never goes out, at any setting:
@@ -32,7 +32,7 @@
 //!   running processes and their command lines
 //!   tool names, MCP server names, skills, plugins, hooks, permissions
 //!   plan limits, usage percentages, the account hash
-//!   hostnames — unless the share was explicitly created with identities=host
+//!   hostnames - unless the share was explicitly created with identities=host
 //!
 //! The board is computed from live data on every request, so revoking a share
 //! really does stop it: nothing rendered is cached anywhere to keep serving.
@@ -66,7 +66,7 @@ pub fn identities_ok(s: &str) -> bool {
 
 /// The share slug: 96 bits of the same OS randomness every other secret here
 /// uses, cut to something that still fits in a URL somebody might read aloud
-/// once. The slug IS the credential — there is no second check behind it — so
+/// once. The slug IS the credential - there is no second check behind it - so
 /// it is unguessable rather than short.
 pub fn new_slug() -> String {
     crate::board::new_secret().chars().take(16).collect()
@@ -109,7 +109,7 @@ pub fn alias(slug: &str, host: &str) -> (String, String) {
 // ── small readers ───────────────────────────────────────────────────────
 //
 // Every one of these answers "what does this payload say, if it says
-// anything" — a snapshot from an older agent, or from a machine where a
+// anything" - a snapshot from an older agent, or from a machine where a
 // collector found nothing, is missing whole subtrees, and the shared board
 // has to be built out of what is actually there.
 
@@ -182,7 +182,7 @@ fn by_day(m: &Value) -> Vec<Value> {
             num(d.get("sessions")),
         );
         // Which models the day's tokens went to. This is the field that turns a
-        // daily total into an adoption curve — the shape that says a fleet
+        // daily total into an adoption curve - the shape that says a fleet
         // moved off one model and onto another, and when.
         let by_model = d.get("tokensByModel").cloned().unwrap_or(Value::Null);
         put(date, &|o| {
@@ -262,8 +262,8 @@ fn models(m: &Value) -> Vec<Value> {
         }));
     }
 
-    // A machine with no priced rollup — an older agent, or a reading taken
-    // before the first transcript scan finished — still has raw model counts.
+    // A machine with no priced rollup - an older agent, or a reading taken
+    // before the first transcript scan finished - still has raw model counts.
     if out.is_empty() {
         for r in list(m, &["claude", "models"]) {
             let (i, o, cr, cw) = (
@@ -327,9 +327,15 @@ fn by_tool(m: &Value) -> Vec<Value> {
             "id": "codex", "name": "Codex CLI",
             "tokens": codex_tokens,
             "output": num(cx.get("output")),
-            // Counted, not priced: this build's rate card covers Anthropic
-            // models only, and a zero here would read as "free".
-            "estUSD": Value::Null,
+            // Only a figure the shipped rate card produced may travel. A
+            // machine's owner can price their own board from
+            // ~/.tokenhud/rates.json, and that number stops there: `estUSD` is
+            // ranked, and ranking strangers on a value any of them can edit
+            // would make the board a typing contest. Null is "not priced",
+            // which is a different fact from "free".
+            "estUSD": at(m, &["codex", "publicEstUSD"])
+                .map(|v| json!(cents(cash(Some(v)))))
+                .unwrap_or(Value::Null),
             "sessions": num(at(m, &["codex", "sessionCount"])),
         }));
     }
@@ -344,7 +350,7 @@ fn by_tool(m: &Value) -> Vec<Value> {
 ///
 /// A process here is four facts and no fifth: which product, what kind of
 /// session, whether it is headless, and how long it has been up. The command
-/// line — which carries the project path, the flags, sometimes the prompt —
+/// line - which carries the project path, the flags, sometimes the prompt -
 /// is not among them, and neither is the pid. A count of Claude Code processes
 /// is load; a command line is a diary entry.
 fn running(m: &Value) -> Vec<Value> {
@@ -433,7 +439,7 @@ pub fn entry(payload: &Value, id: &str, name: &str, host_row: Option<&Value>) ->
             .unwrap_or_else(|| payload.get("collectedAt").cloned().unwrap_or(Value::Null)),
         "firstSeen": first_seen,
         // The products in use, by name. Not the paths they were found at, not
-        // the binaries — an assistant list is a fact about tooling, and a path
+        // the binaries - an assistant list is a fact about tooling, and a path
         // is a fact about a person's disk.
         "tools": list(&m, &["assistants"])
             .iter()
@@ -467,7 +473,7 @@ pub fn entry(payload: &Value, id: &str, name: &str, host_row: Option<&Value>) ->
 // ── the board ───────────────────────────────────────────────────────────
 
 /// The whole shared board: one entry per machine that has reported, ranked by
-/// nothing in particular — ordering is the reader's choice, so the payload
+/// nothing in particular - ordering is the reader's choice, so the payload
 /// carries the numbers and lets the page sort them.
 pub fn board(store: &Store, share: &Value, hosts: &[Value]) -> Value {
     let slug = share.get("slug").and_then(|v| v.as_str()).unwrap_or("");
@@ -523,7 +529,7 @@ pub fn board(store: &Store, share: &Value, hosts: &[Value]) -> Value {
         .sum();
 
     // The hour curve is a board-level sum and never a per-machine field, so a
-    // reader cannot pull one person's day back out of it — and under a few
+    // reader cannot pull one person's day back out of it - and under a few
     // machines it is not published at all.
     let hours = if entries.len() >= HOURS_MIN_MACHINES {
         let mut acc = [0i64; 24];
@@ -658,7 +664,7 @@ mod tests {
         ] {
             assert!(
                 !text.contains(banned),
-                "a shared board must never carry {banned:?} — found it in {text}"
+                "a shared board must never carry {banned:?} - found it in {text}"
             );
         }
     }
@@ -679,7 +685,7 @@ mod tests {
         assert_eq!(e["models"][0]["model"], "claude-opus-5");
         assert_eq!(e["models"][1]["model"], "gpt-5.3-codex");
         assert_eq!(e["models"][1]["priced"], false);
-        // Only assistants that actually reported — Cursor is installed here
+        // Only assistants that actually reported - Cursor is installed here
         // and has nothing to say.
         assert_eq!(e["tools"].as_array().unwrap().len(), 1);
     }
@@ -714,7 +720,7 @@ mod tests {
         assert_eq!(days[2]["byModel"]["claude-fable-5"], 200);
         assert!(days[2]["byModel"].get("claude-opus-5").is_none());
         // Codex reports no per-model split per day, so the day's total is
-        // larger than the split adds up to — and the difference is visible
+        // larger than the split adds up to - and the difference is visible
         // rather than silently folded into a model that did not earn it.
         assert_eq!(days[2]["tokens"], 218);
     }

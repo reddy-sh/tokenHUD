@@ -1,14 +1,14 @@
 # Installing the TokenHUD agent
 
 The agent is one binary. It reads what Claude Code has already written on your
-machine, prices it, and POSTs a reading to your server — cloud or self-host —
+machine, prices it, and POSTs a reading to your server - cloud or self-host -
 every thirty seconds. It
 runs as you, it writes to one directory, and it needs nothing installed
 alongside it.
 
 Everything in this guide was run on the machine it was written on: macOS 27.0,
-arm64, Rust 1.95.0. Where something has *not* been verified here — Linux,
-Windows, cross-compilation — it says so rather than implying otherwise.
+arm64, Rust 1.95.0. Where something has *not* been verified here - Linux,
+Windows, cross-compilation - it says so rather than implying otherwise.
 
 ---
 
@@ -28,7 +28,7 @@ It does **not** read your prompts (opt-in, off by default), your account
 identity, or your billed spend. It never writes to any file Claude Code owns.
 The per-path table and the reasoning are in [`SECURITY.md`](../SECURITY.md).
 
-It writes to exactly one place: **`~/.tokenhud/`** — a transcript index, a
+It writes to exactly one place: **`~/.tokenhud/`** - a transcript index, a
 per-install salt, and a spool for readings that could not be sent.
 
 ---
@@ -40,7 +40,7 @@ it; without one it buffers to disk and waits, which is a supported state rather
 than an error. A cloud enrollment counts: the ingest URL the portal hands you
 is the server, as far as the agent is concerned.
 
-**A Rust toolchain** — only if you want to build from source. Prebuilt binaries
+**A Rust toolchain** - only if you want to build from source. Prebuilt binaries
 are available for macOS and Linux (see Route A below), so most users need
 nothing installed beforehand.
 
@@ -57,8 +57,8 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 Homebrew's `rust` works too, and is what this machine has. The difference
-matters in exactly one place — [cross-compiling](#appendix-building-for-another-machine)
-— and nowhere else.
+matters in exactly one place - [cross-compiling](#appendix-building-for-another-machine)
+- and nowhere else.
 
 ---
 
@@ -66,7 +66,7 @@ matters in exactly one place — [cross-compiling](#appendix-building-for-anothe
 
 Four routes. Pick by where you want the binary to live.
 
-### Route A — prebuilt binary (no Rust required)
+### Route A - prebuilt binary (no Rust required)
 
 One command. Downloads the latest release for your OS and architecture, puts it
 in `~/.local/bin`:
@@ -84,7 +84,7 @@ place the binary anywhere on your PATH.
 
 Skip to [Configure](#3-configure).
 
-### Route B — you have the repo, and want the scripts to manage it
+### Route B - you have the repo, and want the scripts to manage it
 
 Simplest, and the one to use on the machine you develop on. There is no
 separate build step: `start-agent.sh` builds a release binary when the source
@@ -97,7 +97,7 @@ cd tokenhud
 ```
 
 ```
-building agent (cargo, release — quick when nothing changed)…
+building agent (cargo, release - quick when nothing changed)…
 agent started (pid 41207) → logs/agent.log
 agent up → reporting to http://127.0.0.1:8787 (or its enrolled server)
 ```
@@ -105,7 +105,7 @@ agent up → reporting to http://127.0.0.1:8787 (or its enrolled server)
 The binary stays in the repo at `agent/target/release/tokenhud-agent`, which is
 where the scripts look for it. Skip to [Configure](#3-configure).
 
-### Route C — a binary on your PATH (build from source)
+### Route C - a binary on your PATH (build from source)
 
 For running the agent by hand, or from a launchd/systemd unit.
 
@@ -115,7 +115,7 @@ cargo install --path agent
 ```
 
 That puts `tokenhud-agent` in `~/.cargo/bin/`. **Check that directory is on
-your PATH** — on this machine it was not, which is the single most likely reason
+your PATH** - on this machine it was not, which is the single most likely reason
 the next command "isn't found":
 
 ```bash
@@ -128,7 +128,7 @@ If it isn't, add it to your shell profile:
 echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.zshrc && exec zsh
 ```
 
-### Route D — build here, run there
+### Route D - build here, run there
 
 The binary links only against libraries macOS already ships
 (`libSystem`, `CoreFoundation`, `libiconv`), so it copies to another Mac of the
@@ -145,7 +145,7 @@ Different architecture or a Linux box: see the
 
 ## 3. Configure
 
-### Cloud enroll — no configuration at all
+### Cloud enroll - no configuration at all
 
 If the machine was added in the portal ([tokenhud.com](https://tokenhud.com) →
 **Machines → Add machine**), run the one command it shows:
@@ -154,18 +154,18 @@ If the machine was added in the portal ([tokenhud.com](https://tokenhud.com) →
 tokenhud-agent enroll "<ingest-url>#<token>"
 ```
 
-It shows the read manifest and waits for your yes before it claims the link —
+It shows the read manifest and waits for your yes before it claims the link -
 enrolling is exactly the moment this machine starts reporting, so the question
 is asked there. Then it writes `~/.tokenhud/machine.json` (mode 600), carrying
 the ingest URL and this machine's own key, and falls through into the loop rather
 than exiting: the first reading goes out at once and the board fills in from
-it. Ctrl-C stops it — [§5](#5-keep-it-running) is how you keep it reporting
+it. Ctrl-C stops it - [§5](#5-keep-it-running) is how you keep it reporting
 across logins. From then on the agent starts with no environment variables at
-all. The variables below still apply on top — `TOKENHUD_INTERVAL` sets the
-cadence, 30 seconds by default — they are just no longer required.
+all. The variables below still apply on top - `TOKENHUD_INTERVAL` sets the
+cadence, 30 seconds by default - they are just no longer required.
 
 The URL in that link is where the readings go. For a cloud enrollment it is the
-ingest Lambda's Function URL, not `tokenhud.com` — the address to allow if
+ingest Lambda's Function URL, not `tokenhud.com` - the address to allow if
 egress from this machine is filtered.
 
 The same command against a self-host server's enrollment link works
@@ -174,7 +174,7 @@ appears as **pending** with a pairing code and waits until someone approves it
 over the API ([INSTALL.md](../INSTALL.md#linux--sharing-one-board-across-machines)
 has both calls).
 
-### Manual — two variables
+### Manual - two variables
 
 Two variables matter. The rest have working defaults.
 
@@ -191,10 +191,10 @@ Get a key from the server, once:
 
 Put both in `.env` in the repo root: that is where `./scripts/start-agent.sh`
 reads them from, and where `./scripts/start-server.sh` writes a generated key
-(mode 600). An enrolled machine ignores `.env` on purpose — `machine.json`
+(mode 600). An enrolled machine ignores `.env` on purpose - `machine.json`
 already names a server, and pairing that with a key from somewhere else means
 a 401 forever. For a standalone install, put them in the service file (§5) or
-your shell profile — but note that a key in `~/.zshrc` is readable by anything
+your shell profile - but note that a key in `~/.zshrc` is readable by anything
 you run.
 
 ### Every variable
@@ -202,9 +202,9 @@ you run.
 | variable | default | what it does |
 |---|---|---|
 | `TOKENHUD_SERVER` | `http://127.0.0.1:8787` | where to POST. An enrollment supplies it instead; setting this overrides one |
-| `TOKENHUD_KEY` | *(none)* | ingest key — or the enrolled machine's own. With neither, the agent exits 2 rather than posting into a 401 loop |
+| `TOKENHUD_KEY` | *(none)* | ingest key - or the enrolled machine's own. With neither, the agent exits 2 rather than posting into a 401 loop |
 | `TOKENHUD_INTERVAL` | `30` | seconds between readings |
-| `TOKENHUD_HOST` | your hostname | how this machine is labelled. Set it when two machines share a hostname — they merge on the board otherwise |
+| `TOKENHUD_HOST` | your hostname | how this machine is labelled. Set it when two machines share a hostname - they merge on the board otherwise |
 | `TOKENHUD_STATE` | `~/.tokenhud` | the one directory it writes |
 | `TOKENHUD_SPOOL` | `$TOKENHUD_STATE/spool.jsonl` | where unsent readings queue |
 | `TOKENHUD_SCAN_BUDGET_MB` | `512` | most it will read per cycle while catching up |
@@ -234,7 +234,7 @@ tokenhud-agent --once
 19:12:27 sent · 13 proc · 21 projects
 ```
 
-**Then continuously** — either through the scripts, from the repo root:
+**Then continuously** - either through the scripts, from the repo root:
 
 ```bash
 ./scripts/start-agent.sh    # builds if the source moved, then runs it detached
@@ -242,7 +242,7 @@ tokenhud-agent --once
 ./scripts/stop-agent.sh     # stops the agent; the server keeps serving
 ```
 
-There is no restart verb — `./scripts/stop-agent.sh && ./scripts/start-agent.sh`
+There is no restart verb - `./scripts/stop-agent.sh && ./scripts/start-agent.sh`
 is the restart, and `./scripts/start-all.sh` brings up server, agent and portal
 in that order.
 
@@ -257,18 +257,18 @@ tokenhud-agent
 The first run indexes every transcript you have. On a 1.1 GB corpus that took
 about a second here, and peaks at 95 MB of memory; on a cold disk it takes
 longer. If it hits the per-cycle byte budget it stops and resumes on the next
-cycle, and the board says **"Indexing transcripts — 40% of 1.1GB read. Figures
+cycle, and the board says **"Indexing transcripts - 40% of 1.1GB read. Figures
 are partial and climbing."** until it catches up. That is a true statement about
 the board, not a stall.
 
-Afterwards each cycle reads only what was appended — a few kilobytes, about
+Afterwards each cycle reads only what was appended - a few kilobytes, about
 50 ms, **6.5 MB resident**.
 
 ---
 
 ## 5. Keep it running
 
-### macOS — launchd
+### macOS - launchd
 
 ```bash
 cp agent/dist/com.tokenhud.agent.plist ~/Library/LaunchAgents/
@@ -287,17 +287,17 @@ launchctl bootout gui/$(id -u)/com.tokenhud.agent
 
 The two REPLACE-ME values are the path to the binary and `TOKENHUD_KEY`. **A
 cloud-enrolled machine has one**: set the path, and delete the
-`TOKENHUD_SERVER` and `TOKENHUD_KEY` entries from `EnvironmentVariables` —
+`TOKENHUD_SERVER` and `TOKENHUD_KEY` entries from `EnvironmentVariables` -
 `~/.tokenhud/machine.json` supplies both, and setting one of them in the
 environment overrides half an enrollment, which pairs a key with a server it
 was not issued for.
 
 A **LaunchAgent, not a LaunchDaemon**, deliberately: it runs as you, in your
 login session, and can read your home directory. A daemon runs as root before
-you log in — more privilege than this needs, and the wrong user to read
+you log in - more privilege than this needs, and the wrong user to read
 `~/.claude` as.
 
-### Linux — systemd
+### Linux - systemd
 
 ```bash
 mkdir -p ~/.config/systemd/user ~/.config/tokenhud
@@ -310,12 +310,12 @@ journalctl --user -u tokenhud-agent -f
 ```
 
 That `printf` is the shared-key configuration. A cloud-enrolled machine needs
-neither variable — `machine.json` carries the ingest URL and its own key — but
+neither variable - `machine.json` carries the ingest URL and its own key - but
 the unit's `EnvironmentFile=%h/.config/tokenhud/env` is not optional, so create
 the file anyway: empty, or holding only `TOKENHUD_INTERVAL=30`.
 
 A **user service**, for the same reason. Run it as root and it reads root's home
-directory, finds nothing, and reports an idle machine — worse than not running,
+directory, finds nothing, and reports an idle machine - worse than not running,
 because it looks like data.
 
 On a server where nobody stays logged in: `sudo loginctl enable-linger $USER`.
@@ -327,7 +327,7 @@ which is a Mac. Treat the first `systemctl --user status` as the real test.)*
 
 ## 6. Check it worked
 
-Against a self-host server, ask the API — that is the whole of it, since the
+Against a self-host server, ask the API - that is the whole of it, since the
 server ships no HTML (`GET /` is a JSON 404) and the portal reads a cloud
 account rather than your server, wherever you run it from:
 
@@ -341,9 +341,9 @@ sign in, and the host card should say **up** with a "last seen" under a minute.
 
 Three things worth glancing at once:
 
-- **`scan.complete: true`** — the whole corpus is indexed
-- **`limits.available: true`** — it found your real plan windows
-- **the estimate is labelled an estimate** — every dollar figure on the board is
+- **`scan.complete: true`** - the whole corpus is indexed
+- **`limits.available: true`** - it found your real plan windows
+- **the estimate is labelled an estimate** - every dollar figure on the board is
   list-price arithmetic, not a bill. On a subscription the CLI reports `$0`,
   which is true and useless; the board answers a different question and says so.
 
@@ -374,7 +374,7 @@ systemctl --user disable --now tokenhud-agent        # Linux
 cargo uninstall tokenhud-agent        # if installed via Route C
 rm -f ~/.local/bin/tokenhud-agent     # if installed via Route A, or copied via Route D
 
-# remove what it wrote — this is everything it ever created
+# remove what it wrote - this is everything it ever created
 rm -rf ~/.tokenhud
 ```
 
@@ -390,7 +390,7 @@ Nothing else on your machine was touched. It never wrote outside
 
 Each of these is a message the agent actually prints, with what it means.
 
-**`No key — the server will refuse this agent.`** (exit 2)
+**`No key - the server will refuse this agent.`** (exit 2)
 It stops instead of starting, on purpose: an agent posting into a permanent 401
 looks like it is working and is not. Either enroll the machine
 (`tokenhud-agent enroll "<link>"`), which gives it a key of its own, or set
@@ -398,7 +398,7 @@ looks like it is working and is not. Either enroll the machine
 
 **`server refused: 401`**
 The key does not match the server's. The reading is buffered, not lost. Compare
-`TOKENHUD_KEY` on both sides — the commonest cause is a `.env` the agent did not
+`TOKENHUD_KEY` on both sides - the commonest cause is a `.env` the agent did not
 load because it was started from a different directory or by a service file.
 
 **`post failed: io: Connection refused`** then **`buffered (server unreachable)`**
@@ -463,13 +463,13 @@ container route is the one to try first.
 
 ## Upgrading
 
-From the repo (Route B) — `start-agent.sh` rebuilds before it starts:
+From the repo (Route B) - `start-agent.sh` rebuilds before it starts:
 
 ```bash
 git pull && ./scripts/stop-agent.sh && ./scripts/start-agent.sh
 ```
 
-From a release (Route A) — the installer overwrites in place, then restart
+From a release (Route A) - the installer overwrites in place, then restart
 whatever runs it:
 
 ```bash
@@ -480,4 +480,4 @@ systemctl --user restart tokenhud-agent                  # Linux, the same
 
 The transcript index format is versioned. If a release changes it, the first
 cycle after the upgrade re-reads your corpus once and the board says
-"Indexing transcripts" while it does — expected, and it only happens once.
+"Indexing transcripts" while it does - expected, and it only happens once.

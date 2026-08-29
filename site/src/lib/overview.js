@@ -1,4 +1,4 @@
-/* The board components were written against the server's overview JSON —
+/* The board components were written against the server's overview JSON -
  * {hosts, latest, endings, store, machines} with its particular mix of
  * snake_case rows and camelCase payloads. Rather than rewrite every panel,
  * the cloud path synthesizes the same shape from the Machine rows AppSync

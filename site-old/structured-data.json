@@ -6,7 +6,7 @@
       "@id": "https://tokenhud.com/#app",
       "name": "TokenHUD",
       "alternateName": "Token HUD",
-      "description": "A heads-up display for the AI coding agents running on your machine. Live token metering, estimated spend, and plan-limit windows for Claude Code and Codex CLI — running entirely on your own computer.",
+      "description": "A heads-up display for the AI coding agents running on your machine. Live token metering, estimated spend, and plan-limit windows for Claude Code and Codex CLI - running entirely on your own computer.",
       "applicationCategory": "DeveloperApplication",
       "applicationSubCategory": "Developer Monitoring Tool",
       "operatingSystem": "macOS, Linux",
@@ -28,7 +28,7 @@
           "@type": "Offer",
           "name": "Team",
           "priceCurrency": "USD",
-          "description": "Per seat. Cross-machine rollups, shared budgets, retained history, chargeback reports, and alerts to Slack and email. Planned — not yet available.",
+          "description": "Per seat. Cross-machine rollups, shared budgets, retained history, chargeback reports, and alerts to Slack and email. Planned - not yet available.",
           "availability": "https://schema.org/PreOrder"
         }
       ],

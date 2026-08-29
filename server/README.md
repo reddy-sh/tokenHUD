@@ -12,7 +12,7 @@ to install beside it.
 
 `start-server.sh` generates an ingest key the first time and writes it to `.env`
 (mode 600), which is where the agent and the other scripts look for it.
-`start-all.sh` runs server, agent and portal in that order — but the portal it
+`start-all.sh` runs server, agent and portal in that order - but the portal it
 starts reads the cloud account you sign in to, not this server, so a self-host
 uses the API directly.
 
@@ -27,7 +27,7 @@ GET  /api/v1/endings     agents that stopped recently
 GET  /healthz            liveness, no key
 ```
 
-Plus the enrollment routes — how a machine comes to hold a key of its own:
+Plus the enrollment routes - how a machine comes to hold a key of its own:
 
 ```text
 POST /api/v1/enroll/new         mint a one-shot link           (key required)
@@ -37,7 +37,7 @@ POST /api/v1/machines/decide    approve, deny, or revoke one   (key required)
 POST /api/v1/stream-token       trade the key for a 60s stream token
 ```
 
-And the share routes — how a leaderboard becomes a URL anyone can open:
+And the share routes - how a leaderboard becomes a URL anyone can open:
 
 ```text
 GET  /api/v1/share              every share this fleet has minted (key required)
@@ -47,8 +47,8 @@ GET  /api/v1/public/board?s=…   the shared leaderboard            (no key: the
 ```
 
 No dashboard ships in the binary any more: the board lives in the tokenhud.com
-portal, and this server is the self-host API. Everything unrouted — `/`
-included — is a JSON 404.
+portal, and this server is the self-host API. Everything unrouted - `/`
+included - is a JSON 404.
 
 Every route, with its request shape and the public payload schema, is in
 [docs/api.md](../docs/api.md); every environment variable is in
@@ -66,7 +66,7 @@ curl -sX POST http://127.0.0.1:8787/api/v1/enroll/new \
 # {"token":"…","code":"…","expiresAt":"…","ttlSeconds":900}
 ```
 
-Give the new machine `<server-url>#<token>` and let it claim the link — it will
+Give the new machine `<server-url>#<token>` and let it claim the link - it will
 print a pairing code and wait:
 
 ```bash
@@ -88,8 +88,8 @@ takes it back and shuts that one door.
 
 ## Sharing a leaderboard
 
-`POST /api/v1/share` mints a slug. The slug is the whole credential — 96 bits of
-the same randomness the ingest key uses — and `GET /api/v1/public/board?s=<slug>`
+`POST /api/v1/share` mints a slug. The slug is the whole credential - 96 bits of
+the same randomness the ingest key uses - and `GET /api/v1/public/board?s=<slug>`
 serves that board to anyone who has it, with no key and regardless of
 `TOKENHUD_PROTECT_READS`: closing the private API to anonymous readers is a
 different decision from publishing a link on purpose.
@@ -107,30 +107,30 @@ private ones from a reading. `reachable` is the server telling the truth about
 itself: bound to `127.0.0.1` with no `TOKENHUD_PUBLIC_URL` set, a "public" link
 works for the person who minted it and for nobody else.
 
-Revoking is immediate and total — the board behind a link is computed from live
+Revoking is immediate and total - the board behind a link is computed from live
 data on every request, so there is no rendered copy anywhere to keep serving. A
 revoked slug and an invented one answer identically, which is what stops the
 endpoint being a way to test slugs for existence.
 
-Full detail — the field-by-field whitelist, the identity modes, the
-three-machine rule on the hour curve — is in
+Full detail - the field-by-field whitelist, the identity modes, the
+three-machine rule on the hour curve - is in
 [docs/sharing.md](../docs/sharing.md).
 
 Loopback by default, key required for writes. Doing nothing is safe. CORS
 exists, because the portal is a different origin, but only on the routes a
-browser legitimately calls — the reads, the stream and its token, and the two
+browser legitimately calls - the reads, the stream and its token, and the two
 key-gated fleet actions. Ingest and the enrollment routes are agent-facing and
 carry no CORS headers at all. **Reads are open by default** so tooling needs no
-secret — set `TOKENHUD_PROTECT_READS=1` to require the key on `GET` too, and
+secret - set `TOKENHUD_PROTECT_READS=1` to require the key on `GET` too, and
 read the note in `main.rs` before binding anything other than `127.0.0.1`.
 
 ## It replaced a Python server
 
 That server was the oracle while this one was written: a harness drove both
-through the same sequence of state changes — ingest plain and gzipped, a derived
+through the same sequence of state changes - ingest plain and gzipped, a derived
 ending, a spooled replay that must add none, a history read that replays a
 difference chain, the auth and error paths, the header contract, the event
-stream raw and gzipped — and diffed every answer. It ended at 24 checks and zero
+stream raw and gzipped - and diffed every answer. It ended at 24 checks and zero
 differing leaves. Then its ten checks moved into `tests/`, and it was removed.
 
 **Porting those checks was not a formality.** `history_round_trips_through_the_chain`
@@ -155,14 +155,14 @@ why the checks moved before the oracle went.
 | 1,000 event-stream watchers | **390 refused**, 606 served | **all 1,000 served** |
 | ships as | assumed a `python3` | 2.05 MB binary |
 
-The overview row is close because both served the same memoised bytes — that
+The overview row is close because both served the same memoised bytes - that
 cache was a 35× win and it predates the rewrite. Ingest is where the runtime
 shows; the watcher row is where the architecture does.
 
 **A watcher is not free.** ~31.8 KB of hyper buffers, and ~280 KB once it has
 its own gzip context. `docs/ARCHITECTURE.md` §5 predicted 0.5 KB from a
 prototype that did not compress. Per-connection compression, not the runtime,
-is what sets the fan-out floor — which makes sending the 0.66 KB *difference* on
+is what sets the fan-out floor - which makes sending the 0.66 KB *difference* on
 the wire the most valuable thing left in that document.
 
 ## Layout
@@ -177,7 +177,7 @@ the wire the most valuable thing left in that document.
 | `tests/` | thirteen checks: the store on a real file, the server on a real socket |
 
 Twelve direct dependencies. `rusqlite` is `bundled`, so SQLite is compiled in
-rather than linked from the system — one file with nothing beside it is the
+rather than linked from the system - one file with nothing beside it is the
 point, and a version skew between two machines is what that rules out.
 
 ## Worth knowing if you change this

@@ -12,32 +12,31 @@ import BoardView from './BoardView'
 
 /* The self-host admin portal.
  *
- * Two levels of navigation, because they answer different questions and
- * collapsing one should not cost you the other.
+ * This file is the local half of the board: probe the server, hold the admin
+ * key, stream the readings, and walk somebody through enrolling their first
+ * agent. The navigation around all of that - the topbar, the two rails, the
+ * Leaderboard and Settings sections - is AdminShell, which the cloud portal
+ * mounts too. What is left here is what a self-hosted board genuinely has and
+ * a cloud one does not: a server address, an admin key in this browser, a
+ * setup wizard, a theme, and public share links.
  *
- *   RootRail      which product: Token Monitoring, Leaderboard, Settings.
- *                 Changes what the content area IS. Toggled by the topbar
- *                 hamburger.
- *   AdminSidebar  inside Token Monitoring only: which machine, which
- *                 assistant, and which part of that machine's board. Changes
- *                 where in the content area you are looking. Has its own
- *                 collapse control, because on a narrow screen the machine
- *                 list is the first thing you give up and the product switch
- *                 is the last.
- *
- * The Leaderboard is at the root rather than in the sidebar because it is the
- * one view that is about the fleet instead of a machine: nothing on it is
- * scoped by which laptop is selected, so it has no business living behind a
- * machine picker. */
+ * The two used to keep their own copies of that shell. They drifted, in one
+ * direction only: every fix landed on this side, and the cloud board kept the
+ * old bug. AdminShell.jsx says more about why. */
 
 const SK_KEY = 'tokenhud_api_key'
 const SK_URL = 'tokenhud_server_url'
-const SK_SECTION = 'tokenhud_section'
-const SK_LBPAGE = 'tokenhud_lb_page'
-const SECTION_KEYS = SECTIONS.map(x => x.key)
-const SK_ROOTNAV = 'tokenhud_nav_root'
-const SK_SUBNAV = 'tokenhud_nav_sub'
 const DEFAULT_URL = 'http://127.0.0.1:8787'
+
+/* Where this board remembers its navigation. The cloud board keeps the same
+   four under its own prefix, so using both from one browser does not have one
+   deciding where the other opens. */
+const KEYS = {
+  section: 'tokenhud_section',
+  lbPage: 'tokenhud_lb_page',
+  rootNav: 'tokenhud_nav_root',
+  subNav: 'tokenhud_nav_sub',
+}
 
 function load(k, fb) { try { return localStorage.getItem(k) || fb } catch { return fb } }
 function save(k, v) { try { localStorage.setItem(k, v) } catch {} }
@@ -70,9 +69,6 @@ function useTheme() {
   const toggle = useCallback(() => setTheme(t => t === 'dark' ? 'light' : 'dark'), [])
   return { theme, toggle }
 }
-
-/* AdminSidebar and AdminTopbar are now in admin/AdminSidebar.jsx and
-   admin/AdminTopbar.jsx, shared with the cloud Portal. */
 
 /* ── handshake step ────────────────────────────────────────────────── */
 
@@ -308,20 +304,6 @@ function SetupContent({ serverUrl, data, apiKeyRef, onLive }) {
 
 export default function SelfHost({ onClose }) {
   const [phase, setPhase] = useState('probing')
-  /* Which product. Remembered, because coming back to the board you were
-     reading is what a dashboard is for. */
-  const [section, setSection] = useState(() => {
-    const v = load(SK_SECTION, 'monitoring')
-    return SECTION_KEYS.includes(v) ? v : 'monitoring'
-  })
-  /* Which page inside the Leaderboard. Remembered separately from the section
-     so switching to Token Monitoring and back lands where you left. */
-  const [lbPage, setLbPage] = useState(() => {
-    const v = load(SK_LBPAGE, 'standings')
-    return LEADERBOARD_KEYS.includes(v) ? v : 'standings'
-  })
-  const [rootMini, setRootMini] = useState(() => load(SK_ROOTNAV, '') === '1')
-  const [collapsed, setCollapsed] = useState(() => load(SK_SUBNAV, '') === '1')
   const [shareOpen, setShareOpen] = useState(false)
   const [shareSeq, setShareSeq] = useState(0)
   const [sharedLive, setSharedLive] = useState(false)
@@ -338,7 +320,6 @@ export default function SelfHost({ onClose }) {
   const [boardState, setBoardState] = useState(null)
   const [pendingTool, setPendingTool] = useState(null)
   const esRef = useRef(null)
-  const [latestRelease, setLatestRelease] = useState(null)
 
   /* ── auto-probe on mount and on retry ── */
   useEffect(() => {
@@ -359,17 +340,8 @@ export default function SelfHost({ onClose }) {
           try {
             const kr = await apiFetch(url, '', '/api/v1/portal-key')
             if (kr.key) { apiKeyRef.current = kr.key; save(SK_KEY, kr.key) }
-          } catch { /* not available — server is remote or key not set */ }
+          } catch { /* not available - server is remote or key not set */ }
         }
-        /* Fetch the latest release from GitHub so we can flag outdated
-           agents. Fire-and-forget — if it fails we just don't show the
-           badge, which is the right fallback. */
-        fetch('https://api.github.com/repos/reddy-sh/tokenhud/releases/latest', {
-          signal: AbortSignal.timeout(8000),
-        })
-          .then(r => r.ok ? r.json() : null)
-          .then(j => { if (j?.tag_name && !cancelled) setLatestRelease(j.tag_name.replace(/^v/, '')) })
-          .catch(() => {})
         setPhase(json.hosts?.length > 0 ? 'live' : 'setup')
       } catch {
         if (cancelled) return
@@ -482,7 +454,7 @@ export default function SelfHost({ onClose }) {
       remove: id => decide(id, 'revoke'),
 
       /* Public links to the leaderboard. Minting, editing and revoking need
-         the board key; `read` deliberately does not send it — it is the
+         the board key; `read` deliberately does not send it - it is the
          request a stranger's browser makes, which is what makes the Share
          dialog's preview the real thing rather than a rehearsal of it. */
       share: {
@@ -528,8 +500,8 @@ export default function SelfHost({ onClose }) {
   /* The board wants `id` on a machine row; the server calls it `installId`.
      Memoised, and above the early returns so the hook count never changes.
      Memoised specifically because the board reports its computed state back
-     up here as state — a fresh `shaped` on every render would hand it a new
-     `data` every time, and the two of us would re-render each other until
+     up to the shell as state - a fresh `shaped` on every render would hand it
+     a new `data` every time, and the two would re-render each other until
      React gave up. */
   const shaped = useMemo(
     () => (data && Array.isArray(data.machines)
@@ -595,10 +567,6 @@ export default function SelfHost({ onClose }) {
       onRetry={() => setProbeSeq(n => n + 1)} />
   }
 
-  /* Token Monitoring and the Leaderboard each have a second rail; Settings is
-     one page and does not. The grid is told which, rather than being handed an
-     empty sidebar to render. */
-  const hasSubNav = section === 'monitoring' || section === 'leaderboard'
   const serverLabel = serverUrl.current.replace(/^https?:\/\//, '')
 
   return (
@@ -628,6 +596,18 @@ export default function SelfHost({ onClose }) {
             leaderboard: myRank ? '#' + myRank : null,
             integrations: intSummary.known ? intSummary.reading + '/' + intSummary.known : null,
           }}
+          theme={theme} onTheme={toggleTheme}
+          live={live} onToggleLive={() => setLive(l => !l)}
+          streaming={streaming} lastUpdate={lastUpdate}
+          pushes streams={data?.streams}
+          rootCollapsed={rootCollapsed} onRootCollapsed={onRootCollapsed}
+          subCollapsed={subCollapsed} onSubCollapsed={onSubCollapsed}
+          share={cloud.share}
+          shareSeq={shareSeq}
+          onManageShare={() => setShareOpen(true)}
+          store={data?.store}
+          hosts={hosts}
+          latestRelease={latestRelease}
         />
 
         {section === 'leaderboard' && (

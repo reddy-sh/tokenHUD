@@ -2,7 +2,7 @@
 name = "tokenhud-server"
 version = "0.2.0"
 edition = "2021"
-description = "TokenHUD server — takes what agents send, keeps it, answers the API"
+description = "TokenHUD server - takes what agents send, keeps it, answers the API"
 license = "MIT"
 
 [dependencies]
@@ -12,7 +12,7 @@ license = "MIT"
 # float_roundtrip because the default parser is not correctly rounded: it
 # writes 1.1400000000000001 and reads back the f64 that prints as 1.14.
 # Python's json uses strtod and does not do this, so without the feature a
-# reading does not survive being stored and read back — invisible in
+# reading does not survive being stored and read back - invisible in
 # magnitude, wrong in principle, and caught by a round-trip test.
 serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
 serde = { version = "1", features = ["derive"] }

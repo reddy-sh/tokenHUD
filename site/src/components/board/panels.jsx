@@ -69,7 +69,7 @@ export function Tiles({ claude: s, live, hostFacts, usage }) {
     { k: 'Est. value', v: usdShort((usage.allTime || {}).estUSD || 0), d: 'at API list prices · not billed' },
     { k: 'Running now', v: String(running), d: running ? 'claude processes' : 'idle' },
     {
-      k: 'Load', v: hostFacts && hostFacts.loadavg ? String(hostFacts.loadavg[0]) : '—',
+      k: 'Load', v: hostFacts && hostFacts.loadavg ? String(hostFacts.loadavg[0]) : '-',
       d: hostFacts && hostFacts.cpus ? hostFacts.cpus + ' cores · ' + (hostFacts.platform || '') : '',
     },
   ]
@@ -91,7 +91,7 @@ export function Tiles({ claude: s, live, hostFacts, usage }) {
 function resetCell(row, now) {   /* eslint-disable-line no-unused-vars -- now forces the 1s rerender */
   const secs = row.resetsAt ? until(row.resetsAt) : null
   if (secs == null) return 'No reset scheduled'
-  if (secs <= 0) return 'Rolled over — awaiting refresh'
+  if (secs <= 0) return 'Rolled over - awaiting refresh'
   return `Resets in ${dur(secs)}`
 }
 
@@ -101,7 +101,7 @@ export function UsageWindows({ lim }) {
   if (!lim || !lim.available) {
     const why = lim && lim.reason === 'unreadable'
       ? 'Claude Code\u2019s config was mid-write and could not be read this cycle. It will be picked up on the next one.'
-      : 'No usage cache found. Claude Code writes one to ~/.claude.json after it talks to the usage endpoint — run /usage in Claude Code once and it will appear here.'
+      : 'No usage cache found. Claude Code writes one to ~/.claude.json after it talks to the usage endpoint - run /usage in Claude Code once and it will appear here.'
     return (
       <Card title="Usage windows" note="Your plan\u2019s real limits, as Anthropic last reported them.">
         <Empty>{why}</Empty>
@@ -121,11 +121,11 @@ export function UsageWindows({ lim }) {
   return (
     <Card
       title="Usage windows"
-      note="Your plan\u2019s real limits, as Anthropic last reported them — not computed here."
+      note="Your plan\u2019s real limits, as Anthropic last reported them - not computed here."
       right={
         <span className={'bv-sub' + (stale ? ' warn' : '')}
           title={stale
-            ? 'Claude Code discards this cache after an hour — run /usage there to refresh. The countdowns stay exact; the percentages are the stale part.'
+            ? 'Claude Code discards this cache after an hour - run /usage there to refresh. The countdowns stay exact; the percentages are the stale part.'
             : 'Refreshes only while Claude Code is running.'}>
           {stale ? 'stale · ' : ''}as of {when}{agoTxt}
         </span>
@@ -148,7 +148,7 @@ export function UsageWindows({ lim }) {
                       role="img" aria-label={known ? `${pct}% used` : 'usage unknown'}>
                       {known && <div className="fill" style={{ width: pct + '%', background: severityColor(w2.severity) }} />}
                     </div>
-                    <span className="pct tnum">{known ? pct + '%' : '—'}</span>
+                    <span className="pct tnum">{known ? pct + '%' : '-'}</span>
                   </div>
                 </td>
                 <td className="r nt">{resetCell(w2, now)}</td>
@@ -239,7 +239,7 @@ export function TokensCard({ daily, models }) {
               {rows.slice().reverse().map(r => (
                 <tr key={r.date}>
                   <td>{r.date}</td>
-                  {names.map(n => <td key={n} className="tnum">{r.by[n] ? full(r.by[n]) : '—'}</td>)}
+                  {names.map(n => <td key={n} className="tnum">{r.by[n] ? full(r.by[n]) : '-'}</td>)}
                   <td className="tnum">{full(r.total)}</td>
                 </tr>
               ))}
@@ -266,7 +266,7 @@ export function SpendCard({ usage }) {
       right={<span className="bv-headline tnum">{usd((usage.allTime || {}).estUSD || 0)}</span>}>
       {scan.bytesTotal && !scan.complete ? (
         <div className="bv-warnbar">
-          Indexing transcripts — {Math.floor((scan.bytesDone / scan.bytesTotal) * 100)}% of {compact(scan.bytesTotal)}B read.
+          Indexing transcripts - {Math.floor((scan.bytesDone / scan.bytesTotal) * 100)}% of {compact(scan.bytesTotal)}B read.
           Figures are partial and climbing.
         </div>
       ) : null}
@@ -375,7 +375,7 @@ export function SessionsTable({ usage }) {
 
   return (
     <Card title="Sessions"
-      note="One row per Claude Code session, newest first. Value is estimated at API list prices — click a column to sort."
+      note="One row per Claude Code session, newest first. Value is estimated at API list prices - click a column to sort."
       right={rows.length ? <span className="bv-sub">{rows.length} indexed</span> : null}>
       <div className="bv-table-scroll tall">
         <table className="bv-table">
@@ -394,7 +394,7 @@ export function SessionsTable({ usage }) {
             {rows.map(r => (
               <tr key={r.id} title={[r.path, r.branch, r.first ? 'started ' + new Date(r.first).toLocaleString() : ''].filter(Boolean).join(' · ')}>
                 <td className={'bv-td-project' + (r.title ? '' : ' mono')}>{r.label}</td>
-                <td>{r.project || '—'}</td>
+                <td>{r.project || '-'}</td>
                 <td>{ago(r.last)}</td>
                 <td className="tnum">{r.hours >= 1 ? r.hours.toFixed(1) + 'h' : Math.round(r.hours * 60) + 'm'}</td>
                 <td className="tnum">{full(r.requests)}</td>
@@ -433,12 +433,12 @@ export function ModelsTable({ claude, usage }) {
   const card = usage.pricing || {}
   const note = claude.costReported
     ? 'Cost as reported by the CLI.'
-    : 'The CLI reports $0 per model on this plan — a flat subscription has no per-request price. '
+    : 'The CLI reports $0 per model on this plan - a flat subscription has no per-request price. '
       + 'Value is these token counts priced at API list rates, for comparison only. '
       + 'These counts come from stats-cache.json'
       + (claude.lastComputedDate ? `, which Claude Code last recomputed on ${claude.lastComputedDate}` : '')
       + ', and include sessions whose transcripts have since been pruned. The per-day and per-session '
-      + 'panels read the transcripts on disk instead — current to the last request, missing anything pruned. '
+      + 'panels read the transcripts on disk instead - current to the last request, missing anything pruned. '
       + 'The two totals are not meant to match.'
 
   return (
@@ -459,7 +459,7 @@ export function ModelsTable({ claude, usage }) {
                       <span>{shortModel(m.model)}</span>
                     </span>
                   </td>
-                  <td className="tnum usd" title={e === null ? 'No entry in the rate card — counted in tokens, left out of every dollar figure.' : undefined}>
+                  <td className="tnum usd" title={e === null ? 'No entry in the rate card - counted in tokens, left out of every dollar figure.' : undefined}>
                     {e === null ? 'unpriced' : usd(e)}
                   </td>
                   {[m.output, m.input, m.cacheRead, m.cacheCreate].map((v, j) => (
@@ -483,7 +483,7 @@ export function LiveCard({ live, toolId }) {
   return (
     <Card title="Running now"
       note={toolId === 'codex'
-        ? 'Live codex processes on this machine. Paths inside ~/.codex are not matched — only the binary.'
+        ? 'Live codex processes on this machine. Paths inside ~/.codex are not matched - only the binary.'
         : 'Live claude processes on this machine.'}
       right={toolId === 'claude-code' ? (
         <Pill tone={sup.alive ? 'ok' : sup.pid ? 'bad' : 'warn'} title={sup.startedAt ? 'since ' + sup.startedAt : ''}>
@@ -527,7 +527,7 @@ export function ProjectsFeed({ projects }) {
             </div>
             <div className="meta">
               <span>{p.sessions} session{p.sessions === 1 ? '' : 's'}</span>
-              <span>{p.branch || '—'}</span>
+              <span>{p.branch || '-'}</span>
               <span>{ago(p.lastActive)}</span>
             </div>
           </li>
@@ -547,9 +547,9 @@ export function PromptsFeed({ prompts }) {
         )}
         {list.slice(0, 20).map((p, i) => (
           <li key={i}>
-            <div className="txt">{p.text || '—'}</div>
+            <div className="txt">{p.text || '-'}</div>
             <div className="meta">
-              <span>{(p.project || '').split('/').pop() || '—'}</span>
+              <span>{(p.project || '').split('/').pop() || '-'}</span>
               <span>{ago(p.at)}</span>
             </div>
           </li>
@@ -604,10 +604,16 @@ export function Offboard({ assistant: a }) {
 
 const INT_STATES = [
   { key: 'reading', label: 'Read by this board', tone: 'ok' },
-  { key: 'ready', label: 'Ready — nothing recorded yet', tone: 'ok' },
+  { key: 'ready', label: 'Ready - nothing recorded yet', tone: 'ok' },
   { key: 'needs-setup', label: 'One step away', tone: 'warn' },
+  /* Installed, and its numbers are sitting on this machine, but nothing here
+     reads them yet. It sits below "one step away" because there is no step the
+     reader can take: the work is ours, not theirs. Without this row the agent
+     emits a state the board has no group for, and five tiles vanish instead of
+     saying why they are quiet. */
+  { key: 'no-reader', label: 'Installed - this build has no reader for it', tone: 'warn' },
   { key: 'api-only', label: 'Needs an API key', tone: 'warn' },
-  { key: 'cloud-only', label: 'Web products — nothing local', tone: '' },
+  { key: 'cloud-only', label: 'Web products - nothing local', tone: '' },
   { key: 'absent', label: 'Not installed here', tone: '' },
 ]
 
@@ -621,7 +627,7 @@ function IntegrationRow({ row }) {
         <div className="name">
           <span>{row.name}</span>
           {row.confidence === 'documented' && (
-            <span className="bv-int-flag" title="From the tool's own documentation — not yet confirmed by opening it here.">
+            <span className="bv-int-flag" title="From the tool's own documentation - not yet confirmed by opening it here.">
               documented
             </span>
           )}
@@ -655,7 +661,7 @@ export function IntegrationsCard({ integrations, summary }) {
   if (!rows.length) return null
   const s = summary || {}
   // A tool that is here and unreadable is the whole reason for this panel,
-  // so those groups lead. What is merely absent sits behind a disclosure —
+  // so those groups lead. What is merely absent sits behind a disclosure -
   // it is a catalogue, not a to-do list.
   const quiet = new Set(['absent', 'cloud-only'])
   const groups = INT_STATES
@@ -682,7 +688,7 @@ export function IntegrationsCard({ integrations, summary }) {
       </div>
       {hidden > 0 && (
         <button className="bv-int-more" onClick={() => setShowAll(a => !a)}>
-          {showAll ? 'Hide' : `Show ${hidden} more`} — tools not on this machine
+          {showAll ? 'Hide' : `Show ${hidden} more`} - tools not on this machine
         </button>
       )}
     </Card>

@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { apiPublic, apiUrl, cloudConfigured } from '../lib/cloud'
-import { rankBoard } from '../lib/leaderboard'
+import { apiPublic, cloudConfigured } from '../lib/cloud'
 import { TipProvider } from './board/charts'
 import Leaderboard, { LeaderboardTiles, ModelBoard } from './board/leaderboard'
 import { ago } from './board/util'
 
 /* The global leaderboard: a public page anybody can see.
  *
- * It reads `/api/v1/leaderboard` with no credential — the entries it gets back
+ * It reads `/api/v1/leaderboard` with no credential - the entries it gets back
  * are the accounts that opted in, aggregated and stripped of anything private
  * by `mergeEntries` on the write side. The ranking runs in the browser, same
  * as the private board, so switching metric or period costs no round trip.
@@ -50,7 +49,7 @@ export default function GlobalBoard() {
 
   useEffect(() => { load(true) }, [load])
 
-  /* Slow poll — the board is cached for five minutes on the server and sixty
+  /* Slow poll - the board is cached for five minutes on the server and sixty
      seconds at the edge, so polling faster would read the same cache. */
   useEffect(() => {
     const t = setInterval(() => { if (!document.hidden) load(false) }, 120_000)
@@ -122,11 +121,11 @@ export default function GlobalBoard() {
           <p className="pb-sub">
             {entries.length
               ? <>
-                  {entries.length} account{entries.length === 1 ? '' : 's'} opted in — tokens,
+                  {entries.length} account{entries.length === 1 ? '' : 's'} opted in - tokens,
                   models and daily activity across everyone who chose to be here.
                   Nothing here says what the work was about.
                 </>
-              : 'Nobody has opted in yet. Be the first — sign in and flip the switch.'}
+              : 'Nobody has opted in yet. Be the first - sign in and flip the switch.'}
           </p>
           {computedAt && (
             <p className="pb-meta">
@@ -147,7 +146,7 @@ export default function GlobalBoard() {
                 <Leaderboard
                   entries={entries}
                   title="Global ranking"
-                  note="Every opted-in account, ranked. Token counts and model names only — no machines, no projects, no prompts, no paths."
+                  note="Every opted-in account, ranked. Token counts and model names only - no machines, no projects, no prompts, no paths."
                   defaultMetric="tokens"
                   defaultPeriod="all"
                 />
@@ -164,7 +163,7 @@ export default function GlobalBoard() {
           <h2>How this works</h2>
           <p>
             Every person here runs the TokenHUD agent on their machines. They signed in,
-            chose a handle, and flipped a switch — that is all it takes to appear on this
+            chose a handle, and flipped a switch - that is all it takes to appear on this
             page. What you see is their aggregate: total tokens, the models they used, and
             a day-by-day count. Machine names, file paths, project names, prompt text, and
             plan limits are stripped before anything reaches this page.

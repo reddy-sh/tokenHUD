@@ -7,7 +7,7 @@
 // The agent was written against the self-host server (server/src/http.rs) and
 // is not changed for the cloud: the three routes it calls answer with the same
 // JSON keys and the same status codes, because the agent's behaviour is keyed
-// to them — 401/403 means "stop, the key is bad", 400/413/422 means "drop this
+// to them - 401/403 means "stop, the key is bad", 400/413/422 means "drop this
 // reading", anything else means "buffer and retry". The enrollment link
 // format, the pairing-code derivation and the 43-character base64url secrets
 // are shared contracts; change them here and the terminal and the portal stop
@@ -15,7 +15,7 @@
 //
 // One deliberate difference from the self-host flow: machines are approved at
 // claim time. The one-shot link was minted seconds earlier by the signed-in
-// owner, so there is no pending card to approve — the pairing code is still
+// owner, so there is no pending card to approve - the pairing code is still
 // shown both ends for eye-matching.
 //
 // ── on what this costs ──────────────────────────────────────────────────
@@ -29,6 +29,16 @@
 // inside DynamoDB's perpetual 25-WCU free allowance up to about twenty
 // machines. The shape this replaced wrote the whole 94 KB reading, and a
 // second copy of it into a secondary index, on every single heartbeat.
+//
+// The daily record added to that, and the addition is deliberately lopsided:
+// one small row per heartbeat for the day in progress, and one burst of up to
+// ninety on the first heartbeat of each new day. So the steady state is ~36
+// write units rather than ~35, and history costs about three per cent more
+// than not having any. Reading it back costs more than writing it - an
+// aggregate rebuild queries each machine's fallen-off days, roughly ten read
+// units per machine, at most once a minute per account - which is the largest
+// single item in this backend's read budget and is worth knowing before
+// raising AGGREGATE_MAX_AGE_MS in the other direction.
 
 import type { LambdaFunctionURLEvent, LambdaFunctionURLResult } from 'aws-lambda';
 import { randomUUID } from 'node:crypto';
@@ -55,7 +65,7 @@ const BOARD_MAX_AGE_MS = 5 * 60_000;
 const BOARD_CACHE_SECONDS = 60;
 
 // A Lambda function URL response is capped at 6 MB. Readings are ~94 KB each,
-// so a large fleet could reach it — and a truncated JSON body is a worse
+// so a large fleet could reach it - and a truncated JSON body is a worse
 // failure than a board that says a machine's detail did not fit.
 const OVERVIEW_SNAPSHOT_BUDGET = 4 * 1024 * 1024;
 
@@ -105,7 +115,7 @@ const HANDLE = /^[a-z0-9][a-z0-9-]{1,23}$/;
 /* Every machine an account owns, summed into one rankable entry.
  *
  * `fresh` is the rollup the caller has just computed but not necessarily read
- * back yet — DynamoDB would serve it, but only after the write, and paying for
+ * back yet - DynamoDB would serve it, but only after the write, and paying for
  * a second read of something already in memory is the kind of small waste that
  * adds up at one every thirty seconds. */
 async function rebuildAggregate(
@@ -130,10 +140,10 @@ async function rebuildAggregate(
     .filter(Boolean);
 
   const profile = await store.getProfile(sub);
-  const entry = mergeEntries(entries, {
-    id: publicIdOf(sub),
-    name: profile?.handle ?? 'Anonymous',
-  });
+  const entry = await withStoredDays(
+    mergeEntries(entries, { id: publicIdOf(sub), name: profile?.handle ?? 'Anonymous' }),
+    rows.map((row) => row.id).filter(Boolean),
+  );
 
   await store.putAggregate(sub, entry, now);
   // The roster is the public board's input, and an account is in it only while
@@ -142,6 +152,66 @@ async function rebuildAggregate(
     await store.putRosterEntry(sub, entry, now);
   }
   return entry;
+}
+
+/* The past, put back into an entry that only knows the last ninety days.
+ *
+ * `mergeEntries` builds its `byDay` out of the readings the agents are sending
+ * right now, and a reading carries ninety days because that is what the agent
+ * re-derives from disk each cycle. Everything before that is in the store, in
+ * the day rows the ingest path writes, and without this the two all-time
+ * figures on the entry would quietly mean "in the last ninety days": an
+ * account reporting for two years would show `firstSeen` three months ago and
+ * an `activeDays` that never rose above ninety. That is the dishonesty this
+ * whole daily record exists to end.
+ *
+ * What it deliberately does not do is lengthen `byDay`. The series stays the
+ * ninety-day one, because this same entry is written to the roster and up to
+ * two hundred and fifty of them are gzipped into a single leaderboard cache
+ * row - DynamoDB stops at 400 KB an item, and a Lambda function URL at 6 MB a
+ * response. Four hundred days per entry clears both. The long series is the
+ * day rows themselves, which are queryable per machine and are what a history
+ * route would read; the entry keeps the window it has always had, and gains
+ * only the two scalars a window cannot state.
+ *
+ * The store is asked only for days older than the oldest the reading covers,
+ * so the two never overlap and the counts add rather than needing to be
+ * reconciled. Machines the account has removed are not asked about at all -
+ * their rows are unreachable from here and expire on their own - which is what
+ * makes "remove" mean the machine's past goes with it. */
+async function withStoredDays(entry: any, machineIds: string[]): Promise<any> {
+  const covered = new Set<string>(
+    (entry?.byDay ?? []).map((day: any) => day?.date).filter(Boolean),
+  );
+  // A far-future bound when no reading covers anything - an account whose
+  // agents have all gone quiet still has a past, and this is the case where
+  // all of it is in the store and none of it would be asked for.
+  const oldest = [...covered].sort()[0] ?? '9999-12-31';
+
+  const pages = await Promise.all(
+    machineIds.map((id) => store.listMachineDaysBefore(id, oldest)),
+  );
+
+  // Tokens are all this needs: the two figures being corrected are "when did
+  // this account first do anything" and "on how many days has it". The rest of
+  // what a day row carries is for whoever reads the series itself.
+  const tokensByDate = new Map<string, number>();
+  for (const row of pages.flat()) {
+    if (typeof row?.date !== 'string' || covered.has(row.date)) continue;
+    tokensByDate.set(row.date, (tokensByDate.get(row.date) ?? 0) + (Number(row.tokens) || 0));
+  }
+  if (!tokensByDate.size) return entry;
+
+  const earliest = [...tokensByDate.keys()].sort()[0];
+  return {
+    ...entry,
+    firstSeen: [entry?.firstSeen, earliest].filter(Boolean).sort()[0] ?? null,
+    totals: {
+      ...entry?.totals,
+      activeDays: (Number(entry?.totals?.activeDays) || 0)
+        + [...tokensByDate.values()].filter((tokens) => tokens > 0).length,
+    },
+  };
 }
 
 async function refreshAggregateIfStale(
@@ -155,7 +225,7 @@ async function refreshAggregateIfStale(
   await rebuildAggregate(sub, now, fresh);
 }
 
-/* ── POST /api/v1/machines — the portal registers one ───────────────── */
+/* ── POST /api/v1/machines - the portal registers one ───────────────── */
 
 // The raw enrollment token never reaches this function. The browser mints it,
 // hashes it, and sends the hash; the token itself lives in the command shown
@@ -213,7 +283,7 @@ async function register(
   return json(201, { machine: publicMachine({ id, label: name, status: 'registered', pairingCode, enrollTokenExpiresAt: expiresAt, createdAt: now, heartbeatCount: 0 }) }, cors);
 }
 
-/* ── POST /api/v1/enroll — the agent claims the link ────────────────── */
+/* ── POST /api/v1/enroll - the agent claims the link ────────────────── */
 
 const VALID_INSTALL_ID = /^[A-Za-z0-9-]{8,64}$/;
 
@@ -240,9 +310,9 @@ async function claim(event: LambdaFunctionURLEvent): Promise<LambdaFunctionURLRe
   if (m.enrollTokenExpiresAt && Date.parse(m.enrollTokenExpiresAt) < Date.now()) {
     return fail(410, 'enrollment link expired');
   }
-  if (m.status === 'revoked') return fail(410, 'denied on this board — ask for a fresh link');
+  if (m.status === 'revoked') return fail(410, 'denied on this board - ask for a fresh link');
   if (m.status === 'active' && m.keyHash) {
-    return fail(410, 'this machine is already enrolled — revoke it on the board first');
+    return fail(410, 'this machine is already enrolled - revoke it on the board first');
   }
   // One link binds to one machine; a retry from the same machine refreshes it.
   if (m.installId && m.installId !== installId) return fail(410, 'enrollment link already used');
@@ -261,7 +331,7 @@ async function claim(event: LambdaFunctionURLEvent): Promise<LambdaFunctionURLRe
   return json(200, { status: 'pending', code: m.pairingCode ?? '?' });
 }
 
-/* ── GET /api/v1/enroll/await — the key, exactly once ───────────────── */
+/* ── GET /api/v1/enroll/await - the key, exactly once ───────────────── */
 
 async function poll(event: LambdaFunctionURLEvent): Promise<LambdaFunctionURLResult> {
   const qs = event.queryStringParameters ?? {};
@@ -288,7 +358,7 @@ async function poll(event: LambdaFunctionURLEvent): Promise<LambdaFunctionURLRes
     // persist would authenticate a machine the row does not know about.
     await store.putKeyPointer(keyHash, m.sub, m.id);
     // Burning the link is the last step, so a crash before it leaves a link
-    // that resolves to an active machine — which the branches above refuse —
+    // that resolves to an active machine - which the branches above refuse -
     // rather than a machine nobody can reach.
     await store.dropTokenPointer(tokenHash);
 
@@ -299,7 +369,7 @@ async function poll(event: LambdaFunctionURLEvent): Promise<LambdaFunctionURLRes
   return fail(404, 'unknown or expired enrollment');
 }
 
-/* ── POST /api/v1/ingest — the heartbeat ────────────────────────────── */
+/* ── POST /api/v1/ingest - the heartbeat ────────────────────────────── */
 
 async function ingest(event: LambdaFunctionURLEvent): Promise<LambdaFunctionURLResult> {
   const key = event.headers?.['x-tokenhud-key'] ?? '';
@@ -342,7 +412,7 @@ async function ingest(event: LambdaFunctionURLEvent): Promise<LambdaFunctionURLR
   const now = new Date().toISOString();
 
   // A reading older than the one already stored is accepted (202, so the
-  // agent's spool drains) and counted, and nothing else about it is believed —
+  // agent's spool drains) and counted, and nothing else about it is believed -
   // see isStale in protocol.ts for why diffing or storing it would both lie.
   if (isStale(snap, m.prev, m.lastSeenAt ?? null)) {
     await store.countHeartbeat(m.sub, m.id);
@@ -355,9 +425,27 @@ async function ingest(event: LambdaFunctionURLEvent): Promise<LambdaFunctionURLR
   const rollup = profileOf(snap, { status: 'up', last_seen: now });
 
   // The reading first, the row second. If this fails the row is not advanced,
-  // the agent gets a 5xx, buffers, and retries — which leaves the board one
+  // the agent gets a 5xx, buffers, and retries - which leaves the board one
   // reading behind rather than pointing at a row whose reading never landed.
   await store.putLive(m.id, packSnapshot(snap), now);
+
+  // Then the day rows, and before the machine row, for the same reason the
+  // reading goes first: `daysWrittenOn` on that row is the claim that they
+  // landed, and a claim written before the writes it describes is a day of
+  // history that nothing will ever go back for.
+  //
+  // The cadence is two things at once. Every heartbeat rewrites the newest day
+  // - the one still changing - which costs one small write and keeps the
+  // record as current as the board. Once a day, on the first heartbeat that
+  // sees a new date, the whole ninety-day window is rewritten instead: that is
+  // what seeds a machine's past on its first ever heartbeat, and what repairs
+  // days that fell in a gap while the agent was away. Both are Puts keyed on
+  // the date, so a day is replaced by what the reading now says it held and
+  // never added to what it said before.
+  const today = now.slice(0, 10);
+  const byDay: any[] = Array.isArray(rollup?.byDay) ? rollup.byDay : [];
+  const days = dayRollups(m.daysWrittenOn === today ? byDay.slice(-1) : byDay);
+  if (days.length) await store.putMachineDays(m.id, days);
 
   const interval = Number.isFinite(snap.intervalSeconds) && snap.intervalSeconds > 0
     ? Math.floor(snap.intervalSeconds)
@@ -372,6 +460,7 @@ async function ingest(event: LambdaFunctionURLEvent): Promise<LambdaFunctionURLR
     intervalSeconds: interval,
     agentVersion: str(snap.agentVersion, 40) || m.agentVersion,
     heartbeatCount: (m.heartbeatCount ?? 0) + 1,
+    daysWrittenOn: today,
   });
 
   await refreshAggregateIfStale(m.sub, now, { id: m.id, rollup, lastSeenAt: now });
@@ -379,7 +468,7 @@ async function ingest(event: LambdaFunctionURLEvent): Promise<LambdaFunctionURLR
   return json(202, { ok: true, host: m.label });
 }
 
-/* ── GET /api/v1/overview — the portal's board ──────────────────────── */
+/* ── GET /api/v1/overview - the portal's board ──────────────────────── */
 
 // Everything a machine row says about itself, minus everything that is a
 // secret or a derivative of one. The board never needs a hash.
@@ -414,7 +503,7 @@ async function overview(caller: Caller, event: LambdaFunctionURLEvent, cors: Cor
     : await store.listMachines(caller.sub);
   rows.sort((a, b) => ((a.createdAt ?? '') < (b.createdAt ?? '') ? 1 : -1));
 
-  // `?live=0` asks for the rows without the readings — a much smaller answer,
+  // `?live=0` asks for the rows without the readings - a much smaller answer,
   // and all the portal needs while it is only watching liveness.
   const wantLive = (event.queryStringParameters?.live ?? '1') !== '0';
   const reporting = rows.filter((m) => m.status === 'active' && m.lastSeenAt);
@@ -547,7 +636,7 @@ async function writeProfile(
   if (req?.handle !== undefined) {
     const wanted = str(req.handle, 24).trim().toLowerCase();
     if (!HANDLE.test(wanted)) {
-      return fail(400, 'a handle is 2–24 characters of a–z, 0–9 and hyphens, and starts with a letter or digit', cors);
+      return fail(400, 'a handle is 2-24 characters of a-z, 0-9 and hyphens, and starts with a letter or digit', cors);
     }
     if (wanted !== handle) {
       if (!(await store.claimHandle(wanted, caller.sub))) {
@@ -562,7 +651,7 @@ async function writeProfile(
     ? !!existing?.publicLeaderboard
     : !!req.publicLeaderboard;
   if (wantsPublic && !handle) {
-    return fail(400, 'the public board shows a handle — choose one before joining it', cors);
+    return fail(400, 'the public board shows a handle - choose one before joining it', cors);
   }
 
   const now = new Date().toISOString();
@@ -590,7 +679,7 @@ async function writeProfile(
   return json(200, { publicId: publicIdOf(caller.sub), handle, publicLeaderboard: wantsPublic }, cors);
 }
 
-/* ── GET /api/v1/leaderboard — the public board ─────────────────────── */
+/* ── GET /api/v1/leaderboard - the public board ─────────────────────── */
 
 /* The public board's input, gathered on read.
  *
@@ -601,7 +690,7 @@ async function writeProfile(
  * invocation.
  *
  * It returns entries rather than a ranking. Ranking them is `rankBoard`, and
- * the page runs it in the browser — the same function, on the same shape, as
+ * the page runs it in the browser - the same function, on the same shape, as
  * the signed-in board a few pixels away. That is not only tidier: it means
  * switching metric or period on the public page costs nothing at all, where
  * ranking here would have meant one cached object per combination and a round
@@ -641,6 +730,95 @@ async function leaderboard(): Promise<LambdaFunctionURLResult> {
   return cached({ computedAt, entries }, BOARD_CACHE_SECONDS);
 }
 
+/* ── GET /api/v1/stars - how many people starred the repo ───────────── */
+
+/* Why a route rather than a fetch from the page.
+ *
+ * The site's CSP (customHttp.yml) names the origins the portal may connect to
+ * and api.github.com is not among them. Widening it so a badge can read
+ * seventeen bytes would widen it for every other script on the page as well,
+ * which is a poor trade for a number. It also would not work for long: GitHub
+ * allows sixty unauthenticated requests an hour per address, and a page that
+ * asked on load would spend that on its own readers.
+ *
+ * So it is cached here, in the two tiers the board uses. The row lives for a
+ * day; inside that day this decides for itself whether ten minutes old is
+ * fresh enough to serve without going out. CloudFront holds the answer for a
+ * further ten minutes, so a burst of readers is one invocation and one
+ * invocation is at most one call to GitHub.
+ *
+ * GitHub failing is the expected case, not the exceptional one - it is a third
+ * party on a network - and the answer to it is the row that is already here.
+ * A stale count is a true statement about a slightly earlier moment; refusing
+ * to answer is not better, and neither is a zero. The only failure this
+ * reports is having never had a count at all. */
+const STARS_URL = 'https://api.github.com/repos/reddy-sh/tokenhud/stargazers/count';
+const STARS_MAX_AGE_MS = 10 * 60_000;
+const STARS_CACHE_SECONDS = 600;
+// Long enough for a slow TLS handshake, short enough that a hanging GitHub
+// costs a reader a moment rather than the function's whole 29-second budget.
+const STARS_TIMEOUT_MS = 3_000;
+
+async function stars(): Promise<LambdaFunctionURLResult> {
+  const cache = await store.getStarCache();
+  // Zero stars is a count. `cache?.count || null` here would report a repo
+  // nobody has starred yet as a repo whose count is unknown, and this one has
+  // been in exactly that state.
+  const known = typeof cache?.count === 'number' ? cache.count : null;
+  const since = cache?.checkedAt ? Date.now() - Date.parse(cache.checkedAt) : Infinity;
+
+  if (known !== null && Number.isFinite(since) && since < STARS_MAX_AGE_MS) {
+    return cached({ count: known, fetchedAt: cache?.fetchedAt ?? null }, STARS_CACHE_SECONDS);
+  }
+
+  const at = new Date().toISOString();
+  const fresh = await fetchStarCount();
+
+  if (fresh === null) {
+    if (known === null) return fail(502, 'the star count is not available', { public: true });
+    // The count and the moment it was true are left exactly as they were; only
+    // the record of having asked moves. That is what stops a GitHub outage
+    // from costing one request per reader, and it is also why the answer below
+    // can say the number is stale without guessing how stale.
+    await store.putStarCache({ count: known, fetchedAt: cache?.fetchedAt, checkedAt: at });
+    return cached(
+      { count: known, fetchedAt: cache?.fetchedAt ?? null, stale: true },
+      STARS_CACHE_SECONDS,
+    );
+  }
+
+  await store.putStarCache({ count: fresh, fetchedAt: at, checkedAt: at });
+  return cached({ count: fresh, fetchedAt: at }, STARS_CACHE_SECONDS);
+}
+
+/* The count, or null for every way of not getting one.
+ *
+ * Null rather than a throw: not one of the failures - a timeout, a 403 for
+ * having run out of budget, a body that is not what it used to be - is worth a
+ * different answer from the caller than any other, and all of them mean "serve
+ * what is already here". */
+async function fetchStarCount(): Promise<number | null> {
+  try {
+    const res = await fetch(STARS_URL, {
+      headers: {
+        // GitHub refuses a request without one and asks that it identify the
+        // caller, so that a misbehaving client can be told rather than blocked.
+        'user-agent': 'tokenhud (+https://tokenhud.com)',
+        accept: 'application/json',
+      },
+      // Without this the fetch inherits no deadline at all and a GitHub that
+      // accepts the connection and then says nothing holds the invocation to
+      // its timeout.
+      signal: AbortSignal.timeout(STARS_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+    const body: any = await res.json();
+    return typeof body?.count === 'number' && Number.isFinite(body.count) ? body.count : null;
+  } catch {
+    return null;
+  }
+}
+
 function unpackJson(packed: string): any[] | null {
   try {
     const parsed = JSON.parse(gunzipSync(Buffer.from(packed, 'base64')).toString('utf8'));
@@ -663,6 +841,20 @@ const THROTTLED = new Set([
   'RequestLimitExceeded',
 ]);
 
+/* The routes a stranger may call, as one list rather than two.
+ *
+ * A public route has to be answered in two places - the preflight, which must
+ * reply `*` because these are read without a credential and from anywhere, and
+ * the dispatch below - and the failure of getting only one of them right is
+ * quiet in the worst way: the route works from a terminal, from curl, and from
+ * the site's own origin, and fails only in a browser on somebody else's page,
+ * which is the one place nobody is looking. Naming the handler here means
+ * adding a route cannot add it to only half of the router. */
+const PUBLIC_GET = new Map<string, () => Promise<LambdaFunctionURLResult>>([
+  ['/api/v1/leaderboard', leaderboard],
+  ['/api/v1/stars', stars],
+]);
+
 export const handler = async (
   event: LambdaFunctionURLEvent,
 ): Promise<LambdaFunctionURLResult> => {
@@ -672,7 +864,7 @@ export const handler = async (
 
   try {
     if (method === 'OPTIONS') {
-      return preflight(path === '/api/v1/leaderboard' ? { public: true } : cors);
+      return preflight(PUBLIC_GET.has(path) ? { public: true } : cors);
     }
 
     if (method === 'GET' && path === '/healthz') {
@@ -686,7 +878,10 @@ export const handler = async (
     if (method === 'POST' && path === '/api/v1/ingest') return await ingest(event);
 
     /* A stranger. */
-    if (method === 'GET' && path === '/api/v1/leaderboard') return await leaderboard();
+    if (method === 'GET') {
+      const open = PUBLIC_GET.get(path);
+      if (open) return await open();
+    }
 
     /* The portal. Everything below needs a verified Cognito ID token. */
     const portal =
@@ -704,7 +899,7 @@ export const handler = async (
     return await machineAction(path, event, caller, cors);
   } catch (e: any) {
     if (THROTTLED.has(e?.name)) {
-      return fail(503, 'the store is busy — try again shortly', cors);
+      return fail(503, 'the store is busy - try again shortly', cors);
     }
     // A store hiccup is transient: 500 makes the agent buffer and retry,
     // which is the right failure mode for a heartbeat.

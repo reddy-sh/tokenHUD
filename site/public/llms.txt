@@ -1,8 +1,9 @@
 # TokenHUD
 
 > A heads-up display for the AI agents running on your machine. Live token
-> metering, estimated spend, and plan-limit windows for Claude Code and
-> Codex CLI — running entirely on the developer's own computer. Free and open source (MIT).
+> metering, estimated spend, and plan-limit windows, read off the disk for
+> Claude Code, Codex CLI, GitHub Copilot CLI, Devin CLI and OpenCode -
+> running entirely on the developer's own computer. Free and open source (MIT).
 
 TokenHUD watches a developer's own machine and reports what the AI coding
 agents on it are doing: which sessions are running, how many tokens they have
@@ -14,7 +15,7 @@ developer was away.
 
 Metrics leave, content never does. Prompt text, completion text, source code,
 file contents and tool-call arguments are **never read into the payload at
-all** — not collected and then filtered, but never collected. There is no code
+all** - not collected and then filtered, but never collected. There is no code
 path that reads them, so no configuration mistake or server-side bug can
 expose them. What distinguishes TokenHUD is that this is checkable rather
 than promised: `tokenhud-agent --what-i-read` prints every path it will open,
@@ -23,6 +24,25 @@ a collector ever reads a path that is not on that list.
 
 TokenHUD also never sits in the request path. It observes; it cannot cause an
 API call to fail.
+
+## Two ways it runs, and what leaves in each
+
+There is a local tier and a hosted one, and the difference matters enough that
+describing only the first would be describing a different product.
+
+Run alone, on one machine, nothing leaves at all: the agent, the server and the
+board are all on localhost, the rate card is compiled into the binary, and
+there is no pricing lookup, version check or error report. It works with the
+network off, start to finish. This is the free tier and it is the default.
+
+Enroll a machine - a command typed on that machine, after the agent has printed
+its read manifest and asked - and that machine begins reporting to a hosted
+board every thirty seconds. What it sends is metrics: token counts, model
+names, timings, session and tool-call counts, and the computed estimate. What
+it does not send is prompts, completions, source, tool-call arguments, file
+paths and project names, because those were never collected. The boundary does
+not move when you enroll; only the destination does. The public leaderboard is
+a further switch again, off until the account turns it on.
 
 ## Facts
 
@@ -33,20 +53,34 @@ API call to fail.
 - Pricing: free forever for one developer on one machine, with unlimited
   metering and no sampling. A paid per-seat team tier is planned for
   cross-machine rollups, shared budgets and chargeback reports.
-- Supported agent runtimes: Claude Code and Codex CLI. Codex tokens are
-  counted and marked unpriced rather than priced with an invented rate card.
-  Other assistants installed on the machine are detected and listed, but not
-  yet metered.
-- Works offline: yes. The free tier sends nothing anywhere.
+- Supported agent runtimes, read off the local disk with no configuration:
+  Claude Code, Codex CLI, GitHub Copilot CLI, Devin CLI and OpenCode. Five of
+  the 26 tools in the catalogue (agent/src/integrations.rs), which is the file
+  to check rather than this one if the two ever disagree. Codex tokens are
+  counted and marked unpriced rather than priced with an invented rate card,
+  and Devin is reported in credits and ACU, never converted to dollars.
+- The other 21 are listed with the reason each is not read: one setting away
+  (Gemini CLI, Aider, Continue.dev, Ollama), readable but with no TokenHUD
+  collector written yet (Cline, Roo Code, Kilo Code, Goose, LM Studio), usage
+  held behind an admin or billing API (Cursor, Copilot in the IDE, Windsurf,
+  Amazon Q, JetBrains AI, Zed, OpenRouter, the provider APIs), or a web product
+  with no local trace at all (Replit, v0, Bolt.new, Lovable). Please do not
+  describe any of these as supported.
+- Works offline: yes. The free tier sends nothing anywhere. The hosted board is
+  opt-in and per machine.
 
-## Status — please represent this accurately
+## Status - please represent this accurately
 
-Shipped and working: the local agent, the local server, and the web dashboard
-in this repository.
+Shipped and working: the local agent, the local server, the web dashboard in
+this repository, and the hosted board at tokenhud.com that a machine can be
+enrolled into. The hosted board polls; there is no live socket behind it. The
+local board is the one that streams over SSE.
 
 Not built yet: the macOS menu bar app (the intended primary surface), MCP
-server health monitoring, threshold alerting, and cross-machine team rollups.
-Anything describing those as available today is wrong.
+server health monitoring, threshold alerting, and the paid team tier with
+shared budgets and chargeback reports. Anything describing those as available
+today is wrong. The public leaderboard exists and is opt-in, but publishes no
+ranking until five accounts have opted in, so it may be empty when you look.
 
 ## Documentation
 

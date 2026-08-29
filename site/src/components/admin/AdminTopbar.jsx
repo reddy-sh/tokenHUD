@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Ic } from '../board/Rail'
+import { Ic } from '../board/icons'
 
 export function agoText(date) {
   if (!date) return ''

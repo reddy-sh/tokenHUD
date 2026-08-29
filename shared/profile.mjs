@@ -3,11 +3,11 @@
  * Moved out of site/src/lib/leaderboard.js alongside shared/ranking.mjs. The
  * browser calls it on the full readings the board holds; the cloud API calls
  * it on the reading an agent just posted, and stores the result as that
- * machine's rollup — which is what lets DynamoDB keep 6 KB per machine
+ * machine's rollup - which is what lets DynamoDB keep 6 KB per machine
  * instead of the 94 KB reading it came from.
  *
  * It mirrors `server/src/share.rs`. If a field moves in the agent, both want
- * the same edit — and the Rust side has the tests that catch it.
+ * the same edit - and the Rust side has the tests that catch it.
  */
 
 /* ── entries ────────────────────────────────────────────────────────────
@@ -21,7 +21,7 @@ const n = v => (Number(v) || 0)
 
 /* Is the agent reporting?
  *
- * A statement about the agent, not about whether the machine is switched on —
+ * A statement about the agent, not about whether the machine is switched on -
  * three missed intervals is the usual line. The same three thresholds live in
  * server/src/board.rs (`hosts_with_status`) because the self-host board has to
  * call a machine up by the same rule the cloud does; two places calling it
@@ -101,15 +101,26 @@ export function profileOf(payload, hostRow) {
     byTool.push({
       id: 'claude-code', name: 'Claude Code',
       tokens: claudeTokens, output: n(t.out), estUSD: n(all.estUSD), sessions: n(all.sessions),
+      /* How that dollar figure was arrived at, carried with it. A number
+         without its basis is the ambiguity every one of these tools has:
+         "free", "no rate for this model" and "included in a subscription" all
+         render as $0 and mean entirely different things. */
+      costBasis: m.usage?.costBasis || 'list_price',
     })
   }
   if (n(cx.total) > 0) {
+    /* `publicEstUSD` is priced from the built-in card only. A figure the
+       machine's owner priced with their own rate card stays on their own board:
+       `estUSD` is a ranked metric, and ranking strangers on a number any of
+       them can edit would make the leaderboard a typing contest. Null here is
+       "not priced", which is a different fact from "free". */
+    const pub_ = m.codex?.publicEstUSD
     byTool.push({
       id: 'codex', name: 'Codex CLI',
       tokens: n(cx.total), output: n(cx.output),
-      /* Counted, not priced — this build's rate card is Anthropic-only, and a
-         zero here would read as "free". */
-      estUSD: null, sessions: n(m.codex?.sessionCount),
+      estUSD: pub_ == null ? null : n(pub_),
+      sessions: n(m.codex?.sessionCount),
+      costBasis: pub_ == null ? 'unpriced' : 'list_price',
     })
   }
 
@@ -144,7 +155,7 @@ export function profileOf(payload, hostRow) {
     models: mergeModels(m),
     byDay,
     /* What is going right now, as counts. Mirrors share.rs: which product,
-       what kind, headless or not, how long — never the command line. */
+       what kind, headless or not, how long - never the command line. */
     running: (m.processes || []).map(p => ({
       tool: p.tool || 'claude-code',
       kind: p.kind || null,
@@ -183,7 +194,7 @@ export function profilesOf(data) {
     .sort((a, b) => b.totals.tokens - a.totals.tokens)
 }
 
-/* The whole board, in the shape `share.rs` serves — so the private pages and
+/* The whole board, in the shape `share.rs` serves - so the private pages and
    the shared page are handed the same object and differ only in what is in it.
    The hour curve is a board-level sum in both, never a per-machine field: over
    a team it is a demand curve, over one machine it is somebody's sleep. */
@@ -200,7 +211,7 @@ export function fleetOf(data) {
     generatedAt: data?.generatedAt || null,
     hours: Object.keys(hours).length ? hours : null,
     /* The private board is the owner looking at machines they own, so nothing
-       is withheld here — the threshold is a property of publishing. */
+       is withheld here - the threshold is a property of publishing. */
     hoursMinMachines: 0,
     pricingAsOf: data?.latest?.[0]?.metrics?.usage?.pricing?.asOf || null,
     windowDays: 90,
@@ -215,7 +226,7 @@ export function fleetOf(data) {
 /* Several machines, as one entry.
  *
  * The public leaderboard ranks accounts, not machines, and the ranking only
- * knows how to read one entry — so an account with four machines has to become
+ * knows how to read one entry - so an account with four machines has to become
  * one of the same shape. Everything here is a sum except the three fields
  * where a sum would be a lie: `firstSeen` is the earliest, `lastActive` the
  * latest, and `activeDays` is recounted from the merged days, because two
@@ -223,7 +234,7 @@ export function fleetOf(data) {
  *
  * Nothing that names a machine survives the merge. That is deliberate: this is
  * the value that goes on a page strangers read, and the whitelist it has to
- * satisfy is the one in server/src/share.rs — counts, models, days, never a
+ * satisfy is the one in server/src/share.rs - counts, models, days, never a
  * hostname, a path, a project or a prompt.
  */
 export function mergeEntries(entries, { id, name } = {}) {
@@ -259,17 +270,25 @@ export function mergeEntries(entries, { id, name } = {}) {
   const tools = new Map()
   for (const e of list) {
     for (const t of e.byTool || []) {
-      const row = tools.get(t.id) || { id: t.id, name: t.name, tokens: 0, output: 0, estUSD: 0, sessions: 0, priced: true }
+      const row = tools.get(t.id) || { id: t.id, name: t.name, tokens: 0, output: 0, estUSD: 0, sessions: 0, priced: true, costBasis: null }
       row.tokens += n(t.tokens); row.output += n(t.output); row.sessions += n(t.sessions)
       /* estUSD is null for a tool this build counts but cannot price. Adding a
          zero for it would read as "free" rather than "not priced". */
       if (t.estUSD == null) row.priced = false
       else row.estUSD += n(t.estUSD)
+      /* The basis survives the merge, and two machines disagreeing about it
+         collapses to `mixed` rather than to whichever reported last: a total
+         summed across different bases is not one number. */
+      if (t.costBasis) {
+        row.costBasis = row.costBasis == null || row.costBasis === t.costBasis
+          ? t.costBasis
+          : 'mixed'
+      }
       tools.set(t.id, row)
     }
   }
   const byTool = [...tools.values()]
-    .map(t => ({ id: t.id, name: t.name, tokens: t.tokens, output: t.output, estUSD: t.priced ? t.estUSD : null, sessions: t.sessions }))
+    .map(t => ({ id: t.id, name: t.name, tokens: t.tokens, output: t.output, estUSD: t.priced ? t.estUSD : null, sessions: t.sessions, costBasis: t.costBasis }))
     .sort((a, b) => b.tokens - a.tokens)
 
   const sum = field => list.reduce((a, e) => a + n(e.totals?.[field]), 0)

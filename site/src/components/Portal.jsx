@@ -2,7 +2,6 @@ import { fetchUserAttributes, signOut } from 'aws-amplify/auth'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api, apiUrl } from '../lib/cloud'
 import { newToken, pairingCode, sha256Hex } from '../lib/enrollment'
-import { fleetOf, rankBoard } from '../lib/leaderboard'
 import { buildOverview } from '../lib/overview'
 import AdminSidebar from './admin/AdminSidebar'
 import AdminTopbar from './admin/AdminTopbar'
@@ -16,9 +15,16 @@ import AuthCard from './portal/AuthCard'
 
 /* The portal: sign in, register machines, watch the board.
  *
+ * Everything below the sign-in card is the shared admin shell - the same
+ * component the self-host board mounts, handed a different adapter. This file
+ * is now only the cloud half of that adapter: where the readings come from,
+ * what the actions do, and who is signed in. It used to be the shell as well,
+ * hand-copied, which is why the cloud board quietly lost four things the
+ * self-host board had.
+ *
  * Data comes from one polled endpoint. There is no live socket: the agents
  * report every thirty seconds, so a board that refreshed faster than that
- * would be redrawing the same numbers — and holding a subscription open per
+ * would be redrawing the same numbers - and holding a subscription open per
  * tab is the one part of this backend that would have cost real money at rest.
  * Polling on the agents' own cadence shows everything a push would have, at
  * the price of one request.
@@ -31,14 +37,14 @@ import AuthCard from './portal/AuthCard'
    screen, and far enough under that a missed poll is invisible. */
 const POLL_MS = 20_000
 
-const SECTION_KEYS = SECTIONS.map(x => x.key)
-const SK_SECTION = 'tokenhud_cloud_section'
-const SK_LBPAGE = 'tokenhud_cloud_lb_page'
-const SK_ROOTNAV = 'tokenhud_cloud_nav_root'
-const SK_SUBNAV = 'tokenhud_cloud_nav_sub'
-
-function load(k, fb) { try { return localStorage.getItem(k) || fb } catch { return fb } }
-function save(k, v) { try { localStorage.setItem(k, v) } catch {} }
+/* The cloud board's own navigation keys. Prefixed apart from the self-host
+   board's so somebody who runs both does not have one overwrite the other. */
+const KEYS = {
+  section: 'tokenhud_cloud_section',
+  lbPage: 'tokenhud_cloud_lb_page',
+  rootNav: 'tokenhud_cloud_nav_root',
+  subNav: 'tokenhud_cloud_nav_sub',
+}
 
 export default function Portal({ onClose, user, onUser, onSelfHost }) {
   const [machines, setMachines] = useState(null)
@@ -94,7 +100,7 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
       }
     }
 
-    /* The first load runs even when the tab is hidden — the portal was just
+    /* The first load runs even when the tab is hidden - the portal was just
        opened, so somebody is looking whatever the visibility API believes. */
     loadData(ctrl.signal).catch(e => {
       if (e?.name === 'AbortError') return
@@ -116,7 +122,7 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
   }, [user, live, nonce, loadData])
 
   /* The account: the handle, and whether it is on the public board. Read once
-     — it only changes when this page changes it. */
+     - it only changes when this page changes it. */
   useEffect(() => {
     if (!user) return
     let cancelled = false
@@ -147,8 +153,8 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
        board it is the address of your own server, here it is the API. */
     ingestUrl: apiUrl,
     /* Mint a one-shot enrollment. The token is generated here and hashed here;
-       only the hash is sent. It exists in exactly two places — the command
-       shown once, and the agent's memory while it enrolls — which is the same
+       only the hash is sent. It exists in exactly two places - the command
+       shown once, and the agent's memory while it enrolls - which is the same
        discipline the self-host store keeps. */
     mint: async (label) => {
       const token = newToken()
@@ -275,7 +281,7 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
 
   const hasSubNav = section === 'monitoring' || section === 'leaderboard'
 
-  /* App is still asking Cognito whether a session exists — don't flash the
+  /* App is still asking Cognito whether a session exists - don't flash the
      sign-in card at a returning visitor. */
   if (user === undefined) return null
 

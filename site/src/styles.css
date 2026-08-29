@@ -760,6 +760,10 @@ a { color: inherit; text-decoration: none; }
 .dashboard-close:hover { color: var(--color-ink); }
 .dashboard-close:focus-visible { outline: 2px solid var(--color-focus); }
 
+/* The board and the admin shell both mount inside this frame, and both scroll
+   internally - .bv-board and .adm-content are the scroll containers - so the
+   frame itself must not scroll or the page grows a second scrollbar behind
+   the sticky topbar. */
 .dashboard-frame {
   position: fixed;
   inset: 0;
@@ -767,27 +771,7 @@ a { color: inherit; text-decoration: none; }
   background: var(--color-paper);
   display: flex;
   flex-direction: column;
-}
-
-.dashboard-frame__bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-sm) var(--space-lg);
-  border-bottom: var(--rule-hair) solid var(--color-rule);
-  background: var(--color-paper-2);
-}
-
-.dashboard-frame__bar span {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: var(--text-sm);
-}
-
-.dashboard-frame iframe {
-  flex: 1;
-  width: 100%;
-  border: none;
+  overflow: hidden;
 }
 
 /* ── footer ──────────────────────────────────────────────── */
@@ -894,7 +878,7 @@ a { color: inherit; text-decoration: none; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-sm) var(--page-gutter);
+  padding: var(--space-sm) var(--adm-gutter);
   border-bottom: var(--rule-hair) solid var(--color-rule);
   background: var(--color-paper-2);
   position: sticky;
@@ -923,11 +907,6 @@ a { color: inherit; text-decoration: none; }
   border-radius: var(--radius-sm);
 }
 
-.bv-stale-note {
-  font-size: var(--text-xs);
-  color: var(--color-error);
-  margin: 0 0 var(--space-md);
-}
 
 .bv-server-url {
   font-family: var(--font-mono);
@@ -935,41 +914,10 @@ a { color: inherit; text-decoration: none; }
   color: var(--color-ink-3);
 }
 
-.bv-hosts {
-  display: flex;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--page-gutter);
-  border-bottom: var(--rule-hair) solid var(--color-rule);
-  overflow-x: auto;
-}
-
-.bv-host-chip {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-2xs) var(--space-sm);
-  background: var(--color-paper-2);
-  border: var(--rule-hair) solid var(--color-rule);
-  border-radius: var(--radius-pill);
-  font-size: var(--text-xs);
-  white-space: nowrap;
-}
-
-.bv-host-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.bv-host-age { color: var(--color-ink-3); }
-
-.bv-stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-md);
-  padding: var(--space-xl) var(--page-gutter);
-}
-
+/* Every caller writes `bv-stats bv-tiles` together, and .bv-tiles - further
+   down, same specificity - restates all four of the properties .bv-stats set,
+   including a padding of 0 over its page gutter. The rule was doing nothing at
+   any call site; .bv-tiles is the one that lays these out. */
 .bv-stat {
   padding: var(--space-lg);
   background: var(--color-paper-2);
@@ -988,60 +936,6 @@ a { color: inherit; text-decoration: none; }
 .bv-stat-label {
   font-size: var(--text-xs);
   color: var(--color-ink-2);
-}
-
-.bv-section {
-  padding: var(--space-xl) var(--page-gutter);
-}
-
-.bv-section-title {
-  font-family: var(--font-display);
-  font-size: var(--text-lg);
-  font-weight: 700;
-  margin: 0 0 var(--space-md);
-}
-
-.bv-limits-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--space-md);
-}
-
-.bv-limit {
-  padding: var(--space-md);
-  background: var(--color-paper-2);
-  border: var(--rule-hair) solid var(--color-rule);
-  border-radius: var(--radius-md);
-}
-
-.bv-limit-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-xs);
-}
-
-.bv-limit-label { font-size: var(--text-sm); font-weight: 600; }
-.bv-limit-pct { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 800; }
-
-.bv-bar-track {
-  height: 6px;
-  background: var(--color-paper-3);
-  border-radius: 3px;
-  overflow: hidden;
-  margin-bottom: var(--space-xs);
-}
-
-.bv-bar-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.4s var(--ease-out);
-}
-
-.bv-limit-reset {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--color-ink-3);
 }
 
 .bv-table-scroll {
@@ -1075,28 +969,6 @@ a { color: inherit; text-decoration: none; }
 .bv-table td { color: var(--color-ink-2); }
 .bv-td-project { color: var(--color-ink); font-weight: 500; }
 
-.bv-assistants {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: var(--space-sm);
-}
-
-.bv-assistant {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-md);
-  background: var(--color-paper-2);
-  border: var(--rule-hair) solid var(--color-rule);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-sm);
-}
-
-.bv-assistant-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
 
 @media (max-width: 768px) {
   .bv-stats { grid-template-columns: 1fr 1fr; }
@@ -1133,7 +1005,17 @@ a { color: inherit; text-decoration: none; }
 
 /* ══ board: full port of the classic dashboard ═══════════════ */
 
-.bv-board { --bv-rail-w: 248px; }
+/* The board lives inside the fixed dashboard frame, so it is its own scroll
+   container; the topbar and the rail stick within it. Embedded in the admin
+   shell it is not - see `.adm-content .bv-board` below, where .adm-content
+   does the scrolling instead. */
+.bv-board {
+  --bv-rail-w: 248px;
+  height: 100dvh;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) { .bv-board { scroll-behavior: auto; } }
 .bv-board .mono { font-family: var(--font-mono); font-size: 0.92em; }
 
 .bv-layout {
@@ -1146,7 +1028,7 @@ a { color: inherit; text-decoration: none; }
   min-width: 0;
   display: grid;
   gap: var(--space-lg);
-  padding: var(--space-lg) var(--page-gutter) var(--space-3xl);
+  padding: var(--space-lg) var(--adm-gutter) var(--space-3xl);
 }
 
 .bv-panel { min-width: 0; scroll-margin-top: 72px; outline: none; }
@@ -1166,7 +1048,6 @@ a { color: inherit; text-decoration: none; }
   border: var(--rule-hair) solid var(--color-rule);
   border-radius: var(--radius-md);
 }
-.bv-card--warn { border-color: color-mix(in oklch, var(--color-accent) 55%, var(--color-rule)); }
 .bv-card-head {
   display: flex;
   justify-content: space-between;
@@ -1183,7 +1064,103 @@ a { color: inherit; text-decoration: none; }
 .bv-card-right { flex-shrink: 0; display: inline-flex; gap: var(--space-2xs); align-items: center; }
 .bv-note { font-size: var(--text-xs); color: var(--color-ink-3); margin: 4px 0 0; line-height: 1.5; max-width: 72ch; }
 .bv-sub { font-size: var(--text-xs); color: var(--color-ink-3); }
-.bv-sub.warn { color: var(--color-warn, #b4531b); font-weight: 600; }
+.bv-sub.warn { color: var(--color-warn); font-weight: 600; }
+
+/* ── card tiers ───────────────────────────────────────────────────────
+ *
+ * One board view renders about thirty of these, seventeen of them from
+ * panels.jsx alone, and until now every one was the same card: same fill,
+ * same hairline, same radius, same 1.25rem title, stacked down one column
+ * from the overview to the last inventory. Nothing on that page says what to
+ * read. The panel that answers "am I about to run out of plan" and the panel
+ * that lists every working directory Claude Code has ever opened arrive with
+ * identical weight, so a reader either reads all of it or gives up - which is
+ * the whole reason the board reads as generic rather than as an answer.
+ *
+ * Three weights, and the distance between them is deliberately more than a
+ * shade:
+ *
+ *   primary    filled a step lighter than its neighbours, lifted, larger
+ *              title, and a note set as prose rather than fine print. The
+ *              handful of panels the board exists to show you.
+ *   secondary  the card as it was. Everything you would call a panel.
+ *   reference  no box at all - a rule above it and a small caps title.
+ *              Inventories and receipts: what MCP servers are installed, what
+ *              the rate card was, which projects exist. Still findable, no
+ *              longer competing.
+ *
+ * The tier is keyed off the section id because <Card> takes no tier prop yet
+ * and this file cannot add one. Every id used here is one BoardView already
+ * writes and already scrolls the rail to, so the two cannot fall out of step.
+ * The ids are wrapped in :where() so they contribute nothing to specificity:
+ * a tier is a default, and any rule further down that names a card by class
+ * still wins over it. */
+
+:where(#p-usage-windows, #p-running-now, #p-value, #p-leaderboard,
+       #p-codex-plan, #p-codex-value) > .bv-card:first-child {
+  padding: var(--space-xl);
+  border-color: var(--color-rule-strong);
+  border-radius: var(--radius-lg);
+  /* The fill stays --color-paper-2, deliberately. Half the meters on this
+     board draw their empty track in --color-paper-3, so promoting the card to
+     that surface would have made the tracks inside the most important panels
+     the only invisible ones. The weight comes from geometry instead - bigger
+     box, bigger title, stronger rule - plus an accent bar ruled along the top
+     edge from the inside, which no descendant can collide with. */
+  box-shadow:
+    inset 0 var(--rule-bold) 0 color-mix(in oklch, var(--color-accent) 55%, transparent),
+    0 14px 34px -26px rgb(0 0 0 / 0.6);
+}
+:where(#p-usage-windows, #p-running-now, #p-value, #p-leaderboard,
+       #p-codex-plan, #p-codex-value) > .bv-card:first-child > .bv-card-head h2 {
+  font-size: var(--text-xl);
+  letter-spacing: -0.01em;
+}
+:where(#p-usage-windows, #p-running-now, #p-value, #p-leaderboard,
+       #p-codex-plan, #p-codex-value) > .bv-card:first-child > .bv-card-head .bv-note {
+  font-size: var(--text-sm);
+  color: var(--color-ink-2);
+}
+
+/* The rate card is the arithmetic behind the panel beside it - a receipt for
+   a number, which is exactly what the reference tier is for. */
+:where(#p-mcp-servers, #p-tool-calls, #p-permissions, #p-extensions,
+       #p-integrations, #p-prompts, #p-projects, #p-models,
+       #p-recently-finished, #p-codex-projects, #p-codex-finished) .bv-card,
+:where(#p-value) > .bv-card + .bv-card {
+  padding: var(--space-lg) 0 0;
+  background: none;
+  border: 0;
+  border-top: var(--rule-hair) solid var(--color-rule);
+  border-radius: 0;
+}
+:where(#p-mcp-servers, #p-tool-calls, #p-permissions, #p-extensions,
+       #p-integrations, #p-prompts, #p-projects, #p-models,
+       #p-recently-finished, #p-codex-projects, #p-codex-finished) .bv-card > .bv-card-head,
+:where(#p-value) > .bv-card + .bv-card > .bv-card-head {
+  margin-bottom: var(--space-sm);
+}
+:where(#p-mcp-servers, #p-tool-calls, #p-permissions, #p-extensions,
+       #p-integrations, #p-prompts, #p-projects, #p-models,
+       #p-recently-finished, #p-codex-projects, #p-codex-finished) .bv-card > .bv-card-head h2,
+:where(#p-value) > .bv-card + .bv-card > .bv-card-head h2 {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-ink-2);
+}
+
+/* A warned card is never demoted. Whatever tier it lands in it keeps its box,
+   because the border is the warning - hence the doubled class, which buys the
+   specificity to say so without an !important. */
+.bv-card.bv-card--warn {
+  padding: var(--space-lg);
+  background: var(--color-paper-2);
+  border: var(--rule-hair) solid color-mix(in oklch, var(--color-accent) 55%, var(--color-rule));
+  border-radius: var(--radius-md);
+  box-shadow: none;
+}
 #p-recently-finished { scroll-margin-top: 72px; }
 /* paired rows: both cards take the full row height instead of self-sizing */
 #p-usage-windows, #p-sessions, #p-running-now { align-items: stretch; }
@@ -1209,7 +1186,7 @@ a { color: inherit; text-decoration: none; }
   #p-running-now .bv-feed, #p-projects .bv-feed, #p-sessions .bv-drivers-scroll { max-height: none; overflow: visible; }
 }
 
-/* permissions: the rule list is unbounded — cap it and scroll inside the card */
+/* permissions: the rule list is unbounded - cap it and scroll inside the card */
 #p-permissions .bv-rules {
   max-height: 420px; overflow-y: auto; overscroll-behavior: contain;
   padding-right: var(--space-sm); margin-right: calc(-1 * var(--space-xs));
@@ -1374,16 +1351,11 @@ a { color: inherit; text-decoration: none; }
 @media print {
   .bv-topbar, .bv-rail, .bv-scrim, .bv-menubtn, .bv-tip { display: none !important; }
   .bv-layout { grid-template-columns: 1fr; }
-  .bv-printonly { display: block; font-size: var(--text-xs); color: var(--color-ink-3); padding: var(--space-sm) var(--page-gutter) 0; }
+  .bv-printonly { display: block; font-size: var(--text-xs); color: var(--color-ink-3); padding: var(--space-sm) var(--adm-gutter) 0; }
   .bv-card { break-inside: avoid; }
   .bv-table-scroll.tall { max-height: none; overflow: visible; }
 }
 
-/* The board lives inside the fixed dashboard frame, so it is its own
-   scroll container; the topbar and rail stick within it. */
-.dashboard-frame { overflow: hidden; }
-.bv-board { height: 100dvh; overflow-y: auto; scroll-behavior: smooth; }
-@media (prefers-reduced-motion: reduce) { .bv-board { scroll-behavior: auto; } }
 
 /* ── enrollment: modal, pending approvals, pairing code ────── */
 .bv-modal-overlay {
@@ -1407,42 +1379,15 @@ a { color: inherit; text-decoration: none; }
   background: var(--color-paper); border: var(--rule-hair) solid var(--color-rule);
   border-radius: var(--radius-sm); padding: var(--space-sm) var(--space-md);
 }
-.bv-enroll-cmd + .bv-enroll-cmd,
-.bv-enroll-lab + .bv-enroll-cmd { margin-top: var(--space-2xs); }
-.bv-enroll-name {
-  width: 100%; padding: var(--space-sm) var(--space-md);
-  background: var(--color-paper); border: var(--rule-hair) solid var(--color-rule-strong);
-  border-radius: var(--radius-sm); font-family: var(--font-body); font-size: var(--text-sm);
-  outline: none; transition: border-color var(--dur-fast) var(--ease-out);
-}
-.bv-enroll-name:focus {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-accent) 20%, transparent);
-}
+.bv-enroll-cmd + .bv-enroll-cmd { margin-top: var(--space-2xs); }
 .bv-enroll-cmd code {
   flex: 1; background: none; padding: 0; font-size: var(--text-xs);
   overflow-wrap: anywhere; user-select: all;
-}
-.bv-enroll-meta { display: flex; gap: var(--space-2xl); margin-top: var(--space-lg); }
-.bv-enroll-meta > div { display: grid; gap: 2px; }
-.bv-enroll-lab {
-  font-family: var(--font-mono); font-size: var(--text-xs); text-transform: uppercase;
-  letter-spacing: 0.08em; color: var(--color-ink-3);
 }
 .bv-paircode {
   font-family: var(--font-mono); font-size: var(--text-xl); font-weight: 700;
   letter-spacing: 0.12em; color: var(--color-accent);
 }
-.bv-pending { display: grid; gap: var(--space-md); }
-.bv-pending-card {
-  border: var(--rule-hair) solid color-mix(in oklch, var(--color-accent) 55%, var(--color-rule));
-  background: color-mix(in oklch, var(--color-accent) 5%, var(--color-paper-2));
-  border-radius: var(--radius-md); padding: var(--space-lg);
-}
-.bv-pending-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-md); flex-wrap: wrap; }
-.bv-pending-title { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 700; }
-.bv-pending-actions { display: flex; gap: var(--space-sm); margin-top: var(--space-md); }
-.bv-pending-actions .btn { padding: var(--space-2xs) var(--space-lg); font-size: var(--text-sm); }
 
 /* ── enroll modal: one-command install ──────────────────── */
 .enroll-modal { max-width: 580px; }
@@ -1450,10 +1395,6 @@ a { color: inherit; text-decoration: none; }
   font-size: var(--text-sm); color: var(--color-ink-2); margin: 4px 0 var(--space-md);
   line-height: var(--leading-body);
 }
-.enroll-key-form {
-  display: flex; gap: var(--space-sm); align-items: stretch;
-}
-.enroll-key-form .bv-enroll-name { flex: 1; }
 .enroll-hint {
   font-size: var(--text-xs); color: var(--color-ink-3); margin: var(--space-sm) 0 0;
   line-height: var(--leading-body);
@@ -1463,7 +1404,7 @@ a { color: inherit; text-decoration: none; }
   background: var(--color-paper-3); padding: 1px 5px; border-radius: var(--radius-xs);
 }
 
-/* The big hero command block — the star of the show. */
+/* The big hero command block - the star of the show. */
 .enroll-cmd-hero {
   position: relative; cursor: pointer;
   background: var(--color-paper); border: var(--rule-bold) solid var(--color-accent);
@@ -1488,37 +1429,6 @@ a { color: inherit; text-decoration: none; }
 }
 .enroll-cmd-hero:hover .enroll-cmd-copy { opacity: 0.9; }
 
-/* Pairing code */
-.enroll-pair {
-  display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap;
-  margin-top: var(--space-lg); padding-top: var(--space-md);
-  border-top: var(--rule-hair) solid var(--color-rule);
-}
-.enroll-pair-block { display: grid; gap: 2px; flex-shrink: 0; }
-.enroll-pair-label {
-  font-family: var(--font-mono); font-size: var(--text-xs); text-transform: uppercase;
-  letter-spacing: 0.08em; color: var(--color-ink-3);
-}
-.enroll-pair-note {
-  font-size: var(--text-xs); color: var(--color-ink-3); margin: 0;
-  line-height: var(--leading-body);
-}
-
-/* Collapsible "already installed" alternative */
-.enroll-alt {
-  margin-top: var(--space-md); padding-top: var(--space-sm);
-  border-top: var(--rule-hair) solid var(--color-rule);
-}
-.enroll-alt summary {
-  font-size: var(--text-xs); color: var(--color-ink-3); cursor: pointer;
-  list-style: none;
-}
-.enroll-alt summary::before { content: '▸ '; }
-.enroll-alt[open] summary::before { content: '▾ '; }
-.enroll-alt summary::-webkit-details-marker { display: none; }
-.enroll-alt p {
-  font-size: var(--text-xs); color: var(--color-ink-3); margin: var(--space-xs) 0;
-}
 /* ── waiting / done states ── */
 .enroll-waiting {
   display: flex; align-items: center; justify-content: center;
@@ -1539,17 +1449,9 @@ a { color: inherit; text-decoration: none; }
   font-size: var(--text-sm); color: var(--color-ink-2);
 }
 .enroll-done-check {
-  font-size: 1.5rem; color: var(--color-ok); line-height: 1;
+  font-size: var(--text-xl); color: var(--color-success); line-height: 1;
 }
 
-.enroll-script-full {
-  margin: var(--space-sm) 0 0; padding: var(--space-md);
-  background: var(--color-paper); border: var(--rule-hair) solid var(--color-rule);
-  border-radius: var(--radius-sm); font-family: var(--font-mono);
-  font-size: 0.65rem; line-height: var(--leading-body);
-  white-space: pre-wrap; word-break: break-all; color: var(--color-ink-2);
-  max-height: 280px; overflow-y: auto;
-}
 
 /* ── machines: toolbar with filters + search for large fleets ── */
 .mc-toolbar {
@@ -1572,7 +1474,7 @@ a { color: inherit; text-decoration: none; }
   color: var(--color-accent);
 }
 .mc-filter-n {
-  font-family: var(--font-mono); font-size: 0.65rem; font-weight: 600;
+  font-family: var(--font-mono); font-size: var(--text-2xs); font-weight: 600;
   opacity: 0.7;
 }
 .mc-search {
@@ -1858,7 +1760,7 @@ a { color: inherit; text-decoration: none; }
 .bv-int-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-md); }
 .bv-int-head .name { display: flex; align-items: baseline; gap: var(--space-sm); font-weight: 600; }
 .bv-int-flag {
-  font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em;
+  font-size: var(--text-2xs); text-transform: uppercase; letter-spacing: 0.08em;
   color: var(--color-ink-3); border: var(--rule-hair) solid var(--color-rule);
   border-radius: var(--radius-pill); padding: 1px 6px; font-weight: 500;
 }
@@ -1894,7 +1796,7 @@ a { color: inherit; text-decoration: none; }
 /* admin topbar */
 .adm-bar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 var(--space-md); height: 52px;
+  padding: 0 var(--space-md); height: var(--adm-bar-h);
   background: var(--color-paper-2);
   border-bottom: var(--rule-hair) solid var(--color-rule);
   flex-shrink: 0; z-index: 10;
@@ -1907,7 +1809,7 @@ a { color: inherit; text-decoration: none; }
 }
 .adm-toggle:hover { background: var(--color-paper-3); color: var(--color-ink); }
 .adm-server {
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; gap: var(--space-2xs);
   font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-ink-3);
 }
 .adm-updated {
@@ -1928,38 +1830,48 @@ a { color: inherit; text-decoration: none; }
  * Two rails, collapsing independently, so the widths are variables and each
  * modifier moves exactly one of them. Writing four hand-rolled
  * grid-template-columns instead is how a third section would arrive with a
- * fifth. */
+ * fifth. Both rails take the same two widths - they had drifted to 218/236
+ * open and 56/52 collapsed, which is nobody's decision, just two people
+ * eyeballing the same rail on different days.
+ *
+ * The single explicit row is what makes the rails scroll. The shell is a flex
+ * child of a fixed, full-height frame, so it already knows how tall it is;
+ * `minmax(0, 1fr)` passes that height down instead of letting an implicit
+ * auto row size to its content. Each rail had been carrying its own
+ * `calc(100dvh - 52px)` to work around that - three copies of the topbar's
+ * height, each of which had to be corrected if the bar ever changed. */
 .adm-shell {
-  --adm-root-w: 218px;
-  --adm-sub-w: 236px;
+  --adm-root-w: var(--adm-rail-w);
+  --adm-sub-w:  var(--adm-rail-w);
   display: grid;
   grid-template-columns: var(--adm-root-w) var(--adm-sub-w) 1fr;
-  flex: 1; overflow: hidden;
+  grid-template-rows: minmax(0, 1fr);
+  flex: 1; min-height: 0; overflow: hidden;
   transition: grid-template-columns var(--dur-base) var(--ease-out);
 }
-.adm-shell--rootmini { --adm-root-w: 56px; }
-.adm-shell--submini  { --adm-sub-w: 52px; }
+.adm-shell--rootmini { --adm-root-w: var(--adm-rail-mini-w); }
+.adm-shell--submini  { --adm-sub-w:  var(--adm-rail-mini-w); }
 .adm-shell--nosub    { grid-template-columns: var(--adm-root-w) 1fr; }
 
 /* the root rail: which product */
 .adm-root {
-  height: calc(100dvh - 52px); overflow: hidden;
+  min-height: 0; overflow: hidden;
   background: var(--color-paper-2);
   border-right: var(--rule-hair) solid var(--color-rule);
   display: flex; flex-direction: column;
 }
 .adm-root-scroll { flex: 1; overflow-y: auto; padding: var(--space-sm) 0; }
-.adm-root-item { padding: 9px var(--space-sm); font-weight: 500; position: relative; }
 /* The longest label is "Token Monitoring"; it must not be the thing that
    decides how wide this rail is, so it ellipsises rather than pushing. */
 .adm-root .adm-item-text { display: block; }
 .adm-root .adm-item--on { font-weight: 600; }
-.adm-root--mini .adm-item { justify-content: center; padding: 10px 0; }
-.adm-root--mini .adm-group { padding: 0 4px; }
+.adm-root-item { font-weight: 500; position: relative; }
+.adm-root--mini .adm-item { justify-content: center; padding: var(--space-xs) 0; }
+.adm-root--mini .adm-group { padding: 0 var(--space-2xs); }
 /* Collapsed, a badge has nowhere to sit, so it becomes the fact that there IS
    one rather than what it says. */
 .adm-root-dot {
-  position: absolute; top: 6px; right: 8px;
+  position: absolute; top: var(--space-2xs); right: var(--space-xs);
   width: 5px; height: 5px; border-radius: 50%; background: var(--color-accent);
 }
 
@@ -1986,16 +1898,17 @@ a { color: inherit; text-decoration: none; }
 }
 .adm-whoami-text b { font-size: var(--text-xs); color: var(--color-ink); }
 .adm-whoami-text span {
-  font-family: var(--font-mono); font-size: 0.65rem; color: var(--color-ink-3);
+  font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--color-ink-3);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .adm-whoami-live {
-  position: absolute; top: 6px; right: 6px; width: 6px; height: 6px;
+  position: absolute; top: var(--space-2xs); right: var(--space-2xs);
+  width: 6px; height: 6px;
   border-radius: 50%; background: var(--color-success);
   box-shadow: 0 0 6px color-mix(in oklch, var(--color-success) 60%, transparent);
 }
 .adm-root--mini .adm-whoami { justify-content: center; }
-.adm-root--mini .adm-collapse { justify-content: center; padding: 6px; }
+.adm-root--mini .adm-collapse { justify-content: center; padding: var(--space-xs); }
 
 .adm-crumb {
   font-family: var(--font-display); font-size: var(--text-xs); font-weight: 600;
@@ -2003,24 +1916,36 @@ a { color: inherit; text-decoration: none; }
   border-left: var(--rule-hair) solid var(--color-rule);
 }
 
-/* admin sidebar */
+/* admin sidebar
+ *
+ * One scroll container, not two. The aside used to carry `overflow-y: auto`
+ * as well as its own `.adm-side-scroll` child, so a rail longer than the
+ * window produced two nested scrollbars and a wheel gesture that stopped
+ * halfway. `.adm-root` above has always had this right. The `transition:
+ * width` that used to live here never fired either - the width is a grid
+ * track on the parent, and the parent already animates it. */
 .adm-side {
-  height: calc(100dvh - 52px); overflow-y: auto; overflow-x: hidden;
+  min-height: 0; overflow: hidden;
   background: var(--color-paper); border-right: var(--rule-hair) solid var(--color-rule);
   display: flex; flex-direction: column;
-  transition: width var(--dur-base) var(--ease-out);
 }
 .adm-side-scroll { flex: 1; overflow-y: auto; padding: var(--space-sm) 0; }
 
 .adm-group { padding: 0 var(--space-sm); margin-bottom: var(--space-xs); }
 .adm-group-label {
-  display: block; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.1em;
-  color: var(--color-ink-3); font-weight: 600; padding: var(--space-sm) var(--space-sm) 3px;
+  display: block; font-size: var(--text-2xs); text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--color-ink-3); font-weight: 600;
+  padding: var(--space-sm) var(--space-sm) var(--space-2xs);
 }
 
+/* One row, one rhythm. The root rail asked for 9px of vertical padding and
+   the section rail for 6px, and because `.adm-root-item` is written above
+   `.adm-item` at the same specificity, the 9px had never actually applied to
+   anything - the rails have been the same height all along and only the
+   stylesheet disagreed. 8px is that height, spelled on the scale. */
 .adm-item {
   display: flex; align-items: center; gap: var(--space-sm);
-  padding: 6px var(--space-sm); border-radius: var(--radius-sm);
+  padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-sm);
   font-size: var(--text-sm); color: var(--color-ink-2); cursor: default;
   white-space: nowrap; overflow: hidden; text-decoration: none;
   border: none; background: none; width: 100%; text-align: left;
@@ -2030,7 +1955,13 @@ a { color: inherit; text-decoration: none; }
 .adm-item--btn:hover { background: var(--color-paper-2); color: var(--color-ink); }
 .adm-item--on {
   background: color-mix(in oklch, var(--color-accent) 12%, var(--color-paper-2));
-  color: var(--color-accent);
+  /* Flat --color-accent measures 3.0:1 against this background in the light
+     theme, under the 4.5:1 a 13px label needs, and the selected row is the
+     one row you most need to be able to read. Mixing toward the ink darkens
+     it in the light theme and lightens it in the dark one - 5.1:1 and 8.8:1 -
+     so it stays the accented row in both without becoming a different
+     colour in either. */
+  color: color-mix(in oklch, var(--color-accent) 70%, var(--color-ink));
 }
 .adm-item--on:hover { background: color-mix(in oklch, var(--color-accent) 18%, var(--color-paper-2)); }
 .adm-item--dim { opacity: 0.32; }
@@ -2040,19 +1971,27 @@ a { color: inherit; text-decoration: none; }
 .adm-item--upgrade:hover { color: var(--color-accent); }
 
 .adm-item-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; display: flex; flex-direction: column; line-height: 1.3; }
-.adm-item-ver { font-size: var(--text-xxs, 0.65rem); color: var(--color-ink-3); opacity: 0.7; }
+.adm-item-ver { font-size: var(--text-2xs); color: var(--color-ink-3); opacity: 0.7; }
 .adm-machine-row { position: relative; }
 .adm-machine-remove {
-  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  position: absolute; right: var(--space-2xs); top: 50%; transform: translateY(-50%);
   background: none; border: none; color: var(--color-ink-3); cursor: pointer;
-  font-size: 1rem; line-height: 1; padding: 2px 4px; border-radius: var(--radius-sm);
-  opacity: 0; transition: opacity 0.15s;
+  font-size: var(--text-base); line-height: 1; padding: 2px var(--space-2xs);
+  border-radius: var(--radius-sm);
+  opacity: 0; transition: opacity var(--dur-fast) var(--ease-out);
 }
 .adm-machine-row:hover .adm-machine-remove { opacity: 0.6; }
-.adm-machine-remove:hover { opacity: 1 !important; color: var(--color-bad); }
-.adm-item--editing { padding: 2px 6px; }
+.adm-machine-remove:hover { opacity: 1; color: var(--color-error); }
+/* Hover is the only thing that reveals this control, so on a touch screen it
+   was never revealed: removing a machine was a desktop-only feature by
+   accident. Where there is no hover, it is simply always there. */
+@media (hover: none) {
+  .adm-machine-remove { opacity: 0.6; }
+}
+.adm-item--editing { padding: var(--space-2xs); }
 .adm-rename-input {
-  width: 100%; padding: 4px 6px; border: 1px solid var(--color-accent);
+  width: 100%; padding: var(--space-2xs) var(--space-xs);
+  border: var(--rule-hair) solid var(--color-accent);
   border-radius: var(--radius-sm); background: var(--color-paper);
   color: var(--color-ink); font: inherit; font-size: var(--text-xs);
   outline: none;
@@ -2070,10 +2009,10 @@ a { color: inherit; text-decoration: none; }
 }
 .adm-nav-n.on  { color: var(--color-success); }
 .adm-nav-n.bad { color: var(--color-error); }
-.adm-nav-n.warn { color: var(--color-accent); }
+.adm-nav-n.warn { color: var(--color-warn); }
 
-.adm-side--mini .adm-item { justify-content: center; padding: 8px 0; }
-.adm-side--mini .adm-group { padding: 0 4px; }
+.adm-side--mini .adm-item { justify-content: center; padding: var(--space-xs) 0; }
+.adm-side--mini .adm-group { padding: 0 var(--space-2xs); }
 
 .adm-side-foot {
   padding: var(--space-sm); border-top: var(--rule-hair) solid var(--color-rule);
@@ -2082,31 +2021,63 @@ a { color: inherit; text-decoration: none; }
 .adm-collapse {
   display: flex; align-items: center; gap: var(--space-xs); width: 100%;
   background: none; border: var(--rule-hair) solid var(--color-rule);
-  border-radius: var(--radius-sm); padding: 6px var(--space-sm);
+  border-radius: var(--radius-sm); padding: var(--space-xs) var(--space-sm);
   font-size: var(--text-xs); color: var(--color-ink-3); cursor: pointer;
   font-family: var(--font-body); transition: all var(--dur-fast) var(--ease-out);
 }
 .adm-collapse:hover { border-color: var(--color-rule-strong); color: var(--color-ink-2); }
-.adm-side--mini .adm-collapse { justify-content: center; padding: 6px; }
+.adm-side--mini .adm-collapse { justify-content: center; padding: var(--space-xs); }
+
+/* keyboard focus
+ *
+ * Every control in this shell had a :hover and none of them had a
+ * :focus-visible, so tabbing through the navigation moved a highlight nobody
+ * could see. The marketing page has done this correctly from the start; this
+ * is the same treatment, one rule for the whole shell so the rails and the
+ * topbar cannot drift apart.
+ *
+ * The ring is drawn inside the border box rather than outside it. Both rails
+ * clip - .adm-root-scroll and .adm-side-scroll are scroll containers, and the
+ * rows sit flush against their edges - so an outset ring would be sliced off
+ * on exactly the rows nearest the rail's boundary. Inset, it is always whole.
+ * --color-focus measures at least 4.9:1 against every surface these controls
+ * sit on, in both themes, including the accent-tinted selected row. */
+.adm-item--btn:focus-visible,
+.adm-whoami:focus-visible,
+.adm-collapse:focus-visible,
+.adm-toggle:focus-visible,
+.adm-theme:focus-visible,
+.adm-machine-remove:focus-visible,
+.lb-inline-link:focus-visible {
+  outline: var(--rule-bold) solid var(--color-focus);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
+  color: var(--color-ink);
+  opacity: 1;
+}
 
 /* admin icons: same shape as board icons */
 .adm .ic { width: 16px; height: 16px; flex-shrink: 0; }
 .adm .ic path { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
 /* admin content area */
-.adm-content { height: calc(100dvh - 52px); overflow-y: auto; }
+.adm-content { min-height: 0; overflow-y: auto; }
 
 /* When BoardView is embedded inside the admin shell, it should not
-   create its own scroll container — the admin content area scrolls. */
+   create its own scroll container - the admin content area scrolls. */
 .adm-content .bv-board { height: auto; overflow-y: visible; }
 
+/* One gutter for the whole shell. A form page and a board page are different
+   widths, which is what --wide is for, but they are not different distances
+   from the edge of the window - reading one after the other, the content used
+   to step sideways. */
 .adm-page {
-  max-width: 640px; padding: var(--space-2xl) var(--space-xl) var(--space-3xl);
+  max-width: 640px;
+  padding: var(--adm-gutter) var(--adm-gutter) var(--space-3xl);
 }
-/* The root pages are boards, not forms — they get the width the panels want. */
+/* The root pages are boards, not forms - they get the width the panels want. */
 .adm-page--wide {
   max-width: 1180px; display: grid; gap: var(--space-lg);
-  padding: var(--space-xl) var(--space-xl) var(--space-3xl);
 }
 .adm-head {
   display: flex; align-items: flex-start; justify-content: space-between;
@@ -2124,7 +2095,6 @@ a { color: inherit; text-decoration: none; }
   background: none; border: 0; padding: 0; font: inherit; cursor: pointer;
   color: var(--color-accent); text-decoration: underline;
 }
-
 /* ── settings ─────────────────────────────────────────────────────── */
 
 .set-row {
@@ -2300,7 +2270,7 @@ a { color: inherit; text-decoration: none; }
   position: absolute; top: 50%; right: var(--space-sm); transform: translateY(-50%);
   background: var(--color-paper-3); border: var(--rule-hair) solid var(--color-rule-strong);
   border-radius: var(--radius-sm); padding: 4px 10px;
-  font-family: var(--font-mono); font-size: 0.65rem; text-transform: uppercase;
+  font-family: var(--font-mono); font-size: var(--text-2xs); text-transform: uppercase;
   letter-spacing: 0.08em; color: var(--color-ink-3); cursor: pointer;
   transition: all var(--dur-fast) var(--ease-out);
 }
@@ -2337,7 +2307,7 @@ a { color: inherit; text-decoration: none; }
 .sh-hs--done .sh-hs-label { color: var(--color-ink); }
 .sh-hs--active .sh-hs-label { color: var(--color-ink-2); }
 .sh-hs-detail {
-  display: block; font-size: 0.65rem; color: var(--color-ink-3); margin-top: 1px;
+  display: block; font-size: var(--text-2xs); color: var(--color-ink-3); margin-top: 1px;
   font-family: var(--font-mono); letter-spacing: 0.02em;
 }
 
@@ -2401,37 +2371,95 @@ a { color: inherit; text-decoration: none; }
   display: flex; gap: var(--space-md); justify-content: center; margin-top: var(--space-lg);
 }
 
-/* mobile */
+/* mobile
+ *
+ * Below this width the two rails cannot both be columns; there is not enough
+ * screen for one of them, never mind two. The root rail stays a column of
+ * icons, because it is the only way to change which product you are looking
+ * at.
+ *
+ * The section rail used to be `display: none`. That rail is the machine
+ * switcher, the assistant switcher and the panel jump list, so on a phone the
+ * board offered no way to do any of the three: you saw whichever machine
+ * happened to be first and scrolled. It is turned on its side instead - the
+ * same buttons, in the same order, as a horizontally scrolling strip under
+ * the topbar. It works because the rail is a flat list of buttons in either
+ * direction, so nothing has to be hidden and no JSX has to change; the strip
+ * is the rail, laid out the way the space allows.
+ */
 @media (max-width: 768px) {
-  /* The root rail is the only way to change what you are looking at, so it
-     stays — as icons. The machine list is the thing to give up. */
+  /* Row 1 is the strip, row 2 the content, and the root rail spans both so it
+     still runs the full height. A section with no second rail leaves row 1
+     empty, and `auto` collapses it to nothing - so this one grid serves both
+     shapes without a --nosub special case. */
   .adm-shell,
-  .adm-shell--nosub { grid-template-columns: 56px 1fr; }
-  .adm-root { --adm-root-w: 56px; }
-  .adm-root .adm-item { justify-content: center; padding: 10px 0; }
+  .adm-shell--nosub {
+    grid-template-columns: var(--adm-rail-mini-w) 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .adm-root    { grid-column: 1; grid-row: 1 / -1; }
+  .adm-side    { grid-column: 2; grid-row: 1; }
+  .adm-content { grid-column: 2; grid-row: 2; }
+
+  .adm-root .adm-item { justify-content: center; padding: var(--space-xs) 0; }
   .adm-root .adm-item-text,
   .adm-root .adm-group-label,
   .adm-root .adm-nav-n,
   .adm-root .adm-whoami-text,
   .adm-root .adm-collapse span { display: none; }
   .adm-root .adm-whoami, .adm-root .adm-collapse { justify-content: center; }
+
+  /* the section rail, on its side */
+  .adm-side {
+    flex-direction: row; align-items: stretch;
+    border-right: 0; border-bottom: var(--rule-hair) solid var(--color-rule);
+    background: var(--color-paper-2);
+  }
+  .adm-side .adm-side-scroll {
+    display: flex; align-items: center; gap: var(--space-2xs);
+    overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain;
+    padding: var(--space-2xs) var(--space-xs);
+  }
+  .adm-side .adm-group {
+    display: flex; align-items: center; gap: var(--space-2xs);
+    padding: 0; margin: 0; flex: 0 0 auto;
+  }
+  /* The group name earns its place here as a divider - it is what tells you
+     that the chips either side of it are machines rather than panels. */
+  .adm-side .adm-group-label {
+    padding: 0 var(--space-2xs); flex: 0 0 auto;
+    border-left: var(--rule-hair) solid var(--color-rule);
+  }
+  .adm-side .adm-group:first-child .adm-group-label { border-left: 0; }
+  .adm-side .adm-item {
+    width: auto; flex: 0 0 auto; justify-content: flex-start;
+    padding: var(--space-2xs) var(--space-sm);
+    border: var(--rule-hair) solid var(--color-rule);
+    border-radius: var(--radius-pill);
+    background: var(--color-paper);
+  }
+  .adm-side .adm-item--on { background: color-mix(in oklch, var(--color-accent) 12%, var(--color-paper)); }
+  .adm-side .adm-item-text { flex: 0 0 auto; }
+  /* Absolute inside a chip would sit on top of the label. */
+  .adm-side .adm-machine-row .adm-machine-remove {
+    position: static; transform: none; opacity: 0.6;
+  }
+  /* Collapsing a strip that is already one row tall does nothing. */
+  .adm-side-foot { display: none; }
+
   .adm-crumb { display: none; }
   .adm-bar { padding: 0 var(--space-xs); }
   .adm-bar-left, .adm-bar-right { gap: var(--space-xs); }
   .adm-server { display: none; }
-  .adm-page--wide { padding: var(--space-lg) var(--space-md) var(--space-3xl); }
   .set-row { flex-direction: column; align-items: flex-start; gap: var(--space-xs); }
   .set-share { flex-direction: column; }
-  .adm-side { display: none; }
-  .adm-page { padding: var(--space-lg) var(--space-md); }
   .sh-step-body { padding-left: var(--space-lg); }
   .sh-key-row { flex-direction: column; }
 }
-
 /* ═══ leaderboard ═════════════════════════════════════════════════════
  *
  * A scoreboard, built like one: a podium, then a ranked table. Everything
- * here is a token from tokens.css, so the light theme comes free — the one
+ * here is a token from tokens.css, so the light theme comes free - the one
  * exception is the medal palette, which is three named metals and would be
  * wrong in any other colour.
  */
@@ -2504,7 +2532,7 @@ a { color: inherit; text-decoration: none; }
 .lb-pod--silver .lb-pod-medal { background: oklch(80% 0.02 250); }
 .lb-pod--bronze .lb-pod-medal { background: oklch(65% 0.10 55); }
 /* The step is what makes it read as a podium rather than three cards, so the
-   metal has to reach it — a step the same colour as the card behind it is
+   metal has to reach it - a step the same colour as the card behind it is
    invisible on a dark ground. */
 .lb-pod--gold .lb-pod-step {
   border-top-color: oklch(80% 0.15 85);
@@ -2749,7 +2777,7 @@ a { color: inherit; text-decoration: none; }
 /* ═══ the hero band ════════════════════════════════════════════════════
  *
  * The headline above a leaderboard page. It is a band rather than a card
- * because it is not one of the panels — it is the sentence they are all
+ * because it is not one of the panels - it is the sentence they are all
  * footnotes to, and giving it the same border as the cards under it would
  * make it read as the first of them.
  */
@@ -2763,7 +2791,7 @@ a { color: inherit; text-decoration: none; }
   gap: var(--space-lg); flex-wrap: wrap;
 }
 .hero-eyebrow {
-  display: block; font-family: var(--font-display); font-size: 0.65rem;
+  display: block; font-family: var(--font-display); font-size: var(--text-2xs);
   font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
   color: var(--color-ink-3); margin-bottom: var(--space-xs);
 }

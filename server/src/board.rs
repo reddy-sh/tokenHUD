@@ -10,7 +10,7 @@ use std::io::Write;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
-/// 32 bytes of OS randomness, base64url, unpadded — the shape Python's
+/// 32 bytes of OS randomness, base64url, unpadded - the shape Python's
 /// `secrets.token_urlsafe(32)` produces. Used for the board key, enrollment
 /// tokens, and per-machine keys alike, so every secret in the system has the
 /// same strength and the same look.
@@ -18,7 +18,7 @@ pub fn new_secret() -> String {
     const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
     let mut buf = [0u8; 32];
     if unsafe { libc::getentropy(buf.as_mut_ptr() as *mut libc::c_void, buf.len()) } != 0 {
-        eprintln!("could not read randomness from the OS — refusing to invent a secret");
+        eprintln!("could not read randomness from the OS - refusing to invent a secret");
         std::process::exit(1);
     }
     let mut out = String::new();
@@ -46,7 +46,7 @@ pub fn sha256_hex(s: &str) -> String {
 
 /// The human half of the handshake: six characters derived from the token, so
 /// the terminal that ran `enroll` and the board deciding whether to approve it
-/// can be checked against each other by eye. The alphabet drops 0/O/1/I/L/U —
+/// can be checked against each other by eye. The alphabet drops 0/O/1/I/L/U -
 /// a code someone reads aloud must not have two spellings.
 pub fn pairing_code(token: &str) -> String {
     const ALPHABET: &[u8] = b"ABCDEFGHJKMNPQRSTVWXYZ23456789";
@@ -69,7 +69,7 @@ pub fn pairing_code(token: &str) -> String {
 /// One counter and a notification, which is all a fan-out needs here.
 ///
 /// Watchers wait for the counter to move; an ingest moves it. No queues, so a
-/// slow watcher cannot make the server buffer without bound — it simply wakes
+/// slow watcher cannot make the server buffer without bound - it simply wakes
 /// late and sends the current state, which for a status board is the correct
 /// thing to send anyway. Missing an intermediate reading costs nothing when
 /// every event carries the whole truth.
@@ -112,11 +112,11 @@ pub struct App {
     pub key: String,
     pub protect_reads: bool,
     pub max_streams: u64,
-    /// True when the server is bound to 127.0.0.1 — only then is it safe
+    /// True when the server is bound to 127.0.0.1 - only then is it safe
     /// for the portal to fetch the admin key without a header.
     pub loopback_only: bool,
     /// The address this server is reachable at from outside, when that is not
-    /// the address a request arrived on — a reverse proxy, a tunnel, a
+    /// the address a request arrived on - a reverse proxy, a tunnel, a
     /// hostname. Empty means "answer with whatever Host the caller used",
     /// which is right until something sits in front.
     ///
@@ -127,7 +127,7 @@ pub struct App {
     /// One-time stream tokens: EventSource cannot set a header, and putting
     /// the board key itself in a URL would write the fleet's admin credential
     /// into every access log. So the browser trades the key (in a header) for
-    /// a 60-second single-use token, and only THAT rides the query string —
+    /// a 60-second single-use token, and only THAT rides the query string -
     /// worthless the moment it is seen.
     stream_tokens: Mutex<std::collections::HashMap<String, std::time::Instant>>,
     /// One-time install tokens: same idea as stream tokens, but for the
@@ -138,7 +138,7 @@ pub struct App {
 }
 
 /// The overview is cached in two shapes: the public one, and the one for a
-/// caller holding the board key. They differ by exactly one field — the
+/// caller holding the board key. They differ by exactly one field - the
 /// machines list, which carries pending pairing codes and fleet inventory
 /// that open-by-default reads have no business serving.
 #[derive(Default)]
@@ -236,7 +236,7 @@ impl App {
         });
         // Enrollment state rides the same payload the board already watches,
         // so a machine claiming a link appears on screen the moment it happens
-        // — but only for a reader holding the board key. Pending pairing codes
+        // - but only for a reader holding the board key. Pending pairing codes
         // and the fleet inventory are not for the open-reads default.
         if admin {
             out["machines"] = json!(self.store.machines());
@@ -277,15 +277,15 @@ impl App {
     ///
     /// `overview()` takes every host out of SQLite under a single lock, parses a
     /// 61 KB reading for each and serialises the lot back out. Measured at
-    /// 9.4 ms in the Python server — and the event stream did it once per reader
+    /// 9.4 ms in the Python server - and the event stream did it once per reader
     /// per reading, so a hundred watchers meant a hundred times the work to
     /// produce a hundred identical copies. Fan-out cost grew with the audience,
     /// which is the wrong shape for a thing whose entire purpose is being
     /// watched.
     ///
     /// The key is the ingest counter and the current second: the counter because
-    /// a new reading must never wait, the second because two fields —
-    /// `generatedAt` and each host's age — are answers about now rather than
+    /// a new reading must never wait, the second because two fields -
+    /// `generatedAt` and each host's age - are answers about now rather than
     /// about the data, and a second is finer than anyone reads a status board.
     pub fn board_json(&self, admin: bool) -> Vec<u8> {
         let key = (self.bus.current(), Utc::now().timestamp());

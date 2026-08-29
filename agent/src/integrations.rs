@@ -4,39 +4,53 @@
 //! easy question ("what can I see?") and leaves the useful one unanswered
 //! ("why can't I see Gemini, and what do I do about it?"). A blank tile is a
 //! dead end. So this catalogue lists every tool in the market that burns
-//! tokens, states plainly which of four situations it is in on THIS machine,
-//! and — this is the part that earns the file — carries the steps that move it
+//! tokens, states plainly which of five situations it is in on THIS machine,
+//! and - this is the part that earns the file - carries the steps that move it
 //! to the next one.
 //!
-//! The four situations, and why they are four rather than two:
+//! The five situations, and why they are five rather than two:
 //!
-//!   · **Reading** — a collector has real numbers, right now.
-//!   · **Ready** — the tool is here and TokenHUD can read it; it just has not
+//!   · **Reading** - a collector has real numbers, right now.
+//!   · **Ready** - the tool is here and TokenHUD can read it; it just has not
 //!     recorded anything yet. Nothing to fix; use the tool.
-//!   · **Needs setup** — the numbers exist or would exist, but something on
+//!   · **Needs setup** - the numbers exist or would exist, but something on
 //!     this machine has to be switched on first. Gemini CLI's telemetry is the
 //!     archetype: one key in `settings.json` turns an unreadable tool into a
 //!     readable one. These tiles carry steps.
-//!   · **API only** — the tool keeps nothing local worth reading; its usage
+//!   · **No reader** - the numbers are on this machine and TokenHUD ships
+//!     nothing that opens them. The gap is in TokenHUD, not in the tool, and
+//!     nothing the user does will close it.
+//!   · **API only** - the tool keeps nothing local worth reading; its usage
 //!     lives behind an admin or billing API, usually one only an org owner can
 //!     call. The steps say so, including when the honest answer is "you cannot
 //!     do this on a personal plan".
 //!
-//! A fifth would be dishonest to omit: some tools are pure web products and
+//! **The fourth of those was added because the catalogue was lying.** Six
+//! entries -
+//! Cline, OpenCode, Roo Code, Kilo Code, Goose and LM Studio - were marked
+//! `Local`, which means "a collector reads this today", and no collector
+//! existed for any of them. Installed, they rendered as "Ready - nothing
+//! recorded yet / Installed and readable", which is a claim about TokenHUD
+//! dressed up as a claim about the tool, and false in both halves on a machine
+//! where the tool had recorded plenty. OpenCode now has a real collector
+//! (`opencode.rs`) and is genuinely `Local`; the other five say what is
+//! actually true, which is that this build cannot read them yet.
+//!
+//! A sixth would be dishonest to omit: some tools are pure web products and
 //! keep no local trace at all. They are listed as `Cloud` with no steps,
 //! because inventing an enablement path for Bolt.new would waste the reader's
 //! afternoon.
 //!
 //! **What is claimed here is scoped deliberately.** `verified` marks the
 //! handful of paths confirmed by opening them on a real machine; everything
-//! else is `documented` — taken from the tool's own docs or a well-known
+//! else is `documented` - taken from the tool's own docs or a well-known
 //! open-source parser, and not yet seen with our own eyes. The distinction is
 //! kept because a setup step that turns out to be wrong costs a user more than
 //! a missing tile does, and a catalogue that flattened the two would be
 //! claiming a confidence it has not got.
 //!
-//! Nothing in this file opens a file. It probes for existence — `is_dir`,
-//! `exists` — exactly as the assistant detection does, and every path it
+//! Nothing in this file opens a file. It probes for existence - `is_dir`,
+//! `exists` - exactly as the assistant detection does, and every path it
 //! touches is declared in `manifest.rs` under PROBED.
 
 use crate::transcripts::home;
@@ -49,6 +63,14 @@ pub enum Access {
     Local,
     /// Local files carry the numbers, but something must be enabled first.
     Setup,
+    /// Local files carry the numbers and this build ships no reader for them.
+    ///
+    /// The distinction from `Setup` is who is blocked. `Setup` is a switch on
+    /// the user's machine; this is a collector that has not been written, and
+    /// there is nothing the user can do about it. Calling that `Local` - as
+    /// this file did for six tools - puts an untrue sentence on the board and
+    /// wastes the reader's time looking for the setting that would fix it.
+    Unread,
     /// Nothing usable locally; usage lives behind an API or a dashboard.
     Api,
     /// A web product. No local trace exists to read, at any setting.
@@ -60,13 +82,14 @@ impl Access {
         match self {
             Access::Local => "local",
             Access::Setup => "setup",
+            Access::Unread => "unread",
             Access::Api => "api",
             Access::Cloud => "cloud",
         }
     }
 }
 
-/// How well this entry is known. See the module comment — the distinction is
+/// How well this entry is known. See the module comment - the distinction is
 /// load-bearing and is surfaced to the board rather than kept as a comment.
 #[derive(PartialEq, Clone, Copy)]
 pub enum Confidence {
@@ -140,7 +163,7 @@ pub const CATALOGUE: &[Integration] = &[
         steps: &[
             "Install the CLI: npm install -g @github/copilot",
             "Sign in once: run `copilot` and follow the device-code prompt",
-            "Use it — a session writes its totals when it exits, and TokenHUD reads them",
+            "Use it - a session writes its totals when it exits, and TokenHUD reads them",
         ],
         docs: Some("https://docs.github.com/en/copilot/how-tos/use-copilot-agents/use-copilot-cli"),
     },
@@ -152,12 +175,12 @@ pub const CATALOGUE: &[Integration] = &[
         confidence: Confidence::Verified,
         probes: &[".local/share/devin", ".config/devin"],
         where_: "~/.local/share/devin/cli/sessions.db, the session rows' metadata",
-        fields: "credits and ACU per session, model, mode, and timestamps — reported as \
+        fields: "credits and ACU per session, model, mode, and timestamps - reported as \
                  credits, never converted to dollars",
         steps: &[
             "Install the CLI: curl -fsSL https://devin.ai/install.sh | sh",
             "Sign in: devin login",
-            "Run a session — usage lands in the local SQLite store TokenHUD reads",
+            "Run a session - usage lands in the local SQLite store TokenHUD reads",
         ],
         docs: Some("https://docs.devin.ai/terminal/overview"),
     },
@@ -176,9 +199,9 @@ pub const CATALOGUE: &[Integration] = &[
         steps: &[
             "Open ~/.gemini/settings.json (create it if it is not there)",
             "Add: \"telemetry\": { \"enabled\": true, \"target\": \"local\", \"outfile\": \"~/.gemini/telemetry.log\" }",
-            "Use an absolute path for outfile — the documented example is relative to the \
+            "Use an absolute path for outfile - the documented example is relative to the \
              working directory, which scatters one log per project",
-            "Set \"logPrompts\": false in the same block — TokenHUD never wants prompt text, \
+            "Set \"logPrompts\": false in the same block - TokenHUD never wants prompt text, \
              and this stops the CLI writing it to disk in the first place",
             "Run gemini once; the outfile appears and TokenHUD reads it from then on. No \
              collector process is needed: outfile replaces the OTLP endpoint",
@@ -189,19 +212,22 @@ pub const CATALOGUE: &[Integration] = &[
         id: "cline",
         name: "Cline",
         rank: 8,
-        access: Access::Local,
+        access: Access::Unread,
         confidence: Confidence::Documented,
         probes: &[".cline"],
         where_: "the extension's VS Code global storage, under saoudrizwan.claude-dev. The \
                  layout inside it has changed between releases, so the collector probes for \
                  the task store rather than assuming a fixed filename",
         fields: "tokensIn, tokensOut, cacheWrites, cacheReads and cost, from the \
-                 `api_req_started` records — per request, and summed per task",
+                 `api_req_started` records - per request, and summed per task",
         steps: &[
-            "Install the Cline extension in VS Code (or the CLI: npm install -g cline)",
-            "Run at least one task — tracking is on by default, with nothing to switch on",
-            "If you run Cline inside Cursor, VSCodium or VS Code Insiders, its data lives under \
-             that editor's own support directory rather than the stock VS Code one",
+            "Nothing on this machine is switched off: Cline records tokens and cost by \
+             default, and has since the first release",
+            "What is missing is a TokenHUD collector for the task store under \
+             saoudrizwan.claude-dev - the layout has moved between releases, so it has to \
+             probe for the store rather than assume a filename",
+            "It would also have to find the right editor: Cline inside Cursor, VSCodium or \
+             VS Code Insiders writes under that editor's support directory, not the stock one",
         ],
         docs: Some("https://docs.cline.bot/"),
     },
@@ -210,14 +236,20 @@ pub const CATALOGUE: &[Integration] = &[
         name: "OpenCode",
         rank: 12,
         access: Access::Local,
-        confidence: Confidence::Documented,
+        confidence: Confidence::Verified,
         probes: &[".local/share/opencode"],
         where_: "~/.local/share/opencode/opencode.db on 1.2 and later; per-message JSON \
                  under storage/message/ on older builds",
-        fields: "per-message input, output, cache and reasoning tokens, model, and cost",
+        fields: "input, output, reasoning and cache read/write tokens per assistant message, \
+                 summed by model and provider and by day, plus the cost OpenCode itself \
+                 recorded - which is 0 for subscription and free-tier work, and is reported \
+                 as no figure rather than as $0.00",
         steps: &[
             "Install: curl -fsSL https://opencode.ai/install | bash",
-            "Run a session — both the current SQLite store and the legacy JSON layout are read",
+            "Run a session - nothing else to switch on",
+            "The database is read where there is one, and the pre-1.2 JSON layout only where \
+             there is not: an upgraded machine holds the same messages in both, and reading \
+             both would count every one of them twice",
         ],
         docs: Some("https://opencode.ai/docs/"),
     },
@@ -225,15 +257,16 @@ pub const CATALOGUE: &[Integration] = &[
         id: "roo-code",
         name: "Roo Code",
         rank: 11,
-        access: Access::Local,
+        access: Access::Unread,
         confidence: Confidence::Documented,
         probes: &[".roo"],
         where_: "VS Code global storage under rooveterinaryinc.roo-cline/tasks/",
-        fields: "per-task tokens in and out, cache tokens, and cost — the Cline layout, \
+        fields: "per-task tokens in and out, cache tokens, and cost - the Cline layout, \
                  which Roo forked",
         steps: &[
-            "Install the Roo Code extension in VS Code",
-            "Run at least one task",
+            "Nothing to switch on - Roo records per-task tokens and cost by default",
+            "What is missing is a TokenHUD collector for rooveterinaryinc.roo-cline/tasks/. \
+             Roo forked Cline's layout, so one reader would very likely serve both",
         ],
         docs: Some("https://docs.roocode.com/"),
     },
@@ -241,12 +274,16 @@ pub const CATALOGUE: &[Integration] = &[
         id: "kilo-code",
         name: "Kilo Code",
         rank: 17,
-        access: Access::Local,
+        access: Access::Unread,
         confidence: Confidence::Documented,
         probes: &[".kilocode"],
         where_: "VS Code global storage under kilocode.kilo-code/tasks/",
         fields: "per-task tokens and cost, in the same shape as Cline and Roo",
-        steps: &["Install the Kilo Code extension in VS Code", "Run at least one task"],
+        steps: &[
+            "Nothing to switch on - Kilo records per-task tokens and cost by default",
+            "What is missing is a TokenHUD collector for kilocode.kilo-code/tasks/, which is \
+             the Cline layout again",
+        ],
         docs: Some("https://kilocode.ai/docs"),
     },
     Integration {
@@ -261,7 +298,7 @@ pub const CATALOGUE: &[Integration] = &[
         steps: &[
             "Turn analytics on for yourself: aider --analytics",
             "Or write it once: put `analytics: true` in ~/.aider.conf.yml",
-            "Aider's own analytics upload stays off unless you opt into it separately — \
+            "Aider's own analytics upload stays off unless you opt into it separately - \
              this only writes the local file TokenHUD reads",
         ],
         docs: Some("https://aider.chat/docs/more/analytics.html"),
@@ -273,7 +310,7 @@ pub const CATALOGUE: &[Integration] = &[
         access: Access::Setup,
         confidence: Confidence::Documented,
         probes: &[".continue"],
-        where_: "~/.continue/dev_data/**/*.jsonl — the development-data event log",
+        where_: "~/.continue/dev_data/**/*.jsonl - the development-data event log",
         fields: "tokens generated per event, with model and provider",
         steps: &[
             "Install the Continue extension in VS Code or JetBrains",
@@ -286,14 +323,16 @@ pub const CATALOGUE: &[Integration] = &[
         id: "goose",
         name: "Goose",
         rank: 18,
-        access: Access::Local,
+        access: Access::Unread,
         confidence: Confidence::Documented,
         probes: &[".local/share/goose", ".config/goose"],
         where_: "~/.local/share/goose/sessions/*.jsonl",
         fields: "per-session token totals and model; OpenTelemetry export is available for more",
         steps: &[
-            "Install: brew install block-goose-cli",
-            "Run a session — Goose writes one JSONL per session",
+            "Nothing to switch on - Goose writes one JSONL per session to \
+             ~/.local/share/goose/sessions/ on its own",
+            "What is missing is a TokenHUD reader for that format. It is the closest of \
+             these to the Codex reader already here, which walks a JSONL tree the same way",
         ],
         docs: Some("https://block.github.io/goose/"),
     },
@@ -301,15 +340,17 @@ pub const CATALOGUE: &[Integration] = &[
         id: "lm-studio",
         name: "LM Studio",
         rank: 19,
-        access: Access::Local,
+        access: Access::Unread,
         confidence: Confidence::Documented,
         probes: &[".lmstudio", ".cache/lm-studio"],
         where_: "~/.lmstudio/conversations/*.json",
-        fields: "per-message token counts and the local model that produced them — tokens \
+        fields: "per-message token counts and the local model that produced them - tokens \
                  only, since a local model has no bill",
         steps: &[
-            "Install LM Studio and load a model",
-            "Chat once, or start its local server — conversations are written to disk",
+            "Nothing to switch on - LM Studio writes its conversations to \
+             ~/.lmstudio/conversations/ as you use it",
+            "What is missing is a TokenHUD reader for them. Note there would be tokens and \
+             no dollars at the end of it: a model running on your own hardware has no bill",
         ],
         docs: Some("https://lmstudio.ai/docs"),
     },
@@ -320,7 +361,7 @@ pub const CATALOGUE: &[Integration] = &[
         access: Access::Setup,
         confidence: Confidence::Documented,
         probes: &[".ollama"],
-        where_: "nothing on disk by default — Ollama returns counts per request and keeps none",
+        where_: "nothing on disk by default - Ollama returns counts per request and keeps none",
         fields: "prompt_eval_count and eval_count per request, if something records them",
         steps: &[
             "Ollama does not persist usage: every response carries the counts and they are \
@@ -339,13 +380,13 @@ pub const CATALOGUE: &[Integration] = &[
         access: Access::Api,
         confidence: Confidence::Verified,
         probes: &[".cursor"],
-        where_: "nothing readable locally — the chat store keeps timestamps and the tracking \
+        where_: "nothing readable locally - the chat store keeps timestamps and the tracking \
                  database keeps code attribution, neither holds a token count",
         fields: "via the Teams admin API: inputTokens, outputTokens, cacheWriteTokens, \
                  cacheReadTokens and totalCents per usage event, on the events where \
                  isTokenBasedCall is true",
         steps: &[
-            "This needs a Cursor team — a personal Pro plan has no usage API",
+            "This needs a Cursor team - a personal Pro plan has no usage API",
             "In the Cursor dashboard, open Settings → Cursor Admin API Keys and create a key",
             "Give it to TokenHUD; it calls POST https://api.cursor.com/teams/\
              filtered-usage-events with that key as the Basic-auth username and no password, \
@@ -362,18 +403,18 @@ pub const CATALOGUE: &[Integration] = &[
         access: Access::Api,
         confidence: Confidence::Verified,
         probes: &[".config/github-copilot"],
-        where_: "nothing locally — the extension's session store holds the conversation and \
+        where_: "nothing locally - the extension's session store holds the conversation and \
                  no usage. Use the CLI tile for local numbers",
         fields: "via GitHub's APIs: premium-request quantities and dollar amounts per SKU, \
-                 and org-level engagement metrics — not raw tokens",
+                 and org-level engagement metrics - not raw tokens",
         steps: &[
-            "For your own tokens, use the Copilot CLI instead — it writes them locally, and \
+            "For your own tokens, use the Copilot CLI instead - it writes them locally, and \
              this API reports premium requests rather than tokens either way",
             "As an individual: create a token with Plan read permission and call \
-             GET /users/{username}/settings/billing/premium_request/usage — this works on a \
+             GET /users/{username}/settings/billing/premium_request/usage - this works on a \
              personal Pro plan, provided the account is on the enhanced billing platform",
             "For an org: an owner enables the Copilot usage-metrics policy, then calls \
-             GET /orgs/{org}/copilot/metrics with read:org — engagement only, no tokens",
+             GET /orgs/{org}/copilot/metrics with read:org - engagement only, no tokens",
             "For an enterprise bill: GET /enterprises/{enterprise}/settings/billing/\
              premium_request/usage, which needs an admin or billing manager and a classic \
              token with admin:enterprise",
@@ -387,13 +428,13 @@ pub const CATALOGUE: &[Integration] = &[
         access: Access::Api,
         confidence: Confidence::Verified,
         probes: &[".codeium", ".windsurf"],
-        where_: "nothing readable locally — ~/.codeium holds settings, caches and indexes, \
+        where_: "nothing readable locally - ~/.codeium holds settings, caches and indexes, \
                  no usage record",
         fields: "via the Cascade Analytics API: day, model, mode, messages sent and \
-                 promptsUsed — credits in hundredths, so 100 is one credit. Credits, not tokens: \
+                 promptsUsed - credits in hundredths, so 100 is one credit. Credits, not tokens: \
                  Windsurf does not expose a token count anywhere",
         steps: &[
-            "This needs a Windsurf team — an individual or Pro plan has no usage API, only the \
+            "This needs a Windsurf team - an individual or Pro plan has no usage API, only the \
              plan page in the app and the in-IDE Plan Info tab",
             "A team admin creates a service key with Teams Read-only at windsurf.com/team/manage \
              (Team Settings → Service Keys) and switches on individual-level analytics",
@@ -411,10 +452,10 @@ pub const CATALOGUE: &[Integration] = &[
         access: Access::Api,
         confidence: Confidence::Verified,
         probes: &[".aws/amazonq"],
-        where_: "nothing locally — the CLI's chat history holds the conversation and carries \
+        where_: "nothing locally - the CLI's chat history holds the conversation and carries \
                  no token or cost field",
         fields: "no tokens, at all. Every one of the 43 metrics Amazon Q reports is a count of \
-                 lines, events, messages or findings — this tool cannot fill a token tile from \
+                 lines, events, messages or findings - this tool cannot fill a token tile from \
                  any source, local or remote",
         steps: &[
             "There is no token metric to fetch: TokenHUD shows Amazon Q as active and says so, \
@@ -432,7 +473,7 @@ pub const CATALOGUE: &[Integration] = &[
         access: Access::Api,
         confidence: Confidence::Documented,
         probes: &[".cache/JetBrains", "Library/Caches/JetBrains"],
-        where_: "no local usage file — quota is held against the JetBrains account",
+        where_: "no local usage file - quota is held against the JetBrains account",
         fields: "quota used and remaining, on the JetBrains account page",
         steps: &[
             "Check your quota at account.jetbrains.com under AI",
@@ -449,7 +490,7 @@ pub const CATALOGUE: &[Integration] = &[
         access: Access::Api,
         confidence: Confidence::Documented,
         probes: &[".config/zed", "Library/Application Support/Zed"],
-        where_: "no local usage store — prompt usage is metered server-side",
+        where_: "no local usage store - prompt usage is metered server-side",
         fields: "monthly prompt counts on the zed.dev account page",
         steps: &[
             "See usage at zed.dev/account",
@@ -465,7 +506,7 @@ pub const CATALOGUE: &[Integration] = &[
         access: Access::Api,
         confidence: Confidence::Documented,
         probes: &[],
-        where_: "not a tool but a router — if a tool here points at OpenRouter, this is where \
+        where_: "not a tool but a router - if a tool here points at OpenRouter, this is where \
                  its real usage lands",
         fields: "per-request tokens, model and cost, by API key, from the activity endpoint",
         steps: &[
@@ -482,7 +523,7 @@ pub const CATALOGUE: &[Integration] = &[
         access: Access::Api,
         confidence: Confidence::Documented,
         probes: &[],
-        where_: "the provider's own admin usage and cost reports — the backstop for any tool \
+        where_: "the provider's own admin usage and cost reports - the backstop for any tool \
                  that exposes nothing itself",
         fields: "tokens and cost by day, model, API key and workspace",
         steps: &[
@@ -513,7 +554,7 @@ pub const CATALOGUE: &[Integration] = &[
         access: Access::Cloud,
         confidence: Confidence::Documented,
         probes: &[],
-        where_: "a web product — no local trace at any setting",
+        where_: "a web product - no local trace at any setting",
         fields: "credits, in the Vercel account",
         steps: &[],
         docs: None,
@@ -525,7 +566,7 @@ pub const CATALOGUE: &[Integration] = &[
         access: Access::Cloud,
         confidence: Confidence::Documented,
         probes: &[],
-        where_: "a web product — no local trace at any setting",
+        where_: "a web product - no local trace at any setting",
         fields: "tokens, in the StackBlitz account",
         steps: &[],
         docs: None,
@@ -537,7 +578,7 @@ pub const CATALOGUE: &[Integration] = &[
         access: Access::Cloud,
         confidence: Confidence::Documented,
         probes: &[],
-        where_: "a web product — no local trace at any setting",
+        where_: "a web product - no local trace at any setting",
         fields: "credits, in the Lovable account",
         steps: &[],
         docs: None,
@@ -546,7 +587,7 @@ pub const CATALOGUE: &[Integration] = &[
 
 /// Is any of this tool's probe paths on this machine?
 ///
-/// Existence only. A probe is `is_dir`/`exists` and never an open — the same
+/// Existence only. A probe is `is_dir`/`exists` and never an open - the same
 /// rule the assistant detection follows, and the reason every one of these is
 /// declared under PROBED rather than READS.
 fn present(probes: &[&str]) -> bool {
@@ -582,6 +623,8 @@ pub fn collect(reading: &[(&str, bool)]) -> Vec<Value> {
                     Access::Local => "absent",
                     Access::Setup if installed => "needs-setup",
                     Access::Setup => "absent",
+                    Access::Unread if installed => "no-reader",
+                    Access::Unread => "absent",
                     Access::Api => "api-only",
                     Access::Cloud => "cloud-only",
                 }
@@ -591,11 +634,17 @@ pub fn collect(reading: &[(&str, bool)]) -> Vec<Value> {
             // same sentence about the same machine.
             let headline = match state {
                 "reading" => "Read by this board.",
-                "ready" => "Installed and readable — it has not recorded anything yet.",
+                "ready" => "Installed and readable - it has not recorded anything yet.",
                 "needs-setup" => "Installed. One step on this machine turns its numbers on.",
+                // The headline says where the gap is, because the previous one
+                // sent people looking for a setting that does not exist.
+                "no-reader" => {
+                    "Installed, and its numbers are on this machine. TokenHUD has no reader \
+                     for them yet - nothing on your side is switched off."
+                }
                 "api-only" if installed => "Installed here, but it keeps no usage on this machine.",
                 "api-only" => "Its usage lives behind an API, not on this machine.",
-                "cloud-only" => "A web product — nothing to read on this machine.",
+                "cloud-only" => "A web product - nothing to read on this machine.",
                 _ => "Not installed here.",
             };
             json!({
@@ -629,6 +678,10 @@ pub fn summary(rows: &[Value]) -> Value {
         "reading": count("reading"),
         "ready": count("ready"),
         "needsSetup": count("needs-setup"),
+        // Counted separately from needsSetup on purpose. The header line reads
+        // "N could be" off needsSetup + apiOnly, and a tool nobody can enable
+        // does not belong in that number - it is work for us, not for them.
+        "noReader": count("no-reader"),
         "apiOnly": count("api-only"),
         "installed": rows.iter().filter(|r| r["installed"] == true).count(),
     })
@@ -641,8 +694,8 @@ mod tests {
     #[test]
     fn every_entry_that_can_be_fixed_says_how() {
         // The point of the file: a tile a user could act on must carry the
-        // action. Local tools that are simply not installed are exempt —
-        // "install it" is not advice anyone needs written down — but a Setup
+        // action. Local tools that are simply not installed are exempt -
+        // "install it" is not advice anyone needs written down - but a Setup
         // or Api entry with no steps is a dead end of exactly the kind this
         // catalogue exists to remove.
         for i in CATALOGUE {
@@ -650,6 +703,22 @@ mod tests {
                 assert!(
                     !i.steps.is_empty(),
                     "{} is fixable but carries no steps",
+                    i.name
+                );
+            }
+            // An Unread entry is not fixable by the reader, and its steps have
+            // to say so rather than listing an install the user has already
+            // done. The word is the check: these tiles exist to move the
+            // blame off the user's machine and onto this build.
+            if i.access == Access::Unread {
+                assert!(
+                    !i.steps.is_empty(),
+                    "{} says it cannot be read but not why",
+                    i.name
+                );
+                assert!(
+                    i.steps.iter().any(|s| s.contains("TokenHUD")),
+                    "{}'s steps must name where the gap actually is",
                     i.name
                 );
             }
@@ -683,8 +752,49 @@ mod tests {
         // because there is nothing to set up until it exists.
         assert!(
             row["state"] == "absent" || row["state"] == "ready",
-            "a local tool is either here or not — never mid-configuration"
+            "a local tool is either here or not - never mid-configuration"
         );
+    }
+
+    /// The bug this file was carrying: six tools declared `Local` - "a
+    /// collector reads this today" - with no collector anywhere in the crate.
+    /// Installed, they said "Installed and readable", which was false about a
+    /// machine holding thousands of unread messages.
+    #[test]
+    fn a_tool_is_only_local_if_something_in_this_crate_actually_reads_it() {
+        // The modules that hold a collector, from lib.rs. A `Local` entry has
+        // to point at one of them.
+        const READ_BY: &[&str] = &["claude-code", "codex", "copilot-cli", "devin", "opencode"];
+        for i in CATALOGUE {
+            if i.access == Access::Local {
+                assert!(
+                    READ_BY.contains(&i.id),
+                    "{} claims a collector reads it and none does - that renders as \
+                     \"Installed and readable\" on a board that cannot read it",
+                    i.name
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_tool_with_no_reader_blames_this_build_and_not_the_user() {
+        let rows = collect(&[]);
+        for id in ["cline", "roo-code", "kilo-code", "goose", "lm-studio"] {
+            let row = rows.iter().find(|r| r["id"] == id).unwrap();
+            assert_eq!(row["access"], "unread");
+            assert!(
+                row["state"] == "absent" || row["state"] == "no-reader",
+                "{id} is either not here or here-and-unread - never \"ready\""
+            );
+            if row["state"] == "no-reader" {
+                let headline = row["headline"].as_str().unwrap();
+                assert!(
+                    headline.contains("TokenHUD has no reader"),
+                    "{id} must say where the gap is: {headline}"
+                );
+            }
+        }
     }
 
     #[test]

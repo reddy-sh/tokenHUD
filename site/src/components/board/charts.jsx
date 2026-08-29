@@ -198,7 +198,7 @@ export function StackedBarChart({ rows, names, colors, height = 200, yFmt = comp
   )
 }
 
-/* ── hour histogram: one series, no legend — the title names it ─────── */
+/* ── hour histogram: one series, no legend - the title names it ─────── */
 
 export function HourChart({ hours }) {
   const [ref, w] = useWidth()

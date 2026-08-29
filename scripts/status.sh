@@ -22,7 +22,7 @@ print("%d machine(s), %d reporting - %s snapshots - %.1f MB db"
            $counts"
   row server "$detail"
 elif alive "$RUN/server.pid"; then
-  row server "process up (pid $(cat "$RUN/server.pid")) but $URL not answering — logs/server.log"
+  row server "process up (pid $(cat "$RUN/server.pid")) but $URL not answering - logs/server.log"
 else
   row server "down   → ./scripts/start-server.sh"
 fi
@@ -38,12 +38,12 @@ fi
 
 # ── portal ──
 if curl -sf -m 2 -o /dev/null "http://localhost:$PORTAL_PORT" 2>/dev/null; then
-  # Serving, but from the module graph it booted with — a dependency added
+  # Serving, but from the module graph it booted with - a dependency added
   # since then resolves to nothing and the page renders blank.
   if [ -f "$ROOT/site/node_modules/.package-lock.json" ] \
     && [ "$ROOT/site/node_modules/.package-lock.json" -nt "$RUN/portal.pid" ] 2>/dev/null; then
     row portal "up → http://localhost:$PORTAL_PORT
-           STALE: dependencies changed since it started — ./scripts/start-portal.sh restarts it"
+           STALE: dependencies changed since it started - ./scripts/start-portal.sh restarts it"
   else
     row portal "up → http://localhost:$PORTAL_PORT"
   fi
