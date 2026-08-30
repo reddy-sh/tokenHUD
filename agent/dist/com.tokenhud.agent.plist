@@ -3,13 +3,24 @@
   Run the agent at login, and keep it running.
 
   Install:
-    cp agent-rs/dist/com.tokenhud.agent.plist ~/Library/LaunchAgents/
-    # edit the two REPLACE-ME values below, then:
+    cp agent/dist/com.tokenhud.agent.plist ~/Library/LaunchAgents/
+    # point it at your binary; launchd expands neither ~ nor $HOME, so this
+    # has to be an absolute path:
+    sed -i '' "s|REPLACE-ME/path/to/tokenhud-agent|$(command -v tokenhud-agent)|" \
+      ~/Library/LaunchAgents/com.tokenhud.agent.plist
     launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.tokenhud.agent.plist
 
   Stop and remove:
     launchctl bootout gui/$(id -u)/com.tokenhud.agent
     rm ~/Library/LaunchAgents/com.tokenhud.agent.plist
+
+  An enrolled machine needs no key here. `tokenhud-agent enroll` already wrote
+  the ingest URL and this machine's own key to ~/.tokenhud/machine.json, and
+  the agent reads both from there. That is why TOKENHUD_SERVER and TOKENHUD_KEY
+  are commented out below rather than sitting there as REPLACE-ME: setting one
+  of them overrides half an enrollment, which pairs a key with a server it was
+  not issued for, and the failure is a quiet 401 rather than a loud one.
+  Uncomment them only for a manual install against your own server.
 
   A LaunchAgent (not a LaunchDaemon) on purpose: it runs as you, in your login
   session, and can read your home directory. A daemon runs as root before you
@@ -28,10 +39,13 @@
 
   <key>EnvironmentVariables</key>
   <dict>
+    <!-- Manual installs only. An enrolled machine reads both of these from
+         ~/.tokenhud/machine.json; see the note at the top of this file.
     <key>TOKENHUD_SERVER</key>
     <string>http://127.0.0.1:8787</string>
     <key>TOKENHUD_KEY</key>
     <string>REPLACE-ME-with-your-key</string>
+    -->
     <key>TOKENHUD_INTERVAL</key>
     <string>30</string>
   </dict>

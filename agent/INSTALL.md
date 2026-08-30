@@ -272,7 +272,8 @@ Afterwards each cycle reads only what was appended — a few kilobytes, about
 
 ```bash
 cp agent/dist/com.tokenhud.agent.plist ~/Library/LaunchAgents/
-$EDITOR ~/Library/LaunchAgents/com.tokenhud.agent.plist   # two REPLACE-ME values
+sed -i '' "s|REPLACE-ME/path/to/tokenhud-agent|$(command -v tokenhud-agent)|" \
+  ~/Library/LaunchAgents/com.tokenhud.agent.plist
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.tokenhud.agent.plist
 ```
 
@@ -285,12 +286,16 @@ tail -f /tmp/tokenhud-agent.log
 launchctl bootout gui/$(id -u)/com.tokenhud.agent
 ```
 
-The two REPLACE-ME values are the path to the binary and `TOKENHUD_KEY`. **A
-cloud-enrolled machine has one**: set the path, and delete the
-`TOKENHUD_SERVER` and `TOKENHUD_KEY` entries from `EnvironmentVariables` —
-`~/.tokenhud/machine.json` supplies both, and setting one of them in the
-environment overrides half an enrollment, which pairs a key with a server it
-was not issued for.
+That `sed` fills in the file's one REPLACE-ME: the absolute path to the
+binary. It has to be absolute — launchd expands neither `~` nor `$HOME`. If
+`command -v` comes back empty the binary is not on your PATH, so pass the path
+yourself; `~/.local/bin/tokenhud-agent` is where the install script puts it.
+
+Nothing else needs editing. `TOKENHUD_SERVER` and `TOKENHUD_KEY` ship
+commented out, because on an enrolled machine `~/.tokenhud/machine.json`
+supplies both, and setting one of them in the environment overrides half an
+enrollment, which pairs a key with a server it was not issued for. Uncomment
+them only for a manual install against your own server.
 
 A **LaunchAgent, not a LaunchDaemon**, deliberately: it runs as you, in your
 login session, and can read your home directory. A daemon runs as root before
@@ -300,19 +305,28 @@ you log in — more privilege than this needs, and the wrong user to read
 ### Linux — systemd
 
 ```bash
-mkdir -p ~/.config/systemd/user ~/.config/tokenhud
+mkdir -p ~/.config/systemd/user
 cp agent/dist/tokenhud-agent.service ~/.config/systemd/user/
-printf 'TOKENHUD_SERVER=http://your-board:8787\nTOKENHUD_KEY=…\n' > ~/.config/tokenhud/env
-chmod 600 ~/.config/tokenhud/env
 systemctl --user daemon-reload
 systemctl --user enable --now tokenhud-agent
 journalctl --user -u tokenhud-agent -f
 ```
 
-That `printf` is the shared-key configuration. A cloud-enrolled machine needs
-neither variable — `machine.json` carries the ingest URL and its own key — but
-the unit's `EnvironmentFile=%h/.config/tokenhud/env` is not optional, so create
-the file anyway: empty, or holding only `TOKENHUD_INTERVAL=30`.
+A cloud-enrolled machine needs no configuration at all: `machine.json` carries
+the ingest URL and its own key, and the unit marks its env file optional
+(`EnvironmentFile=-%h/.config/tokenhud/env`), so a missing file starts the
+service instead of failing it.
+
+For a manual install against your own server, write that file first:
+
+```bash
+mkdir -p ~/.config/tokenhud
+printf 'TOKENHUD_SERVER=http://your-board:8787\nTOKENHUD_KEY=…\n' > ~/.config/tokenhud/env
+chmod 600 ~/.config/tokenhud/env
+```
+
+Do not write it on an enrolled machine. Naming a server there overrides half an
+enrollment, and the failure is a quiet 401 rather than a loud one.
 
 A **user service**, for the same reason. Run it as root and it reads root's home
 directory, finds nothing, and reports an idle machine — worse than not running,

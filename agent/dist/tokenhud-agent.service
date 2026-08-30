@@ -4,8 +4,7 @@
 # Install as a USER service, not a system one:
 #
 #   mkdir -p ~/.config/systemd/user
-#   cp agent-rs/dist/tokenhud-agent.service ~/.config/systemd/user/
-#   mkdir -p ~/.config/tokenhud && $EDITOR ~/.config/tokenhud/env   # see below
+#   cp agent/dist/tokenhud-agent.service ~/.config/systemd/user/
 #   systemctl --user daemon-reload
 #   systemctl --user enable --now tokenhud-agent
 #
@@ -19,7 +18,13 @@
 # If nobody stays logged in on that box:
 #   sudo loginctl enable-linger $USER
 #
-# ~/.config/tokenhud/env holds:
+# CONFIGURATION. If you ran `tokenhud-agent enroll`, there is nothing to do:
+# the ingest URL and this machine's own key are in ~/.tokenhud/machine.json and
+# the agent reads them from there. Do not also write an env file naming a
+# server — that overrides half an enrollment, pairing a key with a server it
+# was not issued for, and the failure is a quiet 401 rather than a loud one.
+#
+# For a manual install against your own server, create ~/.config/tokenhud/env:
 #   TOKENHUD_SERVER=http://your-board:8787
 #   TOKENHUD_KEY=…
 #   TOKENHUD_INTERVAL=30
@@ -33,7 +38,9 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-EnvironmentFile=%h/.config/tokenhud/env
+# Leading "-" so an enrolled machine, which has no env file and needs none,
+# starts anyway. Without it systemd fails the unit on a missing file.
+EnvironmentFile=-%h/.config/tokenhud/env
 ExecStart=%h/.local/bin/tokenhud-agent
 Restart=on-failure
 RestartSec=30
