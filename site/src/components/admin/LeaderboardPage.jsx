@@ -57,7 +57,10 @@ export default function LeaderboardPage({
 
   return (
     <TipProvider>
-      <div className="adm-page adm-page--wide">
+      {/* Demand is charts and stat tiles across the full width; the other three
+          are tables and headline copy, which read better against the 1180px
+          column. So the opt-out is per page rather than on the wrapper. */}
+      <div className={'adm-page adm-page--wide' + (page === 'demand' ? ' adm-page--full' : '')}>
         {page === 'standings' && <Standings board={board} meId={meId} right={shareBtn} />}
         {page === 'live' && <Live board={board} />}
         {page === 'models' && <Models board={board} />}

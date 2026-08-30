@@ -9,6 +9,7 @@ import SectionRail from './admin/SectionRail'
 import Settings from './admin/Settings'
 import { ShareModal } from './board/share'
 import BoardView from './BoardView'
+import { useMobileNav } from '../lib/mobileNav'
 
 /* The self-host admin portal.
  *
@@ -519,6 +520,10 @@ export default function SelfHost({ onClose }) {
   const toggleRoot = useCallback(() => {
     setRootMini(c => { save(SK_ROOTNAV, c ? '' : '1'); return !c })
   }, [])
+
+  /* The hamburger means "mini the root rail" on a desktop and "open the
+     section rail" on a phone; see lib/mobileNav.js. */
+  const { navOpen, onHamburger, closeNav } = useMobileNav({ setCollapsed, toggleRoot })
   const goto = useCallback(key => {
     if (key !== 'monitoring') setPendingTool(null)
     setSection(key); save(SK_SECTION, key)
@@ -604,7 +609,7 @@ export default function SelfHost({ onClose }) {
   return (
     <div className="dashboard-frame adm">
       <AdminTopbar
-        onCollapse={toggleRoot}
+        onCollapse={onHamburger}
         serverUrl={serverUrl.current} serverOk
         onClose={onClose}
         theme={theme} onTheme={toggleTheme}
@@ -616,7 +621,12 @@ export default function SelfHost({ onClose }) {
       <div className={'adm-shell'
         + (rootMini ? ' adm-shell--rootmini' : '')
         + (collapsed ? ' adm-shell--submini' : '')
-        + (hasSubNav ? '' : ' adm-shell--nosub')}>
+        + (hasSubNav ? '' : ' adm-shell--nosub')
+        + (navOpen ? ' adm-shell--navopen' : '')}>
+
+        {navOpen && (
+          <button className="adm-scrim" onClick={closeNav} aria-label="Close navigation" />
+        )}
 
         <RootRail
           section={section} onSection={goto}

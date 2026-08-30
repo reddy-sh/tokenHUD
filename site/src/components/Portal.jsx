@@ -13,6 +13,7 @@ import SectionRail from './admin/SectionRail'
 import { useNow } from './board/util'
 import BoardView from './BoardView'
 import AuthCard from './portal/AuthCard'
+import { useMobileNav } from '../lib/mobileNav'
 
 /* The portal: sign in, register machines, watch the board.
  *
@@ -230,6 +231,10 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
   const toggleRoot = useCallback(() => {
     setRootMini(c => { save(SK_ROOTNAV, c ? '' : '1'); return !c })
   }, [])
+
+  /* The hamburger means "mini the root rail" on a desktop and "open the
+     section rail" on a phone; see lib/mobileNav.js. */
+  const { navOpen, onHamburger, closeNav } = useMobileNav({ setCollapsed, toggleRoot })
   const goto = useCallback(key => {
     if (key !== 'monitoring') setPendingTool(null)
     setSection(key); save(SK_SECTION, key)
@@ -294,7 +299,7 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
   return (
     <div className="dashboard-frame adm">
       <AdminTopbar
-        onCollapse={toggleRoot}
+        onCollapse={onHamburger}
         onClose={onClose}
         onSignOut={handleSignOut}
         streaming={synced}
@@ -308,7 +313,12 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
       <div className={'adm-shell'
         + (rootMini ? ' adm-shell--rootmini' : '')
         + (collapsed ? ' adm-shell--submini' : '')
-        + (hasSubNav ? '' : ' adm-shell--nosub')}>
+        + (hasSubNav ? '' : ' adm-shell--nosub')
+        + (navOpen ? ' adm-shell--navopen' : '')}>
+
+        {navOpen && (
+          <button className="adm-scrim" onClick={closeNav} aria-label="Close navigation" />
+        )}
 
         <RootRail
           section={section} onSection={goto}

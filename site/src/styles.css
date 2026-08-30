@@ -168,6 +168,22 @@ a { color: inherit; text-decoration: none; }
 
 .nav__brand b { font-weight: 800; color: var(--color-accent); }
 
+/* Anchors the mobile links panel to the bar rather than the page. */
+.nav__inner { position: relative; }
+
+/* Desktop has room for the links themselves, so the button is mobile-only. */
+.nav__menubtn {
+  display: none;
+  align-items: center; justify-content: center;
+  width: 34px; height: 34px; flex-shrink: 0;
+  background: none; border: var(--rule-hair) solid var(--color-rule);
+  border-radius: var(--radius-pill);
+  color: var(--color-ink-2); cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.nav__menubtn:hover { color: var(--color-ink); border-color: var(--color-rule-strong); }
+.nav__menubtn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+
 .nav__links {
   display: flex;
   justify-content: center;
@@ -1110,7 +1126,38 @@ a { color: inherit; text-decoration: none; }
 
 /* ── responsive ──────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .nav__links { display: none; }
+  /* Menu, brand, call to action — the button is first in the DOM too, so what
+     a screen reader hears matches what a phone shows.
+
+     Three tracks, not four: the links panel is absolutely positioned and so
+     takes no part in auto-placement, which is what put the call to action in
+     the 1fr track and stretched it into the orange banner that was swallowing
+     the bar. The 1fr belongs to the brand, which is inline-flex and sits at
+     the left of it. */
+  .nav__inner { grid-template-columns: auto 1fr auto; }
+  .nav__menubtn { display: inline-flex; }
+  /* A button, not a headline — it shares a 440px bar with two other things. */
+  .nav__cta { padding: var(--space-2xs) var(--space-sm); font-size: var(--text-xs); }
+  .nav__links {
+    display: none;
+    position: absolute; top: calc(100% + var(--space-xs)); left: 0; right: 0;
+    flex-direction: column; align-items: stretch; justify-content: flex-start;
+    gap: 0; padding: var(--space-xs);
+    /* Opaque, unlike the bar above it. The bar is a sliver over a gradient and
+       can afford to be translucent; a five-item menu sitting over the hero
+       cannot — the display type reads straight through it. */
+    background: var(--color-paper);
+    border: var(--rule-hair) solid var(--color-rule-strong);
+    border-radius: var(--radius-md);
+    box-shadow: 0 18px 40px -12px color-mix(in oklch, var(--color-paper) 100%, transparent);
+  }
+  .nav--open .nav__links { display: flex; }
+  .nav__links a {
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+  }
+  .nav__links a:hover { background: var(--color-paper-2); }
   .hero__display { font-size: clamp(2.5rem, 10vw, 5rem); }
   .stats { grid-template-columns: 1fr 1fr; }
   .legend { grid-template-columns: 1fr; }
@@ -1591,14 +1638,15 @@ a { color: inherit; text-decoration: none; }
 
 /* ── integrations marketplace ──────────────────────────────────── */
 .mkt-page { padding: var(--space-xl); }
-/* Written as a compound selector on purpose. `.mkt-page` alone ties on
-   specificity with `.adm-page--wide`, which is declared later in this file and
-   therefore won this outright — so the marketplace was silently capped at the
-   1180px reading width meant for the board pages, and left-aligned inside a
-   viewport twice that. On a wide monitor the result was a wall of cards with a
-   dead band down the right-hand side. A card grid is the one layout here that
-   genuinely wants the whole window: every extra 240px is another column. */
-.adm-page--wide.mkt-page { max-width: none; }
+/* Full-width opt-out, for the pages that are a grid of cards or charts rather
+   than a column of prose. 1180px is a reading width and reading is not what
+   these are for; capped and left-aligned in a viewport twice that, they render
+   as content with a dead band down the right-hand side.
+
+   Written as a compound selector on purpose. A single class ties on specificity
+   with `.adm-page--wide`, which is declared later in this file and would
+   therefore win outright — which is exactly how the cap went unnoticed. */
+.adm-page--wide.adm-page--full { max-width: none; }
 .mkt-header {
   display: flex; justify-content: space-between; align-items: flex-start;
   gap: var(--space-lg); margin-bottom: var(--space-lg);
@@ -2114,6 +2162,8 @@ a { color: inherit; text-decoration: none; }
 
 /* admin content area */
 .adm-content { height: calc(100dvh - 52px); overflow-y: auto; }
+/* Only ever visible under the mobile nav drawer; see the 768px block. */
+.adm-scrim { display: none; border: 0; padding: 0; }
 
 /* When BoardView is embedded inside the admin shell, it should not
    create its own scroll container — the admin content area scrolls. */
@@ -2441,10 +2491,66 @@ a { color: inherit; text-decoration: none; }
   .adm-page--wide { padding: var(--space-lg) var(--space-md) var(--space-3xl); }
   .set-row { flex-direction: column; align-items: flex-start; gap: var(--space-xs); }
   .set-share { flex-direction: column; }
-  .adm-side { display: none; }
+  /* The section rail carries the machine list, the assistants, every board
+     section and the Leaderboard's own pages — so hiding it left a phone with a
+     board it could scroll and nothing it could navigate. It becomes a drawer
+     over the content instead, the same pattern .bv-rail already uses, opened
+     by the topbar hamburger. It starts beside the root rail rather than at the
+     edge, so the icons stay reachable and the drawer reads as the second rail
+     it is rather than as a modal. */
+  .adm-side {
+    /* Below the topbar, not over it: the bar carries the hamburger that opened
+       this, plus Live, theme and close, and a drawer that swallows the button
+       you used to open it is a drawer you cannot shut the same way. */
+    position: fixed; inset: 52px auto 0 56px;
+    width: min(300px, calc(100vw - 56px));
+    height: calc(100dvh - 52px); z-index: 60;
+    border-right: var(--rule-hair) solid var(--color-rule-strong);
+    /* Offset by its own width *and* the root rail it starts after, or a sliver
+       of the closed drawer sits over the icons. */
+    transform: translateX(calc(-100% - 56px));
+    transition: transform var(--dur-base) var(--ease-out);
+  }
+  .adm-shell--navopen .adm-side { transform: translateX(0); }
+  /* Mini is a desktop trade — icons to buy content width. A drawer has already
+     bought it, so the rows keep their labels whatever the stored preference. */
+  .adm-side--mini .adm-item { justify-content: flex-start; padding: 8px var(--space-sm); }
+  .adm-side--mini .adm-group { padding: 0 var(--space-xs); }
+  /* Collapsing a drawer is not a thing it can do — the rule above keeps the
+     labels either way — so the control would sit there doing nothing. The
+     scrim, the hamburger and Escape all close it. */
+  .adm-side .adm-side-foot { display: none; }
+  .adm-shell--navopen .adm-scrim {
+    display: block; position: fixed; inset: 52px 0 0 0; z-index: 55;
+    background: rgb(0 0 0 / 0.5);
+  }
   .adm-page { padding: var(--space-lg) var(--space-md); }
   .sh-step-body { padding-left: var(--space-lg); }
   .sh-key-row { flex-direction: column; }
+
+  /* A card head is a title on the left and a status on the right, which at
+     this width is two things fighting over 340px — the title wraps mid-word
+     and the status is pushed off the edge. Let them stack. */
+  .bv-card-head { flex-wrap: wrap; align-items: flex-start; gap: var(--space-xs); }
+
+  /* The usage table is three columns held rigid by `white-space: nowrap`, so
+     it cannot shrink to the card and the reset countdown — the one number the
+     panel exists for — was being clipped off the right edge. Wrapping is the
+     right trade here: a phone would rather read two lines than scroll a table
+     sideways inside a card. */
+  .bv-uw tbody th, .bv-uw .r { white-space: normal; }
+  .bv-uw tbody th { padding-right: var(--space-sm); }
+  .bv-uw td.nt { word-break: break-word; }
+
+  /* The Integrations header is a title beside a three-up stat block, and at
+     this width neither half will shrink below its content — so the header grew
+     past the page, took the single grid track with it, and pushed every row
+     below it off the right edge. Letting both halves wrap fixes the track and
+     therefore the whole page. */
+  .mkt-header { flex-wrap: wrap; }
+  .mkt-header-left { min-width: 0; }
+  .mkt-stats { flex-wrap: wrap; gap: var(--space-md); }
+  .adm-page--full > * { min-width: 0; }
 }
 
 /* ═══ leaderboard ═════════════════════════════════════════════════════

@@ -95,7 +95,25 @@ function resetCell(row, now) {   /* eslint-disable-line no-unused-vars -- now fo
   return `Resets in ${dur(secs)}`
 }
 
-export function UsageWindows({ lim }) {
+/* Tokens over the trailing seven days, from this board's own transcript index.
+ *
+ * The percentages above it come out of Claude Code's cache and are only as
+ * fresh as the last time Claude Code talked to the usage endpoint. This is
+ * counted here, from files already on disk, so it moves every cycle whatever
+ * the cache is doing — which is the difference between a panel that has gone
+ * quiet and a panel that says nothing at all. */
+function tokensLast7(usage, now) {
+  const rows = (usage && usage.byDay) || []
+  if (!rows.length) return null
+  // `now` comes from the panel's ticking clock rather than Date.now(), so the
+  // window rolls with the same tick that ages the cache above it.
+  const cutoff = new Date(now - 7 * 86400_000).toISOString().slice(0, 10)
+  let total = 0
+  for (const r of rows) if (r && r.date && r.date >= cutoff) total += Number(r.tokens) || 0
+  return total || null
+}
+
+export function UsageWindows({ lim, usage }) {
   const now = useNow(1000)
 
   if (!lim || !lim.available) {
@@ -114,6 +132,7 @@ export function UsageWindows({ lim }) {
 
   const age = lim.ageSeconds
   const stale = age != null && age > (lim.staleAfterSeconds || 3600)
+  const live7 = tokensLast7(usage, now)
   const rows = (lim.windows || []).slice()
   const when = lim.fetchedAt ? clock(lim.fetchedAt) : 'unknown'
   const agoTxt = age == null ? '' : ` · ${dur(age)} ago`
@@ -157,6 +176,29 @@ export function UsageWindows({ lim }) {
           })}
         </tbody>
       </table>
+
+      {/* The figure that cannot go stale, whatever the cache is doing. Kept
+          under the table rather than in it: it answers a different question —
+          not "how much of the plan is gone" but "is anything still moving". */}
+      {live7 != null && (
+        <p className="bv-note" style={{ marginTop: 12 }}>
+          <b className="tnum">{compact(live7)}</b> tokens in the last 7 days —
+          counted here from your own transcripts, current as of this reading.
+        </p>
+      )}
+
+      {/* The remedy belongs where the problem is stated. It used to live only
+          in the stale caption's title attribute, which nobody hovers and a
+          phone cannot show at all. */}
+      {stale && (
+        <div className="bv-warnbar" style={{ marginTop: 12 }}>
+          These percentages are {dur(age)} old. TokenHUD never asks Anthropic for
+          them — it reads the cache Claude Code writes, and Claude Code only
+          refreshes it when it talks to the usage endpoint. Run <b>/usage</b> in
+          Claude Code and the next reading will pick it up. The reset countdowns
+          above are absolute and stay exact meanwhile.
+        </div>
+      )}
     </Card>
   )
 }

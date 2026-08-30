@@ -8,7 +8,7 @@ import { AddMachineModal, MachinesPanel, UpgradeModal } from './board/enroll'
 import { ExtensionsCard, governanceBadges, McpCard, PermissionsCard, ToolCallsCard } from './board/governance'
 import Leaderboard from './board/leaderboard'
 import {
-    ActivityCard, Card, DriversCard, EndedFeed, HostsFeed, HoursCard, IntegrationsCard, LiveCard,
+    ActivityCard, Card, DriversCard, EndedFeed, HostsFeed, HoursCard, LiveCard,
     ModelsTable, Offboard, ProjectsFeed, PromptsFeed, RateCard, SessionsTable, SpendCard, Tiles,
     TokensCard, UsageWindows,
 } from './board/panels'
@@ -138,7 +138,6 @@ export default function BoardView({
   const toolId = (tool && tool.id) || 'claude-code'
   const gov = m.governance || NO_FACTS
   const codex = m.codex || NO_FACTS
-  const intSummary = m.integrationSummary || NO_FACTS
   const endings = data?.endings || NO_ROWS
   const hosts = data?.hosts || NO_ROWS
   const machines = data?.machines || NO_ROWS
@@ -193,13 +192,6 @@ export default function BoardView({
       { id: 'p-permissions', label: 'Permissions', icon: 'shield', badge: govB.permissions.text },
       { id: 'p-extensions', label: 'Extensions', icon: 'blocks', badge: govB.extensions.text },
       { id: 'p-machines', label: 'Machines', icon: 'machines', badge: up + '/' + hosts.length, tone: hosts.length && up < hosts.length ? 'bad' : null },
-      {
-        id: 'p-integrations',
-        label: 'Integrations',
-        icon: 'plug',
-        badge: (intSummary.reading || 0) + '/' + (intSummary.known || 0),
-        tone: (intSummary.needsSetup || 0) > 0 ? 'warn' : null,
-      },
       ...(toolId === 'claude-code'
         ? [{ id: 'p-prompts', label: 'Prompts', icon: 'prompts', badge: String((m.prompts || []).length) }]
         : []),
@@ -240,7 +232,7 @@ export default function BoardView({
       ...shared,
       { id: 'p-recently-finished', label: 'Recently finished', icon: 'ended', badge: endedHour ? String(endedHour) : null },
     ]
-  }, [cur, offboard, hosts, processes, endings, toolId, gov, codex, usage, intSummary, m.projects, m.prompts, m.limits, claude.daily, claude.models, myRank, profiles.length, embedded])
+  }, [cur, offboard, hosts, processes, endings, toolId, gov, codex, usage, m.projects, m.prompts, m.limits, claude.daily, claude.models, myRank, profiles.length, embedded])
 
   /* ── report state to parent when embedded ──
         Dependencies, not a bare effect: the shell turns this into state, so
@@ -326,9 +318,6 @@ export default function BoardView({
           <MachinesPanel machines={machines} cloud={cloud} onAdd={() => setAddOpen(true)} />
         </div>
       </Section>
-      <Section id="p-integrations">
-        <IntegrationsCard integrations={m.integrations} summary={m.integrationSummary} />
-      </Section>
       {toolId === 'claude-code' && <Section id="p-prompts"><PromptsFeed prompts={m.prompts} /></Section>}
     </>
   )
@@ -361,7 +350,7 @@ export default function BoardView({
           </Section>
           {leaderboardSection}
           <Section id="p-usage-windows" cols={2}>
-            <UsageWindows lim={m.limits} />
+            <UsageWindows lim={m.limits} usage={usage} />
             <HoursCard hours={claude.hours} />
           </Section>
           <Section id="p-activity" cols={2}>
