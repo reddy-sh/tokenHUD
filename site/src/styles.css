@@ -1590,7 +1590,15 @@ a { color: inherit; text-decoration: none; }
 .mc-search::placeholder { color: var(--color-ink-3); }
 
 /* ── integrations marketplace ──────────────────────────────────── */
-.mkt-page { padding: var(--space-xl); max-width: none; }
+.mkt-page { padding: var(--space-xl); }
+/* Written as a compound selector on purpose. `.mkt-page` alone ties on
+   specificity with `.adm-page--wide`, which is declared later in this file and
+   therefore won this outright — so the marketplace was silently capped at the
+   1180px reading width meant for the board pages, and left-aligned inside a
+   viewport twice that. On a wide monitor the result was a wall of cards with a
+   dead band down the right-hand side. A card grid is the one layout here that
+   genuinely wants the whole window: every extra 240px is another column. */
+.adm-page--wide.mkt-page { max-width: none; }
 .mkt-header {
   display: flex; justify-content: space-between; align-items: flex-start;
   gap: var(--space-lg); margin-bottom: var(--space-lg);
@@ -1644,6 +1652,9 @@ a { color: inherit; text-decoration: none; }
 /* card grid */
 .mkt-grid {
   display: grid;
+  /* auto-fill rather than auto-fit: on a very wide screen auto-fit stretches a
+     short row into a few enormous slabs, while auto-fill keeps the column
+     rhythm and lets the row end where the cards end. */
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: var(--space-md);
 }
@@ -1759,6 +1770,13 @@ a { color: inherit; text-decoration: none; }
 .mkt-machine {
   display: inline-flex; align-items: center; gap: 3px;
   font-size: 0.65rem; color: var(--color-ink-3);
+  /* Machine names are now real names rather than "machine · 11", so one can
+     genuinely be long. The chip truncates instead of stretching the card out
+     of the grid; the full name is on the element's title. */
+  max-width: 100%; min-width: 0;
+}
+.mkt-machine > span:last-child {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
 /* ── full-width detail page ──────────────────────────────────── */

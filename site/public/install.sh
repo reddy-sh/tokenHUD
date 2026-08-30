@@ -4,6 +4,12 @@
 # One command, shown by the "Add a machine" modal:
 #   curl -fsSL https://platform.tokenhud.com/install.sh | ENROLL="<link>" sh
 #
+# The board names the machine <first>-<hostname>-<id> from the hostname the
+# agent reports at enrolment, so it arrives already identifiable. Override the
+# hostname half when this box's real hostname is not the name you think of it
+# by — a numbered cloud instance, or two laptops restored from the same backup:
+#   curl -fsSL … | ENROLL="<link>" TOKENHUD_HOST="build-box" sh
+#
 # Every download is checksum-verified against the .sha256 sidecar the
 # release publishes beside it, so a corrupted or tampered binary fails
 # loudly instead of installing quietly.
@@ -96,6 +102,14 @@ echo ""
 
 if [ -n "$ENROLL" ]; then
   echo "  2. Enrolling this machine…"
+  # Exported rather than merely set, because the agent reads it from its own
+  # environment and it is the agent, not this script, that reports the name.
+  if [ -n "${TOKENHUD_HOST:-}" ]; then
+    export TOKENHUD_HOST
+    echo "     reporting as: ${TOKENHUD_HOST}"
+  else
+    echo "     reporting as: $(hostname 2>/dev/null || echo 'this machine')"
+  fi
   echo ""
   # stdin is the pipe from curl, which is at EOF by now. The agent's
   # consent prompt needs the real terminal, so redirect from /dev/tty.
@@ -105,4 +119,7 @@ else
   echo ""
   echo "  To enroll this machine, run:"
   echo "    tokenhud-agent enroll \"<link from the board>\""
+  echo ""
+  echo "  The board names it after this machine's hostname. To report a"
+  echo "  different name, set TOKENHUD_HOST before enrolling."
 fi

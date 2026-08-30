@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
 
+import { shortMachineName } from '../../../../shared/machine-name.mjs'
+
 /* The Integrations section: every tool TokenHUD knows about, across all
  * machines. The board-embedded IntegrationsCard shows one machine at a time;
  * this page merges them so you see the fleet-wide picture: which tools are
@@ -188,7 +190,11 @@ function ToolCard({ row, multi, onSelect, onNavigate }) {
           {row.machines.map((m, i) => (
             <span key={i} className="mkt-machine" title={`${m.host}: ${STATE_LABEL[m.state] || m.state}`}>
               <span className={'sh-dot sh-dot--' + (m.state === 'reading' ? 'ok' : m.state === 'ready' ? 'ok' : m.state === 'needs-setup' ? 'warn' : 'off')} />
-              <span>{m.host}</span>
+              {/* Every machine on a board shares the same owner prefix and
+                  carries a uid nobody reads, so a card this narrow shows the
+                  part that differs. The full name is in the tooltip, and the
+                  detail view below has room to print it whole. */}
+              <span>{shortMachineName(m.host)}</span>
             </span>
           ))}
         </div>

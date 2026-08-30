@@ -31,9 +31,12 @@
 // second copy of it into a secondary index, on every single heartbeat.
 
 import type { LambdaFunctionURLEvent, LambdaFunctionURLResult } from 'aws-lambda';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { gunzipSync, gzipSync } from 'node:zlib';
 
+import {
+    firstNameFrom, looksGenerated, machineName, shortUid,
+} from '../../../shared/machine-name.mjs';
 import { liveness, mergeEntries, profileOf } from '../../../shared/profile.mjs';
 import { cached, fail, json, preflight, type Cors } from './http';
 import { callerOf, type Caller } from './jwt';
@@ -91,6 +94,22 @@ function parseJson(
 
 const str = (v: unknown, max = 200) =>
   (typeof v === 'string' && v.length <= max ? v : '');
+
+/* A name nobody else on this board is using.
+ *
+ * The generated names carry six random characters precisely so this never
+ * fires, but a person renaming machines by hand can still collide, and the
+ * board's own rename endpoint refuses duplicates — so registration must not be
+ * able to create one behind its back. */
+function uniqueLabel(desired: string, taken: Set<string>): string {
+  if (!taken.has(desired)) return desired;
+  let n = 2;
+  while (taken.has(`${desired} · ${n}`)) n++;
+  return `${desired} · ${n}`;
+}
+
+/* Six characters of collision insurance, from the runtime's real CSPRNG. */
+const newUid = () => shortUid((n: number) => randomBytes(n));
 
 /* ── the public identity of an account ──────────────────────────────── */
 
@@ -173,13 +192,17 @@ async function register(
   const enrollTokenHash = str(req?.enrollTokenHash, 64);
   const pairingCode = str(req?.pairingCode, 7);
   const expiresAt = str(req?.enrollTokenExpiresAt, 40);
+  // The label is optional on purpose. At this point in the handshake nobody
+  // knows what this machine is called — the agent has not run yet — so a name
+  // supplied here can only be one a person typed. When they did not type one,
+  // this function names the machine itself and `claim` finishes the job once
+  // the agent reports its hostname.
   if (
-    !label ||
     !/^[0-9a-f]{64}$/.test(enrollTokenHash) ||
     !/^[A-Z2-9]{3}-[A-Z2-9]{3}$/.test(pairingCode) ||
     !Number.isFinite(Date.parse(expiresAt))
   ) {
-    return fail(400, 'a registration needs a label, a token hash, a pairing code and an expiry', cors);
+    return fail(400, 'a registration needs a token hash, a pairing code and an expiry', cors);
   }
   // A link that outlives the sitting it was minted in is a link somebody
   // pastes into a terminal a week later and cannot explain.
@@ -189,18 +212,30 @@ async function register(
   }
 
   const taken = new Set((await store.listMachines(caller.sub)).map((m) => m.label));
-  let name = label;
-  if (taken.has(name)) {
-    let n = 2;
-    while (taken.has(`${name} · ${n}`)) n++;
-    name = `${name} · ${n}`;
-  }
+
+  // `uid` and `ownerFirst` are minted here and never change, so the name this
+  // machine gets now and the name it gets when the agent enrols differ in
+  // exactly one part — the hostname. A card that gained a real name is
+  // recognisably the same card, which it would not be if the whole string
+  // were rebuilt from scratch.
+  const uid = newUid();
+  const ownerFirst = firstNameFrom(caller.email);
+  // A label a person typed is theirs and survives enrolment untouched. One
+  // that only looks generated — including the "machine · 11" shape this
+  // replaces — is treated as no label at all.
+  const chosen = label && !looksGenerated(label) ? label : '';
+  const labelAuto = !chosen;
+  const name = uniqueLabel(
+    chosen || machineName({ email: caller.email, uid, fallbackHost: 'pending' }),
+    taken,
+  );
 
   const id = randomUUID();
   const now = new Date().toISOString();
   await store.putMachine({
     pk: store.userPk(caller.sub), sk: store.machineSk(id),
     id, sub: caller.sub, label: name,
+    labelAuto, uid, ownerFirst,
     status: 'registered',
     pairingCode,
     enrollTokenHash,
@@ -247,9 +282,27 @@ async function claim(event: LambdaFunctionURLEvent): Promise<LambdaFunctionURLRe
   // One link binds to one machine; a retry from the same machine refreshes it.
   if (m.installId && m.installId !== installId) return fail(410, 'enrollment link already used');
 
+  // The hostname has just arrived, and this is the only moment it ever will —
+  // so this is where an auto-named machine stops being `sankara-pending-k3f9dq`
+  // and becomes `sankara-sankaras-macbook-pro-k3f9dq`. Rows written before
+  // this existed have no `labelAuto`, so their names are judged by shape,
+  // which is what rescues the "machine · 11" fleet on the next enrolment.
+  const auto = m.labelAuto ?? looksGenerated(m.label);
+  const uid = m.uid || newUid();
+  let label = m.label;
+  if (auto) {
+    const taken = new Set(
+      (await store.listMachines(m.sub)).filter((x) => x.id !== m.id).map((x) => x.label),
+    );
+    label = uniqueLabel(machineName({ first: m.ownerFirst, hostname: host, uid }), taken);
+  }
+
   await store.updateMachine(m.sub, m.id, {
     installId,
     hostname: host,
+    label,
+    labelAuto: auto,
+    uid,
     platform: str(req?.platform, 120),
     agentVersion: str(req?.agentVersion, 40),
     manifestDigest: str(req?.manifestDigest, 128),
@@ -407,12 +460,62 @@ function publicMachine(m: Record<string, any>) {
   };
 }
 
+/* Give a real name to machines that enrolled before names meant anything.
+ *
+ * The naming happens at registration and at enrolment, which does nothing for
+ * a machine that is already active — and the fleet this was written for is
+ * entirely already active, sitting on the board as "machine", "machine · 2",
+ * "machine · 11". Everything needed to fix them is here and nowhere else: the
+ * owner's email is on the caller, and the hostname was recorded when the agent
+ * enrolled. So the board renames them the first time their owner looks at it.
+ *
+ * Guarded three ways. Only auto-generated names are touched, so a name a
+ * person typed is never overwritten. Only the caller's own machines are
+ * touched, because the super admin sees every account's rows and must not
+ * stamp their own first name across all of them. And the write only happens
+ * when the name would actually change, so this costs nothing on every
+ * subsequent poll. */
+async function backfillNames(caller: Caller, rows: store.Machine[]): Promise<void> {
+  const mine = rows.filter((m) => m.sub === caller.sub);
+  const stale = mine.filter(
+    (m) => (m.labelAuto ?? looksGenerated(m.label)) && (m.hostname || m.label),
+  );
+  if (!stale.length) return;
+
+  const taken = new Set(mine.map((m) => m.label));
+  const first = firstNameFrom(caller.email);
+
+  for (const m of stale) {
+    const uid = m.uid || newUid();
+    // A machine that enrolled has a hostname; one still waiting to keeps the
+    // provisional shape until it does, rather than being named after nothing.
+    const desired = machineName({
+      first, hostname: m.hostname, uid, fallbackHost: m.hostname ? undefined : 'pending',
+    });
+    if (desired === m.label) continue;
+    taken.delete(m.label);
+    const label = uniqueLabel(desired, taken);
+    taken.add(label);
+    try {
+      await store.updateMachine(caller.sub, m.id, { label, labelAuto: true, uid, ownerFirst: first });
+      // The caller is about to be handed these rows, so update them in place
+      // rather than making the new name wait for the next poll.
+      m.label = label; m.labelAuto = true; m.uid = uid; m.ownerFirst = first;
+    } catch {
+      // A rename that loses a race is not worth failing a board render over —
+      // the next poll tries again.
+    }
+  }
+}
+
 async function overview(caller: Caller, event: LambdaFunctionURLEvent, cors: Cors) {
   const admin = isSuperAdmin(caller);
   const rows = admin
     ? await store.listAllMachines()
     : await store.listMachines(caller.sub);
   rows.sort((a, b) => ((a.createdAt ?? '') < (b.createdAt ?? '') ? 1 : -1));
+
+  await backfillNames(caller, rows);
 
   // `?live=0` asks for the rows without the readings — a much smaller answer,
   // and all the portal needs while it is only watching liveness.
@@ -479,7 +582,8 @@ async function machineAction(
     const taken = (await store.listMachines(ownerSub))
       .some((other) => other.id !== id && other.label === label);
     if (taken) return fail(409, 'another machine on this board already has that name', cors);
-    await store.updateMachine(ownerSub, id, { label });
+    // Naming a machine by hand opts it out of ever being renamed again.
+    await store.updateMachine(ownerSub, id, { label, labelAuto: false });
     return json(200, { ok: true, label }, cors);
   }
 

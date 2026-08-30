@@ -157,7 +157,12 @@ export default function Portal({ onClose, user, onUser, onSelfHost }) {
       const { machine } = await api('/api/v1/machines', {
         method: 'POST',
         body: {
-          label: (label || '').trim() || 'machine',
+          // Deliberately absent when nobody typed one. The old default was
+          // the literal string "machine", so every machine on the board was
+          // called "machine" and the server's collision suffix did the rest —
+          // "machine · 2", "machine · 11". The server names it now, and
+          // renames it properly once the agent reports its hostname.
+          ...((label || '').trim() ? { label: label.trim() } : {}),
           pairingCode: code,
           enrollTokenHash,
           enrollTokenExpiresAt,
