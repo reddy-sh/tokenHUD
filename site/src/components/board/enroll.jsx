@@ -623,7 +623,7 @@ export function MachinesPanel({ machines, cloud, onAdd }) {
           </div>
           <input className="mc-search" type="text" value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search machines\u2026" aria-label="Search machines" />
+            placeholder="Search machines…" aria-label="Search machines" />
         </div>
       )}
 

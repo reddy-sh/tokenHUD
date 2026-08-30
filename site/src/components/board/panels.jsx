@@ -103,7 +103,7 @@ export function UsageWindows({ lim }) {
       ? 'Claude Code\u2019s config was mid-write and could not be read this cycle. It will be picked up on the next one.'
       : 'No usage cache found. Claude Code writes one to ~/.claude.json after it talks to the usage endpoint — run /usage in Claude Code once and it will appear here.'
     return (
-      <Card title="Usage windows" note="Your plan\u2019s real limits, as Anthropic last reported them.">
+      <Card title="Usage windows" note="Your plan’s real limits, as Anthropic last reported them.">
         <Empty>{why}</Empty>
         <p className="bv-note" style={{ marginTop: 12 }}>
           The five-hour block is reconstructed from your own request timestamps and does not need this cache.
@@ -121,7 +121,7 @@ export function UsageWindows({ lim }) {
   return (
     <Card
       title="Usage windows"
-      note="Your plan\u2019s real limits, as Anthropic last reported them — not computed here."
+      note="Your plan’s real limits, as Anthropic last reported them — not computed here."
       right={
         <span className={'bv-sub' + (stale ? ' warn' : '')}
           title={stale
